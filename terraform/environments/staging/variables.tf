@@ -30,6 +30,35 @@ variable "vpc_network_id" {
   default     = "projects/barq-fleet/global/networks/default"
 }
 
+variable "private_service_cidr_range" {
+  description = "Reserved peering range for service networking (CIDR)"
+  type        = string
+  default     = "10.10.0.0/16"
+}
+
+variable "db_user" {
+  description = "Database user for application"
+  type        = string
+}
+
+variable "db_password" {
+  description = "Database password for application"
+  type        = string
+  sensitive   = true
+}
+
+variable "database_url" {
+  description = "Full database connection URL stored in Secret Manager"
+  type        = string
+  sensitive   = true
+}
+
+variable "secret_key" {
+  description = "Application secret key stored in Secret Manager"
+  type        = string
+  sensitive   = true
+}
+
 variable "alert_email" {
   description = "Email for alert notifications"
   type        = string

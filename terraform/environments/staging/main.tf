@@ -21,6 +21,147 @@ provider "google" {
   region  = var.region
 }
 
+resource "google_project_service" "services" {
+  for_each = toset([
+    "run.googleapis.com",
+    "secretmanager.googleapis.com",
+    "sqladmin.googleapis.com",
+    "compute.googleapis.com",
+    "vpcaccess.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "monitoring.googleapis.com",
+  ])
+  project            = var.project_id
+  service            = each.value
+  disable_on_destroy = false
+}
+
+# Service Account for Cloud Run
+resource "google_service_account" "barq_api" {
+  account_id   = "barq-api-staging"
+  display_name = "BARQ API Staging Service Account"
+  description  = "Service account for BARQ API staging environment"
+}
+
+# Reserved range for private service access (required for peering)
+resource "google_compute_global_address" "private_service_range" {
+  name          = "barq-staging-psa-range"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  address       = split("/", var.private_service_cidr_range)[0]
+  prefix_length = tonumber(split("/", var.private_service_cidr_range)[1])
+  network       = var.vpc_network_id
+}
+
+# Service Networking for private IP Cloud SQL
+resource "google_service_networking_connection" "default" {
+  network                 = var.vpc_network_id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_service_range.name]
+  depends_on              = [google_project_service.services, google_compute_global_address.private_service_range]
+}
+
+# Cloud SQL Database (private IP)
+resource "google_sql_database_instance" "staging" {
+  name             = "barq-staging-db"
+  database_version = "POSTGRES_16"
+  region           = var.region
+
+  settings {
+    tier              = "db-f1-micro"  # Small instance for staging
+    availability_type = "ZONAL"
+    disk_size         = 10
+    disk_type         = "PD_SSD"
+
+    backup_configuration {
+      enabled                        = true
+      start_time                     = "03:00"
+      point_in_time_recovery_enabled = true
+      transaction_log_retention_days = 3
+    }
+
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = var.vpc_network_id
+    }
+
+    database_flags {
+      name  = "max_connections"
+      value = "100"
+    }
+  }
+
+  deletion_protection = false  # Allow deletion in staging
+  depends_on          = [google_service_networking_connection.default]
+}
+
+resource "google_sql_database" "staging" {
+  name     = "barq_staging"
+  instance = google_sql_database_instance.staging.name
+}
+
+resource "google_sql_user" "staging_app" {
+  instance = google_sql_database_instance.staging.name
+  name     = var.db_user
+  password = var.db_password
+}
+
+resource "google_vpc_access_connector" "serverless" {
+  name           = "barq-staging-connector"
+  region         = var.region
+  network        = var.vpc_network_id
+  min_throughput = 200
+  max_throughput = 300
+  depends_on     = [google_project_service.services]
+}
+
+# Allow Cloud Run SA to use the VPC connector
+resource "google_project_iam_member" "vpc_connector_user" {
+  project = var.project_id
+  role    = "roles/vpcaccess.user"
+  member  = "serviceAccount:${google_service_account.barq_api.email}"
+}
+
+# Secret Manager - Database URL
+resource "google_secret_manager_secret" "staging_database_url" {
+  secret_id = "staging-database-url"
+
+  replication {
+    automatic = true
+  }
+}
+
+resource "google_secret_manager_secret_version" "staging_database_url_version" {
+  secret      = google_secret_manager_secret.staging_database_url.id
+  secret_data = var.database_url
+}
+
+# Secret Manager - Secret Key
+resource "google_secret_manager_secret" "staging_secret_key" {
+  secret_id = "staging-secret-key"
+
+  replication {
+    automatic = true
+  }
+}
+
+resource "google_secret_manager_secret_version" "staging_secret_key_version" {
+  secret      = google_secret_manager_secret.staging_secret_key.id
+  secret_data = var.secret_key
+}
+
+resource "google_secret_manager_secret_iam_member" "staging_database_url_access" {
+  secret_id = google_secret_manager_secret.staging_database_url.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.barq_api.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "staging_secret_key_access" {
+  secret_id = google_secret_manager_secret.staging_secret_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.barq_api.email}"
+}
+
 # Cloud Run Service - Staging
 resource "google_cloud_run_service" "barq_api_staging" {
   name     = "barq-api-staging"
@@ -29,15 +170,17 @@ resource "google_cloud_run_service" "barq_api_staging" {
   template {
     metadata {
       annotations = {
-        "autoscaling.knative.dev/minScale"      = "1"
-        "autoscaling.knative.dev/maxScale"      = "10"
-        "run.googleapis.com/startup-cpu-boost"  = "true"
+        "autoscaling.knative.dev/minScale"         = "1"
+        "autoscaling.knative.dev/maxScale"         = "10"
+        "run.googleapis.com/startup-cpu-boost"     = "true"
         "run.googleapis.com/execution-environment" = "gen2"
+        "run.googleapis.com/vpc-access-connector"  = google_vpc_access_connector.serverless.id
+        "run.googleapis.com/vpc-access-egress"     = "all-traffic"
       }
     }
 
     spec {
-      service_account_name = google_service_account.barq_api.email
+      service_account_name  = google_service_account.barq_api.email
       container_concurrency = 80
       timeout_seconds       = 300
 
@@ -71,7 +214,6 @@ resource "google_cloud_run_service" "barq_api_staging" {
           value = "production"
         }
 
-        # Database connection from Secret Manager
         env {
           name = "DATABASE_URL"
           value_from {
@@ -82,7 +224,6 @@ resource "google_cloud_run_service" "barq_api_staging" {
           }
         }
 
-        # Secret key from Secret Manager
         env {
           name = "SECRET_KEY"
           value_from {
@@ -91,6 +232,11 @@ resource "google_cloud_run_service" "barq_api_staging" {
               key  = "latest"
             }
           }
+        }
+
+        env {
+          name  = "DB_CONNECTION_NAME"
+          value = google_sql_database_instance.staging.connection_name
         }
 
         # Health check probes
@@ -116,6 +262,11 @@ resource "google_cloud_run_service" "barq_api_staging" {
           failure_threshold     = 3
         }
       }
+
+      vpc_access {
+        connector = google_vpc_access_connector.serverless.id
+        egress    = "ALL_TRAFFIC"
+      }
     }
   }
 
@@ -125,13 +276,13 @@ resource "google_cloud_run_service" "barq_api_staging" {
   }
 
   autogenerate_revision_name = true
-}
-
-# Service Account for Cloud Run
-resource "google_service_account" "barq_api" {
-  account_id   = "barq-api-staging"
-  display_name = "BARQ API Staging Service Account"
-  description  = "Service account for BARQ API staging environment"
+  depends_on = [
+    google_service_account.barq_api,
+    google_secret_manager_secret_version.staging_database_url_version,
+    google_secret_manager_secret_version.staging_secret_key_version,
+    google_vpc_access_connector.serverless,
+    google_project_iam_member.vpc_connector_user,
+  ]
 }
 
 # IAM Policy - Allow unauthenticated access
@@ -142,85 +293,17 @@ resource "google_cloud_run_service_iam_member" "public_access" {
   member   = "allUsers"
 }
 
-# Secret Manager - Database URL
-resource "google_secret_manager_secret" "staging_database_url" {
-  secret_id = "staging-database-url"
-
-  replication {
-    automatic = true
-  }
-}
-
-resource "google_secret_manager_secret_iam_member" "staging_database_url_access" {
-  secret_id = google_secret_manager_secret.staging_database_url.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.barq_api.email}"
-}
-
-# Secret Manager - Secret Key
-resource "google_secret_manager_secret" "staging_secret_key" {
-  secret_id = "staging-secret-key"
-
-  replication {
-    automatic = true
-  }
-}
-
-resource "google_secret_manager_secret_iam_member" "staging_secret_key_access" {
-  secret_id = google_secret_manager_secret.staging_secret_key.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.barq_api.email}"
-}
-
-# Cloud SQL Database (if needed)
-resource "google_sql_database_instance" "staging" {
-  name             = "barq-staging-db"
-  database_version = "POSTGRES_16"
-  region           = var.region
-
-  settings {
-    tier              = "db-f1-micro"  # Small instance for staging
-    availability_type = "ZONAL"
-    disk_size         = 10
-    disk_type         = "PD_SSD"
-
-    backup_configuration {
-      enabled            = true
-      start_time         = "03:00"
-      point_in_time_recovery_enabled = true
-      transaction_log_retention_days = 3
-    }
-
-    ip_configuration {
-      ipv4_enabled    = false
-      private_network = var.vpc_network_id
-    }
-
-    database_flags {
-      name  = "max_connections"
-      value = "100"
-    }
-  }
-
-  deletion_protection = false  # Allow deletion in staging
-}
-
-resource "google_sql_database" "staging" {
-  name     = "barq_staging"
-  instance = google_sql_database_instance.staging.name
-}
-
 # Monitoring Module
 module "monitoring" {
   source = "../../modules/monitoring"
 
-  project_id        = var.project_id
-  environment       = "staging"
-  alert_email       = var.alert_email
-  slack_webhook_url = var.slack_webhook_url
+  project_id         = var.project_id
+  environment        = "staging"
+  alert_email        = var.alert_email
+  slack_webhook_url  = var.slack_webhook_url
   slack_channel_name = "#staging-alerts"
-  staging_domain    = google_cloud_run_service.barq_api_staging.status[0].url
-  production_domain = "api.barq-fleet.com"
+  staging_domain     = google_cloud_run_service.barq_api_staging.status[0].url
+  production_domain  = "api.barq-fleet.com"
 }
 
 # Outputs

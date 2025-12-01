@@ -12,10 +12,13 @@ import { Spinner } from '@/components/ui/Spinner'
 import { vehiclesAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 import { useCRUD } from '@/hooks/useCRUD'
+import { VehicleForm, type VehicleFormData } from '@/components/forms'
+import type { Vehicle } from '@/types/fleet'
 
 export default function VehiclesList() {
   const { t } = useTranslation()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
 
   // Use the reusable data table hook
   const {
@@ -36,13 +39,37 @@ export default function VehiclesList() {
   })
 
   // Use the reusable CRUD hook
-  const { handleDelete } = useCRUD({
+  const { handleCreate, handleUpdate, handleDelete, isLoading: isMutating } = useCRUD({
     queryKey: 'vehicles',
     entityName: 'Vehicle',
     create: vehiclesAPI.create,
     update: vehiclesAPI.update,
     delete: vehiclesAPI.delete,
   })
+
+  const handleOpenCreateModal = () => {
+    setEditingVehicle(null)
+    setIsModalOpen(true)
+  }
+
+  const handleOpenEditModal = (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setEditingVehicle(null)
+  }
+
+  const handleSubmit = async (data: VehicleFormData) => {
+    if (editingVehicle) {
+      await handleUpdate(editingVehicle.id, data)
+    } else {
+      await handleCreate(data)
+    }
+    handleCloseModal()
+  }
 
   const columns = [
     { key: 'plate_number', header: 'Plate Number', sortable: true },
@@ -52,21 +79,26 @@ export default function VehiclesList() {
     {
       key: 'mileage',
       header: 'Mileage (km)',
-      render: (row: any) => row.mileage?.toLocaleString() || 'N/A',
+      render: (row: Vehicle) => row.mileage?.toLocaleString() || 'N/A',
     },
     {
       key: 'assigned_courier_id',
       header: 'Assigned To',
-      render: (row: any) => row.assigned_courier_id || 'Unassigned',
+      render: (row: Vehicle) =>
+        row.assigned_courier_id === null || row.assigned_courier_id === undefined
+          ? 'Unassigned'
+          : row.assigned_courier_id,
     },
     {
       key: 'status',
       header: 'Status',
-      render: (row: any) => (
+      render: (row: Vehicle) => (
         <Badge
           variant={
-            row.status === 'active'
+            row.status === 'available'
               ? 'success'
+              : row.status === 'in_use'
+              ? 'info'
               : row.status === 'maintenance'
               ? 'warning'
               : row.status === 'retired'
@@ -74,22 +106,25 @@ export default function VehiclesList() {
               : 'default'
           }
         >
-          {row.status || 'active'}
+          {row.status || 'available'}
         </Badge>
       ),
     },
     {
       key: 'actions',
       header: 'Actions',
-      render: (row: any) => (
+      render: (row: Vehicle) => (
         <div className="flex gap-2">
-          <Button size="sm" variant="ghost">
+          <Button size="sm" variant="ghost" onClick={() => handleOpenEditModal(row)}>
             <Edit className="h-4 w-4" />
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => handleDelete(row.id)}
+            onClick={async () => {
+              await handleDelete(row.id)
+            }}
+            disabled={isMutating}
           >
             <Trash2 className="h-4 w-4 text-red-600" />
           </Button>
@@ -120,7 +155,7 @@ export default function VehiclesList() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">{t('nav.vehicles')}</h1>
-        <Button onClick={() => setIsModalOpen(true)}>
+        <Button onClick={handleOpenCreateModal}>
           <Plus className="h-4 w-4 mr-2" />
           Add Vehicle
         </Button>
@@ -152,11 +187,16 @@ export default function VehiclesList() {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Add New Vehicle"
+        onClose={handleCloseModal}
+        title={editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}
         size="lg"
       >
-        <p>Vehicle form will be here</p>
+        <VehicleForm
+          initialData={editingVehicle}
+          onSubmit={handleSubmit}
+          onCancel={handleCloseModal}
+          isLoading={isMutating}
+        />
       </Modal>
     </div>
   )
