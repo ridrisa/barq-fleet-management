@@ -1,0 +1,109 @@
+{
+  "app": {
+    "title": "بارك لإدارة الأساطيل",
+    "welcome": "مرحباً بكم في بارك",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "success": "نجح"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "users": "المستخدمون",
+    "couriers": "المناديب",
+    "vehicles": "المركبات",
+    "reports": "التقارير",
+    "settings": "الإعدادات"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "rememberMe": "تذكرني",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "signIn": "دخول",
+    "signOut": "خروج",
+    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "sessionExpired": "انتهت صلاحية جلستك"
+  },
+  "actions": {
+    "add": "إضافة",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "close": "إغلاق",
+    "search": "بحث",
+    "filter": "تصفية",
+    "export": "تصدير",
+    "import": "استيراد",
+    "refresh": "تحديث",
+    "submit": "إرسال",
+    "reset": "إعادة تعيين",
+    "view": "عرض",
+    "download": "تنزيل",
+    "upload": "رفع"
+  },
+  "common": {
+    "status": "الحالة",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف",
+    "address": "العنوان",
+    "date": "التاريخ",
+    "time": "الوقت",
+    "description": "الوصف",
+    "notes": "ملاحظات",
+    "total": "المجموع",
+    "yes": "نعم",
+    "no": "لا",
+    "all": "الكل",
+    "none": "لا شيء",
+    "other": "آخر"
+  },
+  "messages": {
+    "saveSuccess": "تم حفظ التغييرات بنجاح",
+    "deleteSuccess": "تم الحذف بنجاح",
+    "deleteConfirm": "هل أنت متأكد من حذف هذا العنصر؟",
+    "unsavedChanges": "لديك تغييرات لم يتم حفظها. هل تريد المغادرة؟",
+    "noData": "لا توجد بيانات",
+    "loadingError": "فشل تحميل البيانات",
+    "networkError": "خطأ في الشبكة. يرجى التحقق من الاتصال.",
+    "serverError": "خطأ في الخادم. يرجى المحاولة لاحقاً."
+  },
+  "users": {
+    "title": "المستخدمون",
+    "addUser": "إضافة مستخدم",
+    "editUser": "تعديل مستخدم",
+    "deleteUser": "حذف مستخدم",
+    "fullName": "الاسم الكامل",
+    "role": "الدور",
+    "createdAt": "تاريخ الإنشاء",
+    "updatedAt": "تاريخ التحديث",
+    "noUsers": "لم يتم العثور على مستخدمين"
+  },
+  "couriers": {
+    "title": "المناديب",
+    "addCourier": "إضافة مندوب",
+    "noCouriers": "لم يتم العثور على مناديب"
+  },
+  "vehicles": {
+    "title": "المركبات",
+    "addVehicle": "إضافة مركبة",
+    "noVehicles": "لم يتم العثور على مركبات",
+    "plateNumber": "رقم اللوحة",
+    "model": "الموديل",
+    "year": "السنة"
+  },
+  "dashboard": {
+    "welcome": "مرحباً بكم في نظام بارك لإدارة الأساطيل",
+    "systemStatus": "حالة النظام",
+    "totalUsers": "إجمالي المستخدمين",
+    "totalCouriers": "إجمالي المناديب",
+    "totalVehicles": "إجمالي المركبات",
+    "recentActivity": "النشاط الأخير"
+  }
+}

@@ -1,0 +1,177 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  # PR Validation
+  pr-validation:
+    name: Validate PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR title format
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+
+      - name: Check for merge conflicts
+        run: |
+          if git log --oneline --merges ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -q .; then
+            echo "⚠️ PR contains merge commits. Please rebase."
+            exit 1
+          fi
+
+      - name: Check file size
+        run: |
+          # Check for large files (>5MB)
+          LARGE_FILES=$(find . -type f -size +5M -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/venv/*")
+          if [ -n "$LARGE_FILES" ]; then
+            echo "❌ Large files detected (>5MB):"
+            echo "$LARGE_FILES"
+            exit 1
+          fi
+
+  # Code Size Analysis
+  code-size:
+    name: Code Size Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Analyze code changes
+        run: |
+          echo "📊 Code Statistics"
+          echo "=================="
+          echo ""
+          echo "Backend:"
+          find backend/app -name "*.py" | xargs wc -l | tail -1
+          echo ""
+          echo "Frontend:"
+          find frontend -name "*.tsx" -o -name "*.ts" | xargs wc -l | tail -1
+          echo ""
+
+      - name: Check added lines
+        run: |
+          ADDED_LINES=$(git diff --numstat ${{ github.event.pull_request.base.sha }} | awk '{sum+=$1} END {print sum}')
+          DELETED_LINES=$(git diff --numstat ${{ github.event.pull_request.base.sha }} | awk '{sum+=$2} END {print sum}')
+
+          echo "Added lines: $ADDED_LINES"
+          echo "Deleted lines: $DELETED_LINES"
+
+          if [ "$ADDED_LINES" -gt 1000 ]; then
+            echo "⚠️ Large PR detected (>1000 lines added). Consider breaking it down."
+          fi
+
+  # Dependency Check
+  dependency-check:
+    name: Dependency Security Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run npm audit
+        working-directory: frontend
+        run: |
+          npm audit --audit-level=moderate || echo "⚠️ NPM vulnerabilities found"
+
+      - name: Check Python dependencies
+        working-directory: backend
+        run: |
+          pip install safety
+          safety check --json || echo "⚠️ Python vulnerabilities found"
+        continue-on-error: true
+
+  # Auto-label PR
+  auto-label:
+    name: Auto Label PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Label based on files changed
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+
+  # Comment PR Stats
+  pr-comment:
+    name: Comment PR Statistics
+    runs-on: ubuntu-latest
+    needs: [pr-validation, code-size]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate PR stats
+        id: stats
+        run: |
+          FILES_CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} | wc -l)
+          LINES_ADDED=$(git diff --numstat ${{ github.event.pull_request.base.sha }} | awk '{sum+=$1} END {print sum}')
+          LINES_DELETED=$(git diff --numstat ${{ github.event.pull_request.base.sha }} | awk '{sum+=$2} END {print sum}')
+
+          echo "files_changed=$FILES_CHANGED" >> $GITHUB_OUTPUT
+          echo "lines_added=$LINES_ADDED" >> $GITHUB_OUTPUT
+          echo "lines_deleted=$LINES_DELETED" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const stats = `
+            ## 📊 PR Statistics
+
+            - **Files Changed:** ${{ steps.stats.outputs.files_changed }}
+            - **Lines Added:** +${{ steps.stats.outputs.lines_added }}
+            - **Lines Deleted:** -${{ steps.stats.outputs.lines_deleted }}
+
+            ### ✅ Quality Checks
+
+            All automated checks must pass before merging:
+            - [ ] Code linting
+            - [ ] Type checking
+            - [ ] Unit tests
+            - [ ] Build successful
+
+            ---
+            *This comment was automatically generated by CI*
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: stats
+            });

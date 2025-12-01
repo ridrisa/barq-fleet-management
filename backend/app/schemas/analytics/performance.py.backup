@@ -1,0 +1,186 @@
+from pydantic import BaseModel, Field, model_validator
+from typing import Optional, List
+from datetime import date, datetime
+from decimal import Decimal
+
+
+# Base schema with common fields
+class PerformanceBase(BaseModel):
+    """Base performance schema with common fields"""
+    courier_id: int = Field(..., gt=0, description="Courier ID")
+    date: date = Field(..., description="Performance date")
+
+    orders_completed: int = Field(default=0, ge=0, description="Total orders completed")
+    orders_failed: int = Field(default=0, ge=0, description="Total orders failed")
+    on_time_deliveries: int = Field(default=0, ge=0, description="On-time deliveries")
+    late_deliveries: int = Field(default=0, ge=0, description="Late deliveries")
+
+    distance_covered_km: float = Field(default=0.0, ge=0, description="Distance in KM")
+    revenue_generated: float = Field(default=0.0, ge=0, description="Revenue in SAR")
+    cod_collected: float = Field(default=0.0, ge=0, description="COD collected in SAR")
+
+    average_rating: float = Field(default=0.0, ge=0, le=5, description="Average rating (0-5)")
+    working_hours: float = Field(default=0.0, ge=0, le=24, description="Working hours")
+    efficiency_score: float = Field(default=0.0, ge=0, le=100, description="Efficiency score")
+
+    notes: Optional[str] = None
+
+    @model_validator(mode='after')
+    def validate_delivery_counts(self):
+        """Validate that delivery counts don't exceed completed orders"""
+        if self.on_time_deliveries > self.orders_completed:
+            raise ValueError('On-time deliveries cannot exceed orders completed')
+        if self.late_deliveries > self.orders_completed:
+            raise ValueError('Late deliveries cannot exceed orders completed')
+        return self
+
+
+# Schema for creating performance data
+class PerformanceCreate(PerformanceBase):
+    """Schema for creating new performance record"""
+    pass
+
+
+# Schema for updating performance data
+class PerformanceUpdate(BaseModel):
+    """Schema for updating performance record - all fields optional"""
+    courier_id: Optional[int] = Field(None, gt=0)
+    date: Optional[date] = None
+
+    orders_completed: Optional[int] = Field(None, ge=0)
+    orders_failed: Optional[int] = Field(None, ge=0)
+    on_time_deliveries: Optional[int] = Field(None, ge=0)
+    late_deliveries: Optional[int] = Field(None, ge=0)
+
+    distance_covered_km: Optional[float] = Field(None, ge=0)
+    revenue_generated: Optional[float] = Field(None, ge=0)
+    cod_collected: Optional[float] = Field(None, ge=0)
+
+    average_rating: Optional[float] = Field(None, ge=0, le=5)
+    working_hours: Optional[float] = Field(None, ge=0, le=24)
+    efficiency_score: Optional[float] = Field(None, ge=0, le=100)
+
+    notes: Optional[str] = None
+
+
+# Schema for performance response
+class PerformanceResponse(PerformanceBase):
+    """Schema for performance response with database fields"""
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    # Computed properties
+    total_orders: int = Field(default=0, description="Total orders")
+    success_rate: float = Field(default=0.0, description="Success rate %")
+    on_time_rate: float = Field(default=0.0, description="On-time rate %")
+    orders_per_hour: float = Field(default=0.0, description="Orders per hour")
+    revenue_per_order: float = Field(default=0.0, description="Revenue per order")
+
+    class Config:
+        from_attributes = True
+
+
+# Schema for performance list (minimal fields)
+class PerformanceList(BaseModel):
+    """Minimal performance schema for list views"""
+    id: int
+    courier_id: int
+    date: date
+    orders_completed: int
+    orders_failed: int
+    revenue_generated: Decimal
+    efficiency_score: Decimal
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Schema for performance statistics
+class PerformanceStats(BaseModel):
+    """Aggregated performance statistics"""
+    courier_id: int
+    period_start: date
+    period_end: date
+
+    total_orders_completed: int = 0
+    total_orders_failed: int = 0
+    total_distance_km: Decimal = 0
+    total_revenue: Decimal = 0
+    total_cod_collected: Decimal = 0
+
+    average_rating: Decimal = 0
+    average_efficiency_score: Decimal = 0
+    average_orders_per_day: Decimal = 0
+
+    on_time_percentage: float = 0.0
+    success_rate: float = 0.0
+
+    working_days: int = 0
+    total_working_hours: Decimal = 0
+
+
+# Schema for top performers
+class TopPerformer(BaseModel):
+    """Top performer summary"""
+    courier_id: int
+    courier_barq_id: str
+    courier_name: str
+
+    total_orders: int
+    total_revenue: Decimal
+    average_rating: Decimal
+    efficiency_score: Decimal
+    on_time_rate: float
+
+    rank: int
+
+
+# Schema for performance trends
+class PerformanceTrend(BaseModel):
+    """Performance trend over time"""
+    date: date
+    orders_completed: int
+    revenue_generated: Decimal
+    efficiency_score: Decimal
+    average_rating: Decimal
+
+
+# Schema for courier comparison
+class CourierComparison(BaseModel):
+    """Compare multiple couriers"""
+    courier_id: int
+    courier_barq_id: str
+    courier_name: str
+
+    orders_completed: int
+    orders_failed: int
+    success_rate: float
+
+    total_revenue: Decimal
+    total_distance_km: Decimal
+
+    average_rating: Decimal
+    efficiency_score: Decimal
+    on_time_rate: float
+
+
+# Schema for date range query
+class DateRangeQuery(BaseModel):
+    """Date range filter"""
+    start_date: date
+    end_date: date
+
+    @model_validator(mode='after')
+    def validate_date_range(self):
+        """Validate that end_date is after start_date"""
+        if self.end_date < self.start_date:
+            raise ValueError('end_date must be after start_date')
+        return self
+
+
+# Schema for bulk performance data
+class PerformanceBulkCreate(BaseModel):
+    """Schema for bulk creating performance records"""
+    records: List[PerformanceCreate] = Field(..., min_items=1, max_items=1000)

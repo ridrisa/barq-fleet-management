@@ -1,0 +1,89 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Trigger Cloud Build
+        run: |
+          gcloud builds submit \
+            --config=cloudbuild.yaml \
+            --substitutions=_REGION=${{ env.GCP_REGION }},_ENVIRONMENT=${{ github.event.inputs.environment || 'production' }}
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for Cloud Run deployment to complete..."
+          sleep 60
+
+      - name: Verify deployment
+        run: |
+          # Get Cloud Run service URL
+          BACKEND_URL=$(gcloud run services describe barq-api-${{ github.event.inputs.environment || 'production' }} \
+            --region=${{ env.GCP_REGION }} \
+            --format='value(status.url)')
+
+          echo "Backend URL: $BACKEND_URL"
+
+          # Test health endpoint
+          curl -f $BACKEND_URL/api/v1/health || exit 1
+
+          echo "✅ Deployment verified successfully"
+
+      - name: Create GitHub release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Notify deployment
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deployment to ${{ github.event.inputs.environment || 'production' }} succeeded!"
+          else
+            echo "❌ Deployment to ${{ github.event.inputs.environment || 'production' }} failed!"
+          fi

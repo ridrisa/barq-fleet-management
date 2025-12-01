@@ -1,0 +1,420 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip tests (emergency deploy only)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  REPOSITORY_NAME: barq-artifacts
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  # Determine deployment environment
+  determine-environment:
+    name: Determine Environment
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      deploy_production: ${{ steps.set-env.outputs.deploy_production }}
+
+    steps:
+      - name: Set environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "deploy_production=${{ github.event.inputs.environment == 'production' }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "deploy_production=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Run CI checks (can be skipped for emergency deploys)
+  ci-checks:
+    name: CI Checks
+    needs: determine-environment
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+    uses: ./.github/workflows/ci.yml
+
+  # Build and push Docker images
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [determine-environment, ci-checks]
+    if: always() && (needs.ci-checks.result == 'success' || needs.ci-checks.result == 'skipped')
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/barq-api:${SHORT_SHA}"
+
+          echo "tags=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+            ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/barq-api:latest
+            ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.REPOSITORY_NAME }}/barq-api:${{ needs.determine-environment.outputs.environment }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ github.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.timestamp }}
+
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.meta.outputs.tags }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  # Deploy to Staging (automatic)
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [determine-environment, build-and-push]
+    if: needs.determine-environment.outputs.environment == 'staging'
+    environment:
+      name: staging
+      url: https://barq-api-staging-${{ needs.build-and-push.outputs.short_sha }}---${{ env.GCP_REGION }}.run.app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run (Staging)
+        id: deploy
+        run: |
+          gcloud run deploy barq-api-staging \
+            --image ${{ needs.build-and-push.outputs.image_tag }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "ENVIRONMENT=staging,VERSION=${{ github.sha }}" \
+            --set-secrets "DATABASE_URL=staging-database-url:latest,SECRET_KEY=staging-secret-key:latest" \
+            --cpu 2 \
+            --memory 2Gi \
+            --min-instances 1 \
+            --max-instances 10 \
+            --concurrency 80 \
+            --timeout 300 \
+            --tag sha-$(echo ${{ github.sha }} | cut -c1-7) \
+            --no-traffic
+
+      - name: Get service URL
+        id: url
+        run: |
+          SERVICE_URL=$(gcloud run services describe barq-api-staging \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests
+        run: |
+          REVISION_URL="${{ steps.url.outputs.service_url }}"
+
+          echo "Testing health endpoint..."
+          curl -f ${REVISION_URL}/health/live || exit 1
+
+          echo "Testing readiness endpoint..."
+          curl -f ${REVISION_URL}/health/ready || exit 1
+
+          echo "Smoke tests passed!"
+
+      - name: Shift 100% traffic to new revision
+        run: |
+          gcloud run services update-traffic barq-api-staging \
+            --to-latest \
+            --region ${{ env.GCP_REGION }}
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for traffic to stabilize..."
+          sleep 30
+
+          SERVICE_URL="${{ steps.url.outputs.service_url }}"
+
+          # Health check
+          HEALTH_STATUS=$(curl -s ${SERVICE_URL}/health | jq -r '.status')
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "Health check failed!"
+            exit 1
+          fi
+
+          echo "✅ Staging deployment verified successfully"
+
+  # Deploy to Production (with approval and canary)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [determine-environment, build-and-push]
+    if: needs.determine-environment.outputs.deploy_production == 'true'
+    environment:
+      name: production
+      url: https://api.barq-fleet.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get current production revision
+        id: current
+        run: |
+          CURRENT_REVISION=$(gcloud run services describe barq-api-production \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.traffic[0].revisionName)' || echo "none")
+          echo "revision=${CURRENT_REVISION}" >> $GITHUB_OUTPUT
+          echo "Current production revision: ${CURRENT_REVISION}"
+
+      - name: Deploy new revision (no traffic)
+        id: deploy
+        run: |
+          gcloud run deploy barq-api-production \
+            --image ${{ needs.build-and-push.outputs.image_tag }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "ENVIRONMENT=production,VERSION=${{ github.sha }}" \
+            --set-secrets "DATABASE_URL=production-database-url:latest,SECRET_KEY=production-secret-key:latest" \
+            --cpu 4 \
+            --memory 4Gi \
+            --min-instances 2 \
+            --max-instances 50 \
+            --concurrency 100 \
+            --timeout 300 \
+            --tag sha-$(echo ${{ github.sha }} | cut -c1-7) \
+            --no-traffic
+
+          NEW_REVISION=$(gcloud run services describe barq-api-production \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.latestCreatedRevisionName)')
+          echo "new_revision=${NEW_REVISION}" >> $GITHUB_OUTPUT
+
+      - name: Run smoke tests on new revision
+        run: |
+          REVISION_URL="https://sha-$(echo ${{ github.sha }} | cut -c1-7)---barq-api-production---${{ env.GCP_REGION }}.run.app"
+
+          echo "Testing new revision at: ${REVISION_URL}"
+
+          # Liveness check
+          curl -f ${REVISION_URL}/health/live || exit 1
+
+          # Readiness check
+          curl -f ${REVISION_URL}/health/ready || exit 1
+
+          # Detailed health check
+          curl -f ${REVISION_URL}/health/detailed || exit 1
+
+          echo "Smoke tests passed!"
+
+      - name: Canary deployment - 10% traffic
+        run: |
+          echo "Starting canary deployment with 10% traffic..."
+
+          gcloud run services update-traffic barq-api-production \
+            --to-revisions ${{ steps.deploy.outputs.new_revision }}=10 \
+            --region ${{ env.GCP_REGION }}
+
+      - name: Monitor canary - 10%
+        id: monitor_10
+        run: |
+          echo "Monitoring 10% canary for 5 minutes..."
+          sleep 300
+
+          # Check error rate via Cloud Logging
+          ERROR_COUNT=$(gcloud logging read \
+            "resource.type=cloud_run_revision AND resource.labels.service_name=barq-api-production AND resource.labels.revision_name=${{ steps.deploy.outputs.new_revision }} AND severity>=ERROR" \
+            --limit 100 \
+            --format json \
+            --freshness=5m | jq '. | length')
+
+          echo "Error count in last 5 minutes: ${ERROR_COUNT}"
+
+          if [ ${ERROR_COUNT} -gt 5 ]; then
+            echo "❌ Too many errors detected! Rolling back..."
+            echo "rollback=true" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "✅ 10% canary looks healthy"
+          echo "rollback=false" >> $GITHUB_OUTPUT
+
+      - name: Canary deployment - 50% traffic
+        if: steps.monitor_10.outputs.rollback != 'true'
+        run: |
+          echo "Increasing to 50% traffic..."
+
+          gcloud run services update-traffic barq-api-production \
+            --to-revisions ${{ steps.deploy.outputs.new_revision }}=50 \
+            --region ${{ env.GCP_REGION }}
+
+      - name: Monitor canary - 50%
+        if: steps.monitor_10.outputs.rollback != 'true'
+        id: monitor_50
+        run: |
+          echo "Monitoring 50% canary for 5 minutes..."
+          sleep 300
+
+          ERROR_COUNT=$(gcloud logging read \
+            "resource.type=cloud_run_revision AND resource.labels.service_name=barq-api-production AND resource.labels.revision_name=${{ steps.deploy.outputs.new_revision }} AND severity>=ERROR" \
+            --limit 100 \
+            --format json \
+            --freshness=5m | jq '. | length')
+
+          echo "Error count in last 5 minutes: ${ERROR_COUNT}"
+
+          if [ ${ERROR_COUNT} -gt 10 ]; then
+            echo "❌ Too many errors detected! Rolling back..."
+            echo "rollback=true" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+          echo "✅ 50% canary looks healthy"
+          echo "rollback=false" >> $GITHUB_OUTPUT
+
+      - name: Canary deployment - 100% traffic
+        if: steps.monitor_10.outputs.rollback != 'true' && steps.monitor_50.outputs.rollback != 'true'
+        run: |
+          echo "Promoting to 100% traffic..."
+
+          gcloud run services update-traffic barq-api-production \
+            --to-latest \
+            --region ${{ env.GCP_REGION }}
+
+      - name: Final verification
+        if: steps.monitor_10.outputs.rollback != 'true' && steps.monitor_50.outputs.rollback != 'true'
+        run: |
+          echo "Waiting for traffic to stabilize..."
+          sleep 60
+
+          SERVICE_URL=$(gcloud run services describe barq-api-production \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+
+          # Final health check
+          HEALTH_STATUS=$(curl -s ${SERVICE_URL}/health | jq -r '.status')
+          if [ "$HEALTH_STATUS" != "healthy" ]; then
+            echo "❌ Final health check failed!"
+            exit 1
+          fi
+
+          echo "✅ Production deployment completed successfully!"
+
+      - name: Rollback on failure
+        if: failure() && steps.current.outputs.revision != 'none'
+        run: |
+          echo "❌ Deployment failed! Rolling back to previous revision..."
+
+          gcloud run services update-traffic barq-api-production \
+            --to-revisions ${{ steps.current.outputs.revision }}=100 \
+            --region ${{ env.GCP_REGION }}
+
+          echo "✅ Rolled back to previous revision"
+
+  # Notify deployment status
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [determine-environment, deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.determine-environment.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Author:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.deploy-staging.result }}" == "success" ] || [ "${{ needs.deploy-production.result }}" == "success" ]; then
+            echo "✅ **Status:** Deployment successful!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status:** Deployment failed!" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Send Slack notification (optional)
+        if: always()
+        run: |
+          # Add Slack webhook notification here if SLACK_WEBHOOK_URL secret is configured
+          echo "Slack notification would be sent here"

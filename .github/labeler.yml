@@ -1,0 +1,42 @@
+# Auto-label PR based on files changed
+
+'backend':
+  - backend/**/*
+
+'frontend':
+  - frontend/**/*
+
+'database':
+  - backend/alembic/**/*
+  - backend/app/models/**/*
+
+'api':
+  - backend/app/api/**/*
+
+'docs':
+  - '**/*.md'
+  - docs/**/*
+
+'ci/cd':
+  - .github/workflows/**/*
+  - cloudbuild.yaml
+  - docker-compose.yml
+  - '**/Dockerfile*'
+
+'dependencies':
+  - '**/package.json'
+  - '**/package-lock.json'
+  - '**/requirements*.txt'
+
+'tests':
+  - '**/tests/**/*
+  - '**/*.test.ts'
+  - '**/*.test.tsx'
+  - '**/*.spec.ts'
+
+'config':
+  - '**/*.config.js'
+  - '**/*.config.ts'
+  - .eslintrc*
+  - .prettierrc*
+  - tsconfig.json

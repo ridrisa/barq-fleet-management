@@ -1,0 +1,109 @@
+{
+  "app": {
+    "title": "BARQ Fleet Management",
+    "welcome": "Welcome to BARQ",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "couriers": "Couriers",
+    "vehicles": "Vehicles",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email address",
+    "password": "Password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "invalidCredentials": "Invalid email or password",
+    "sessionExpired": "Your session has expired"
+  },
+  "actions": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh",
+    "submit": "Submit",
+    "reset": "Reset",
+    "view": "View",
+    "download": "Download",
+    "upload": "Upload"
+  },
+  "common": {
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "address": "Address",
+    "date": "Date",
+    "time": "Time",
+    "description": "Description",
+    "notes": "Notes",
+    "total": "Total",
+    "yes": "Yes",
+    "no": "No",
+    "all": "All",
+    "none": "None",
+    "other": "Other"
+  },
+  "messages": {
+    "saveSuccess": "Changes saved successfully",
+    "deleteSuccess": "Deleted successfully",
+    "deleteConfirm": "Are you sure you want to delete this item?",
+    "unsavedChanges": "You have unsaved changes. Do you want to leave?",
+    "noData": "No data available",
+    "loadingError": "Failed to load data",
+    "networkError": "Network error. Please check your connection.",
+    "serverError": "Server error. Please try again later."
+  },
+  "users": {
+    "title": "Users",
+    "addUser": "Add User",
+    "editUser": "Edit User",
+    "deleteUser": "Delete User",
+    "fullName": "Full Name",
+    "role": "Role",
+    "createdAt": "Created At",
+    "updatedAt": "Updated At",
+    "noUsers": "No users found"
+  },
+  "couriers": {
+    "title": "Couriers",
+    "addCourier": "Add Courier",
+    "noCouriers": "No couriers found"
+  },
+  "vehicles": {
+    "title": "Vehicles",
+    "addVehicle": "Add Vehicle",
+    "noVehicles": "No vehicles found",
+    "plateNumber": "Plate Number",
+    "model": "Model",
+    "year": "Year"
+  },
+  "dashboard": {
+    "welcome": "Welcome to BARQ Fleet Management",
+    "systemStatus": "System Status",
+    "totalUsers": "Total Users",
+    "totalCouriers": "Total Couriers",
+    "totalVehicles": "Total Vehicles",
+    "recentActivity": "Recent Activity"
+  }
+}
