@@ -78,6 +78,50 @@ from app.schemas.workflow.analytics import (
     WorkflowBottleneckResponse,
     WorkflowPerformanceReport,
 )
+from app.schemas.workflow.comment import (
+    WorkflowCommentBase,
+    WorkflowCommentCreate,
+    WorkflowCommentUpdate,
+    WorkflowCommentResponse,
+    WorkflowCommentWithUser,
+)
+from app.schemas.workflow.attachment import (
+    WorkflowAttachmentBase,
+    WorkflowAttachmentCreate,
+    WorkflowAttachmentUpdate,
+    WorkflowAttachmentResponse,
+    WorkflowAttachmentWithUploader,
+    AttachmentUploadRequest,
+    AttachmentDownloadResponse,
+)
+from app.schemas.workflow.history import (
+    WorkflowHistoryBase,
+    WorkflowHistoryCreate,
+    WorkflowHistoryResponse,
+    WorkflowHistoryWithActor,
+    WorkflowStepHistoryBase,
+    WorkflowStepHistoryCreate,
+    WorkflowStepHistoryResponse,
+    WorkflowTimelineResponse,
+)
+from app.schemas.workflow.notification import (
+    WorkflowNotificationTemplateBase,
+    WorkflowNotificationTemplateCreate,
+    WorkflowNotificationTemplateUpdate,
+    WorkflowNotificationTemplateResponse,
+    WorkflowNotificationBase,
+    WorkflowNotificationCreate,
+    WorkflowNotificationUpdate,
+    WorkflowNotificationResponse,
+    WorkflowNotificationWithRecipient,
+    BulkNotificationRequest,
+    NotificationPreferenceBase,
+    NotificationPreferenceCreate,
+    NotificationPreferenceUpdate,
+    NotificationPreferenceResponse,
+    NotificationStatistics,
+    NotificationSendRequest,
+)
 
 __all__ = [
     # Template
@@ -153,4 +197,44 @@ __all__ = [
     "WorkflowAnalyticsQuery",
     "WorkflowBottleneckResponse",
     "WorkflowPerformanceReport",
+    # Comment
+    "WorkflowCommentBase",
+    "WorkflowCommentCreate",
+    "WorkflowCommentUpdate",
+    "WorkflowCommentResponse",
+    "WorkflowCommentWithUser",
+    # Attachment
+    "WorkflowAttachmentBase",
+    "WorkflowAttachmentCreate",
+    "WorkflowAttachmentUpdate",
+    "WorkflowAttachmentResponse",
+    "WorkflowAttachmentWithUploader",
+    "AttachmentUploadRequest",
+    "AttachmentDownloadResponse",
+    # History
+    "WorkflowHistoryBase",
+    "WorkflowHistoryCreate",
+    "WorkflowHistoryResponse",
+    "WorkflowHistoryWithActor",
+    "WorkflowStepHistoryBase",
+    "WorkflowStepHistoryCreate",
+    "WorkflowStepHistoryResponse",
+    "WorkflowTimelineResponse",
+    # Notification
+    "WorkflowNotificationTemplateBase",
+    "WorkflowNotificationTemplateCreate",
+    "WorkflowNotificationTemplateUpdate",
+    "WorkflowNotificationTemplateResponse",
+    "WorkflowNotificationBase",
+    "WorkflowNotificationCreate",
+    "WorkflowNotificationUpdate",
+    "WorkflowNotificationResponse",
+    "WorkflowNotificationWithRecipient",
+    "BulkNotificationRequest",
+    "NotificationPreferenceBase",
+    "NotificationPreferenceCreate",
+    "NotificationPreferenceUpdate",
+    "NotificationPreferenceResponse",
+    "NotificationStatistics",
+    "NotificationSendRequest",
 ]

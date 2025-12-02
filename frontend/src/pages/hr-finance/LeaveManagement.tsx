@@ -53,14 +53,14 @@ export default function LeaveManagement() {
 
   const columns = [
     {
-      key: 'employee_id',
-      header: 'Employee ID',
+      key: 'courier_id',
+      header: 'Courier ID',
       sortable: true,
     },
     {
-      key: 'employee_name',
-      header: 'Employee Name',
-      render: (row: any) => row.employee_name || 'N/A',
+      key: 'courier',
+      header: 'Courier Name',
+      render: (row: any) => row.courier?.full_name || row.courier_name || 'N/A',
     },
     {
       key: 'leave_type',

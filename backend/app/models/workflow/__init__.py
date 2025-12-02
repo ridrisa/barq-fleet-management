@@ -32,6 +32,21 @@ from app.models.workflow.analytics import (
     WorkflowPerformanceSnapshot,
     WorkflowUserMetrics,
 )
+from app.models.workflow.comment import WorkflowComment
+from app.models.workflow.attachment import WorkflowAttachment, AttachmentType
+from app.models.workflow.history import (
+    WorkflowHistory,
+    WorkflowStepHistory,
+    WorkflowHistoryEventType,
+)
+from app.models.workflow.notification import (
+    WorkflowNotificationTemplate,
+    WorkflowNotification,
+    NotificationPreference,
+    NotificationType,
+    NotificationChannel,
+    NotificationStatus,
+)
 
 __all__ = [
     # Template
@@ -67,4 +82,20 @@ __all__ = [
     "WorkflowStepMetrics",
     "WorkflowPerformanceSnapshot",
     "WorkflowUserMetrics",
+    # Comment
+    "WorkflowComment",
+    # Attachment
+    "WorkflowAttachment",
+    "AttachmentType",
+    # History
+    "WorkflowHistory",
+    "WorkflowStepHistory",
+    "WorkflowHistoryEventType",
+    # Notification
+    "WorkflowNotificationTemplate",
+    "WorkflowNotification",
+    "NotificationPreference",
+    "NotificationType",
+    "NotificationChannel",
+    "NotificationStatus",
 ]

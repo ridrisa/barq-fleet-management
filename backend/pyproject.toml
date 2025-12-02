@@ -1,21 +1,73 @@
+[project]
+name = "barq-fleet-api"
+version = "1.1.0"
+description = "BARQ Fleet Management API"
+readme = "README.md"
+requires-python = ">=3.11"
+
 [tool.black]
 line-length = 100
 target-version = ['py311']
 include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | alembic/versions
+)/
+'''
 
 [tool.isort]
 profile = "black"
 line_length = 100
+skip = ["venv", ".venv", "alembic/versions"]
+known_first_party = ["app"]
+known_third_party = ["fastapi", "pydantic", "sqlalchemy", "jose", "passlib"]
 
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["venv", "tests", "alembic"]
+
+[tool.bandit]
+exclude_dirs = ["venv", "tests", ".venv"]
+skips = ["B101", "B104"]  # Skip assert_used and hardcoded_bind_all_interfaces
+
+[tool.bandit.assert_used]
+skips = ["*/tests/*", "*/test_*.py"]
 
 [tool.pytest.ini_options]
-testpaths = ["app/tests"]
+testpaths = ["tests", "app/tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --cov=app --cov-report=html --cov-report=term-missing"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["*/tests/*", "*/migrations/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+fail_under = 70

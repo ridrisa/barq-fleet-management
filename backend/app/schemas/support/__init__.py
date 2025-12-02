@@ -4,13 +4,26 @@
 from app.schemas.support.ticket import (
     TicketBase,
     TicketCreate,
+    TicketCreateFromTemplate,
     TicketUpdate,
     TicketAssign,
     TicketResolve,
+    TicketEscalate,
+    TicketMerge,
+    TicketBulkAction,
+    TicketSLAConfig,
     TicketResponse,
     TicketList,
     TicketStatistics,
     TicketWithRelations,
+    TicketAttachmentCreate,
+    TicketAttachmentResponse,
+    TicketTemplateCreate,
+    TicketTemplateUpdate,
+    TicketTemplateResponse,
+    CannedResponseCreate,
+    CannedResponseUpdate,
+    CannedResponseResponse,
 )
 
 # Ticket reply schemas
@@ -78,14 +91,24 @@ from app.schemas.support.feedback import (
 # Analytics schemas
 from app.schemas.support.analytics import (
     TicketMetrics,
+    SLAMetrics,
     ResponseTimeMetrics,
     AgentPerformanceMetrics,
     CustomerSatisfactionMetrics,
     SupportTrendData,
     SupportAnalytics,
+    EscalationAnalytics,
     KBAnalytics,
     ChatAnalytics,
     DateRangeFilter,
+)
+
+# Contact schemas
+from app.schemas.support.contact import (
+    ContactFormSubmit,
+    ContactFormResponse,
+    ContactPreferences,
+    DepartmentInfo,
 )
 
 # Re-export enums for convenience
@@ -93,6 +116,7 @@ from app.models.support import (
     TicketCategory,
     TicketPriority,
     TicketStatus,
+    EscalationLevel,
     ArticleStatus,
     ChatStatus,
     FeedbackCategory,
@@ -103,13 +127,26 @@ __all__ = [
     # Ticket schemas
     "TicketBase",
     "TicketCreate",
+    "TicketCreateFromTemplate",
     "TicketUpdate",
     "TicketAssign",
     "TicketResolve",
+    "TicketEscalate",
+    "TicketMerge",
+    "TicketBulkAction",
+    "TicketSLAConfig",
     "TicketResponse",
     "TicketList",
     "TicketStatistics",
     "TicketWithRelations",
+    "TicketAttachmentCreate",
+    "TicketAttachmentResponse",
+    "TicketTemplateCreate",
+    "TicketTemplateUpdate",
+    "TicketTemplateResponse",
+    "CannedResponseCreate",
+    "CannedResponseUpdate",
+    "CannedResponseResponse",
     # Ticket reply schemas
     "TicketReplyBase",
     "TicketReplyCreate",
@@ -159,18 +196,26 @@ __all__ = [
     "FeedbackStatistics",
     # Analytics schemas
     "TicketMetrics",
+    "SLAMetrics",
     "ResponseTimeMetrics",
     "AgentPerformanceMetrics",
     "CustomerSatisfactionMetrics",
     "SupportTrendData",
     "SupportAnalytics",
+    "EscalationAnalytics",
     "KBAnalytics",
     "ChatAnalytics",
     "DateRangeFilter",
+    # Contact schemas
+    "ContactFormSubmit",
+    "ContactFormResponse",
+    "ContactPreferences",
+    "DepartmentInfo",
     # Enums
     "TicketCategory",
     "TicketPriority",
     "TicketStatus",
+    "EscalationLevel",
     "ArticleStatus",
     "ChatStatus",
     "FeedbackCategory",

@@ -73,41 +73,44 @@ export default function Bonuses() {
 
   const columns = [
     {
-      key: 'courier_name',
-      header: 'Courier Name',
+      key: 'courier_id',
+      header: 'Courier ID',
       sortable: true,
     },
     {
-      key: 'month',
-      header: 'Month',
-      render: (row: any) => row.month || 'N/A',
+      key: 'bonus_type',
+      header: 'Type',
+      render: (row: any) => row.bonus_type || 'N/A',
+    },
+    {
+      key: 'bonus_date',
+      header: 'Date',
+      render: (row: any) => row.bonus_date ? new Date(row.bonus_date).toLocaleDateString() : 'N/A',
     },
     {
       key: 'amount',
       header: 'Amount',
-      render: (row: any) => row.amount ? `$${row.amount.toFixed(2)}` : 'N/A',
+      render: (row: any) => row.amount ? `SAR ${Number(row.amount).toFixed(2)}` : 'N/A',
     },
     {
-      key: 'reason',
-      header: 'Reason',
-      render: (row: any) => row.reason || 'N/A',
+      key: 'description',
+      header: 'Description',
+      render: (row: any) => row.description || 'N/A',
     },
     {
-      key: 'status',
+      key: 'payment_status',
       header: 'Status',
       render: (row: any) => (
         <Badge
           variant={
-            row.status === 'approved'
+            row.payment_status === 'approved' || row.payment_status === 'paid'
               ? 'success'
-              : row.status === 'rejected'
-              ? 'danger'
-              : row.status === 'pending'
+              : row.payment_status === 'pending'
               ? 'warning'
               : 'default'
           }
         >
-          {row.status || 'pending'}
+          {row.payment_status || 'pending'}
         </Badge>
       ),
     },
@@ -173,8 +176,8 @@ export default function Bonuses() {
     )
   }
 
-  const pendingCount = bonuses.filter((b: any) => b.status === 'pending').length
-  const approvedCount = bonuses.filter((b: any) => b.status === 'approved').length
+  const pendingCount = bonuses.filter((b: any) => b.payment_status === 'pending').length
+  const approvedCount = bonuses.filter((b: any) => b.payment_status === 'approved' || b.payment_status === 'paid').length
   const totalAmount = bonuses.reduce((sum: number, b: any) => sum + (b.amount || 0), 0)
 
   return (

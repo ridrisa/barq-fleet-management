@@ -82,9 +82,14 @@ export default function Penalties() {
       },
     },
     {
-      key: 'courier_name',
-      header: 'Courier Name',
+      key: 'courier_id',
+      header: 'Courier ID',
       sortable: true,
+    },
+    {
+      key: 'penalty_type',
+      header: 'Type',
+      render: (row: any) => row.penalty_type || 'N/A',
     },
     {
       key: 'reason',
@@ -94,26 +99,7 @@ export default function Penalties() {
     {
       key: 'amount',
       header: 'Amount',
-      render: (row: any) => row.amount ? `$${row.amount.toFixed(2)}` : 'N/A',
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (row: any) => (
-        <Badge
-          variant={
-            row.status === 'approved'
-              ? 'success'
-              : row.status === 'rejected'
-              ? 'danger'
-              : row.status === 'pending'
-              ? 'warning'
-              : 'default'
-          }
-        >
-          {row.status || 'pending'}
-        </Badge>
-      ),
+      render: (row: any) => row.amount ? `SAR ${Number(row.amount).toFixed(2)}` : 'N/A',
     },
     {
       key: 'actions',

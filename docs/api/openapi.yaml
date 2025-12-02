@@ -1,0 +1,610 @@
+openapi: 3.0.3
+info:
+  title: BARQ Fleet Management API
+  version: 1.0.0
+  description: |
+    Complete RESTful API for BARQ Fleet Management System.
+
+    Features:
+    - Fleet management (couriers, vehicles, assignments)
+    - HR operations (leave, loans, attendance, salary)
+    - Operations (deliveries, routes, COD, incidents)
+    - Workflow engine with approvals and automation
+    - Advanced analytics and reporting
+    - Support ticket system
+    - Multi-tenant architecture
+
+  contact:
+    name: BARQ API Support
+    email: api-support@barq.com
+    url: https://docs.barq.com
+  license:
+    name: Proprietary
+    url: https://barq.com/license
+
+servers:
+  - url: https://api.barq.com/api/v1
+    description: Production server
+  - url: https://staging-api.barq.com/api/v1
+    description: Staging server
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Fleet
+    description: Fleet management operations
+  - name: HR
+    description: Human resources management
+  - name: Operations
+    description: Delivery and operational management
+  - name: Accommodation
+    description: Accommodation and housing management
+  - name: Workflow
+    description: Workflow engine and approvals
+  - name: Analytics
+    description: Analytics and reporting
+  - name: Support
+    description: Support ticket system
+  - name: Admin
+    description: System administration
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ============================================================================
+  # Authentication Endpoints
+  # ============================================================================
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Email/password login
+      description: Authenticate user with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@barq.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123!
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/google:
+    post:
+      tags:
+        - Authentication
+      summary: Google OAuth login
+      description: Authenticate user with Google OAuth token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: Google OAuth token
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Get authenticated user's information
+      responses:
+        '200':
+          description: Current user information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ============================================================================
+  # Fleet Endpoints
+  # ============================================================================
+  /fleet/couriers:
+    get:
+      tags:
+        - Fleet
+      summary: List couriers
+      description: Get paginated list of couriers with optional filtering
+      parameters:
+        - $ref: '#/components/parameters/Skip'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, suspended]
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, email, or phone
+      responses:
+        '200':
+          description: List of couriers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Courier'
+                  total:
+                    type: integer
+                  skip:
+                    type: integer
+                  limit:
+                    type: integer
+    post:
+      tags:
+        - Fleet
+      summary: Create courier
+      description: Create a new courier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourierCreate'
+      responses:
+        '201':
+          description: Courier created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Courier'
+
+  /fleet/vehicles:
+    get:
+      tags:
+        - Fleet
+      summary: List vehicles
+      description: Get paginated list of vehicles
+      parameters:
+        - $ref: '#/components/parameters/Skip'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, maintenance, retired]
+      responses:
+        '200':
+          description: List of vehicles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Vehicle'
+                  total:
+                    type: integer
+
+  # ============================================================================
+  # Operations Endpoints
+  # ============================================================================
+  /operations/deliveries:
+    get:
+      tags:
+        - Operations
+      summary: List deliveries
+      description: Get paginated list of deliveries
+      parameters:
+        - $ref: '#/components/parameters/Skip'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, assigned, in_transit, delivered, failed, cancelled]
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List of deliveries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeliveryList'
+
+  # ============================================================================
+  # Analytics Endpoints
+  # ============================================================================
+  /analytics/overview/dashboard:
+    get:
+      tags:
+        - Analytics
+      summary: Dashboard overview
+      description: Get main dashboard with KPIs and quick stats
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardOverview'
+
+  /analytics/fleet/utilization:
+    get:
+      tags:
+        - Analytics
+      summary: Fleet utilization
+      description: Get fleet utilization metrics
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Fleet utilization data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FleetUtilization'
+
+# ============================================================================
+# Components (Reusable Schemas)
+# ============================================================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token
+
+  parameters:
+    Skip:
+      name: skip
+      in: query
+      description: Number of records to skip
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+    Limit:
+      name: limit
+      in: query
+      description: Maximum number of records to return
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+
+  schemas:
+    # Authentication Schemas
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token
+        refresh_token:
+          type: string
+          description: JWT refresh token
+        token_type:
+          type: string
+          default: bearer
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, user, courier]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # Fleet Schemas
+    Courier:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        national_id:
+          type: string
+        license_number:
+          type: string
+        license_expiry_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+        city:
+          type: string
+        zone_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    CourierCreate:
+      type: object
+      required:
+        - name
+        - email
+        - phone
+        - national_id
+        - license_number
+        - license_expiry_date
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          pattern: '^[0-9+\-\(\) ]+$'
+        national_id:
+          type: string
+        license_number:
+          type: string
+        license_expiry_date:
+          type: string
+          format: date
+        city:
+          type: string
+        zone_id:
+          type: integer
+
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: integer
+        plate_number:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        color:
+          type: string
+        vehicle_type:
+          type: string
+          enum: [motorcycle, car, van, truck]
+        status:
+          type: string
+          enum: [active, maintenance, retired]
+        registration_expiry:
+          type: string
+          format: date
+        insurance_expiry:
+          type: string
+          format: date
+
+    # Operations Schemas
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: integer
+        tracking_number:
+          type: string
+        courier_id:
+          type: integer
+        vehicle_id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, assigned, in_transit, delivered, failed, cancelled]
+        pickup_address:
+          type: string
+        delivery_address:
+          type: string
+        scheduled_date:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        cod_amount:
+          type: number
+          format: decimal
+        notes:
+          type: string
+
+    DeliveryList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Delivery'
+        total:
+          type: integer
+        skip:
+          type: integer
+        limit:
+          type: integer
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+
+    # Analytics Schemas
+    DashboardOverview:
+      type: object
+      properties:
+        kpi_cards:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              value:
+                type: number
+              formatted_value:
+                type: string
+              unit:
+                type: string
+              change_percentage:
+                type: number
+              trend:
+                type: string
+                enum: [up, down, stable]
+              color:
+                type: string
+        quick_stats:
+          type: object
+          additionalProperties: true
+
+    FleetUtilization:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+        overall_utilization:
+          type: object
+          properties:
+            average_rate:
+              type: number
+            total_vehicles:
+              type: integer
+            active_vehicles:
+              type: integer
+            idle_vehicles:
+              type: integer
+
+    # Error Schema
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+        status_code:
+          type: integer
+          description: HTTP status code
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              type:
+                type: string
+        request_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time

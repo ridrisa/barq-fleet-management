@@ -3,6 +3,7 @@ import { lazyWithRetry } from '@/utils/lazyWithRetry'
 import Layout from '@/components/Layout'
 
 // Lazy load all pages with retry mechanism
+const Landing = lazyWithRetry(() => import('@/pages/Landing'))
 const Dashboard = lazyWithRetry(() => import('@/pages/Dashboard'))
 const Login = lazyWithRetry(() => import('@/pages/Login'))
 const Users = lazyWithRetry(() => import('@/pages/Users'))
@@ -11,6 +12,7 @@ const Vehicles = lazyWithRetry(() => import('@/pages/Vehicles'))
 
 // Fleet Module
 const CouriersList = lazyWithRetry(() => import('@/pages/fleet/CouriersList'))
+const CourierProfile = lazyWithRetry(() => import('@/pages/fleet/CourierProfile'))
 const VehiclesList = lazyWithRetry(() => import('@/pages/fleet/VehiclesList'))
 const VehicleAssignments = lazyWithRetry(() => import('@/pages/fleet/VehicleAssignments'))
 const FuelTracking = lazyWithRetry(() => import('@/pages/fleet/FuelTracking'))
@@ -134,6 +136,10 @@ const Profile = lazyWithRetry(() => import('@/pages/settings/Profile'))
 
 export const routes: RouteObject[] = [
   {
+    path: '/landing',
+    element: <Landing />,
+  },
+  {
     path: '/login',
     element: <Login />,
   },
@@ -148,6 +154,7 @@ export const routes: RouteObject[] = [
 
       // Fleet routes
       { path: 'fleet/couriers', element: <CouriersList /> },
+      { path: 'fleet/couriers/:id', element: <CourierProfile /> },
       { path: 'fleet/vehicles', element: <VehiclesList /> },
       { path: 'fleet/assignments', element: <VehicleAssignments /> },
       { path: 'fleet/fuel', element: <FuelTracking /> },

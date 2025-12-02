@@ -5,9 +5,14 @@ from app.models.support.ticket import (
     TicketCategory,
     TicketPriority,
     TicketStatus,
+    EscalationLevel,
 )
 from app.models.support.ticket_reply import TicketReply
+from app.models.support.ticket_attachment import TicketAttachment
+from app.models.support.ticket_template import TicketTemplate
+from app.models.support.canned_response import CannedResponse
 from app.models.support.kb_article import KBArticle, ArticleStatus
+from app.models.support.kb_category import KBCategory
 from app.models.support.faq import FAQ
 from app.models.support.chat_session import ChatSession, ChatStatus
 from app.models.support.chat_message import ChatMessage
@@ -19,10 +24,15 @@ __all__ = [
     "TicketCategory",
     "TicketPriority",
     "TicketStatus",
+    "EscalationLevel",
     "TicketReply",
+    "TicketAttachment",
+    "TicketTemplate",
+    "CannedResponse",
     # Knowledge Base
     "KBArticle",
     "ArticleStatus",
+    "KBCategory",
     # FAQ
     "FAQ",
     # Live Chat

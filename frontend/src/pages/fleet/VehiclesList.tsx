@@ -77,17 +77,15 @@ export default function VehiclesList() {
     { key: 'model', header: 'Model' },
     { key: 'year', header: 'Year' },
     {
-      key: 'mileage',
+      key: 'current_mileage',
       header: 'Mileage (km)',
-      render: (row: Vehicle) => row.mileage?.toLocaleString() || 'N/A',
+      render: (row: Vehicle) => row.current_mileage?.toLocaleString() || 'N/A',
     },
     {
-      key: 'assigned_courier_id',
-      header: 'Assigned To',
+      key: 'assigned_to_city',
+      header: 'City',
       render: (row: Vehicle) =>
-        row.assigned_courier_id === null || row.assigned_courier_id === undefined
-          ? 'Unassigned'
-          : row.assigned_courier_id,
+        row.assigned_to_city || 'Unassigned',
     },
     {
       key: 'status',

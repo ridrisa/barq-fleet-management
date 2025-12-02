@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1 import auth, health, dashboard  # users module temporarily disabled
 from app.api.v1.admin import router as admin_router
 from app.api.v1.support import support_router
+from app.api.v1.performance import router as performance_router
 from app.api import fleet, hr, operations, accommodation, finance, workflow
 # from app.api import analytics, tenant  # temporarily disabled
 
@@ -12,6 +13,7 @@ api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
 # api_router.include_router(users.router, prefix="/users", tags=["users"])  # temporarily disabled
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(performance_router, tags=["performance"])
 
 # Admin routes - RBAC Management
 api_router.include_router(admin_router, prefix="/admin", tags=["admin"])

@@ -14,18 +14,53 @@ from app.schemas.analytics.performance import (
     PerformanceBulkCreate,
 )
 
+from app.schemas.analytics.common import (
+    PeriodType,
+    ComparisonType,
+    TrendDirection,
+    PerformanceCategory,
+    DateRangeParams,
+    MetricValue,
+    TrendDataPoint,
+    ComparisonData,
+    KPICard,
+    ChartData,
+    TopPerformerItem,
+    DistributionBucket,
+    AlertItem,
+    ExportRequest,
+    PaginationParams,
+    PaginatedResponse,
+)
+
 __all__ = [
-    # Base schemas
+    # Performance schemas
     "PerformanceBase",
     "PerformanceCreate",
     "PerformanceUpdate",
     "PerformanceResponse",
     "PerformanceList",
-    # Analytics schemas
     "PerformanceStats",
     "TopPerformer",
     "PerformanceTrend",
     "CourierComparison",
     "DateRangeQuery",
     "PerformanceBulkCreate",
+    # Common analytics schemas
+    "PeriodType",
+    "ComparisonType",
+    "TrendDirection",
+    "PerformanceCategory",
+    "DateRangeParams",
+    "MetricValue",
+    "TrendDataPoint",
+    "ComparisonData",
+    "KPICard",
+    "ChartData",
+    "TopPerformerItem",
+    "DistributionBucket",
+    "AlertItem",
+    "ExportRequest",
+    "PaginationParams",
+    "PaginatedResponse",
 ]

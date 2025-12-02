@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: barq-fleet
+  labels:
+    name: barq-fleet
+    environment: production

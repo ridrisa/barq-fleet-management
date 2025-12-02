@@ -9,10 +9,25 @@ class TicketMetrics(BaseModel):
     total_tickets: int = 0
     open_tickets: int = 0
     in_progress_tickets: int = 0
+    waiting_tickets: int = 0
     resolved_tickets: int = 0
     closed_tickets: int = 0
     by_priority: Dict[str, int] = Field(default_factory=dict)
     by_category: Dict[str, int] = Field(default_factory=dict)
+    by_escalation: Dict[str, int] = Field(default_factory=dict)
+    escalated_count: int = 0
+    merged_count: int = 0
+
+
+class SLAMetrics(BaseModel):
+    """SLA compliance metrics"""
+    total_with_sla: int = 0
+    sla_met: int = 0
+    sla_breached: int = 0
+    compliance_rate: float = 0.0
+    avg_time_to_breach_hours: float = 0.0
+    at_risk_count: int = 0
+    by_priority: Dict[str, Dict[str, int]] = Field(default_factory=dict)
 
 
 class ResponseTimeMetrics(BaseModel):
@@ -56,10 +71,20 @@ class SupportAnalytics(BaseModel):
     period_end: date
     ticket_metrics: TicketMetrics
     response_time_metrics: ResponseTimeMetrics
+    sla_metrics: Optional[SLAMetrics] = None
     customer_satisfaction: CustomerSatisfactionMetrics
     top_categories: List[Dict[str, int]]
     top_agents: List[AgentPerformanceMetrics]
     trend_data: List[SupportTrendData]
+
+
+class EscalationAnalytics(BaseModel):
+    """Escalation analytics"""
+    total_escalated: int = 0
+    by_level: Dict[str, int] = Field(default_factory=dict)
+    avg_time_to_escalate_hours: float = 0.0
+    escalation_rate: float = 0.0
+    top_reasons: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class KBAnalytics(BaseModel):

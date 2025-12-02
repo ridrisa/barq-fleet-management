@@ -17,6 +17,14 @@ from app.crud.workflow.analytics import (
     workflow_performance_snapshot,
     workflow_user_metrics,
 )
+from app.crud.workflow.comment import workflow_comment
+from app.crud.workflow.attachment import workflow_attachment
+from app.crud.workflow.history import workflow_history, workflow_step_history
+from app.crud.workflow.notification import (
+    workflow_notification_template,
+    workflow_notification,
+    notification_preference,
+)
 
 __all__ = [
     "workflow_template",
@@ -35,4 +43,11 @@ __all__ = [
     "workflow_step_metrics",
     "workflow_performance_snapshot",
     "workflow_user_metrics",
+    "workflow_comment",
+    "workflow_attachment",
+    "workflow_history",
+    "workflow_step_history",
+    "workflow_notification_template",
+    "workflow_notification",
+    "notification_preference",
 ]

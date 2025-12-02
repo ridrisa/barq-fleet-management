@@ -14,7 +14,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 function App() {
   const routing = useRoutes(
     routes.map((route) => {
-      if (route.path === '/login') return route
+      // Public routes that don't require authentication
+      if (route.path === '/login' || route.path === '/landing') return route
       return {
         ...route,
         element: <PrivateRoute>{route.element}</PrivateRoute>,

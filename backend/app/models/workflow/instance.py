@@ -24,7 +24,22 @@ class WorkflowInstance(BaseModel):
     completed_at = Column(Date)
     notes = Column(Text)
 
+    # Core relationships
     template = relationship("WorkflowTemplate", back_populates="instances")
     initiator = relationship("User")
+
+    # Approval relationships
     approval_requests = relationship("ApprovalRequest", back_populates="workflow_instance")
+
+    # SLA relationships
     sla_instances = relationship("WorkflowSLAInstance", back_populates="workflow_instance")
+
+    # Collaboration relationships
+    comments = relationship("WorkflowComment", back_populates="workflow_instance", cascade="all, delete-orphan")
+    attachments = relationship("WorkflowAttachment", back_populates="workflow_instance", cascade="all, delete-orphan")
+
+    # Audit trail relationships
+    history = relationship("WorkflowHistory", back_populates="workflow_instance", cascade="all, delete-orphan", order_by="WorkflowHistory.event_time")
+
+    # Notification relationships
+    notifications = relationship("WorkflowNotification", back_populates="workflow_instance", cascade="all, delete-orphan")

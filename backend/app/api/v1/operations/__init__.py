@@ -4,7 +4,8 @@ from fastapi import APIRouter
 from app.api.v1.operations import (
     delivery, route, cod, incident,
     routes, incidents, handovers, zones,
-    dispatch, priority_queue, quality, sla
+    dispatch, priority_queue, quality, sla,
+    feedback, settings
 )
 
 router = APIRouter()
@@ -24,5 +25,7 @@ router.include_router(dispatch.router, prefix="/dispatch", tags=["Operations-Dis
 router.include_router(priority_queue.router, prefix="/priority-queue", tags=["Operations-Priority-Queue"])
 router.include_router(quality.router, prefix="/quality", tags=["Operations-Quality"])
 router.include_router(sla.router, prefix="/sla", tags=["Operations-SLA"])
+router.include_router(feedback.router, prefix="/feedback", tags=["Operations-Feedback"])
+router.include_router(settings.router, prefix="/settings", tags=["Operations-Settings"])
 
 __all__ = ["router"]

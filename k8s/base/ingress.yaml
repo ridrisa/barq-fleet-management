@@ -1,0 +1,82 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: barq-ingress
+  namespace: barq-fleet
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+spec:
+  tls:
+  - hosts:
+    - barq-fleet.example.com
+    - api.barq-fleet.example.com
+    secretName: barq-tls-secret
+  rules:
+  # Frontend
+  - host: barq-fleet.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: barq-frontend-service
+            port:
+              number: 80
+  # Backend API
+  - host: api.barq-fleet.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: barq-backend-service
+            port:
+              number: 8000
+---
+# Alternative: Single domain with path-based routing
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: barq-ingress-single-domain
+  namespace: barq-fleet
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  tls:
+  - hosts:
+    - barq-fleet.example.com
+    secretName: barq-tls-secret-single
+  rules:
+  - host: barq-fleet.example.com
+    http:
+      paths:
+      # Backend API
+      - path: /api(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: barq-backend-service
+            port:
+              number: 8000
+      # Frontend (must be last)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: barq-frontend-service
+            port:
+              number: 80

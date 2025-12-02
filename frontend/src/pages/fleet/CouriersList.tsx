@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search, Edit, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -16,6 +17,7 @@ import { CourierForm, CourierFormData } from '@/components/forms/CourierForm'
 
 export default function CouriersList() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCourier, setEditingCourier] = useState<any>(null)
 
@@ -76,10 +78,10 @@ export default function CouriersList() {
   }
 
   const columns = [
-    { key: 'employee_id', header: 'Employee ID', sortable: true },
-    { key: 'name', header: 'Name', sortable: true },
-    { key: 'phone', header: 'Phone' },
-    { key: 'email', header: 'Email' },
+    { key: 'barq_id', header: 'BARQ ID', sortable: true },
+    { key: 'full_name', header: 'Name', sortable: true },
+    { key: 'mobile_number', header: 'Phone' },
+    { key: 'city', header: 'City' },
     {
       key: 'status',
       header: 'Status',
@@ -93,7 +95,7 @@ export default function CouriersList() {
               : 'danger'
           }
         >
-          {row.status || 'active'}
+          {row.status || 'inactive'}
         </Badge>
       ),
     },
@@ -105,7 +107,16 @@ export default function CouriersList() {
           <Button
             size="sm"
             variant="ghost"
+            onClick={() => navigate(`/fleet/couriers/${row.id}`)}
+            title="View Profile"
+          >
+            <Eye className="h-4 w-4 text-blue-600" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={() => handleOpenEditModal(row)}
+            title="Edit"
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -113,6 +124,7 @@ export default function CouriersList() {
             size="sm"
             variant="ghost"
             onClick={() => handleDelete(row.id)}
+            title="Delete"
           >
             <Trash2 className="h-4 w-4 text-red-600" />
           </Button>

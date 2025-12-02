@@ -70,24 +70,29 @@ export default function LoanManagement() {
 
   const columns = [
     {
-      key: 'courier_name',
-      header: 'Courier Name',
+      key: 'courier_id',
+      header: 'Courier ID',
       sortable: true,
+    },
+    {
+      key: 'courier',
+      header: 'Courier Name',
+      render: (row: any) => row.courier?.full_name || row.courier_name || 'N/A',
     },
     {
       key: 'amount',
       header: 'Loan Amount',
-      render: (row: any) => row.amount ? `$${row.amount.toFixed(2)}` : 'N/A',
+      render: (row: any) => row.amount ? `SAR ${Number(row.amount).toFixed(2)}` : 'N/A',
     },
     {
-      key: 'monthly_payment',
-      header: 'Monthly Payment',
-      render: (row: any) => row.monthly_payment ? `$${row.monthly_payment.toFixed(2)}` : 'N/A',
+      key: 'monthly_deduction',
+      header: 'Monthly Deduction',
+      render: (row: any) => row.monthly_deduction ? `SAR ${Number(row.monthly_deduction).toFixed(2)}` : 'N/A',
     },
     {
-      key: 'remaining',
-      header: 'Remaining',
-      render: (row: any) => row.remaining ? `$${row.remaining.toFixed(2)}` : 'N/A',
+      key: 'outstanding_balance',
+      header: 'Outstanding Balance',
+      render: (row: any) => row.outstanding_balance ? `SAR ${Number(row.outstanding_balance).toFixed(2)}` : 'N/A',
     },
     {
       key: 'start_date',
@@ -167,8 +172,8 @@ export default function LoanManagement() {
   }
 
   const activeLoans = loans.filter((l: any) => l.status === 'active').length
-  const totalAmount = loans.reduce((sum: number, l: any) => sum + (l.amount || 0), 0)
-  const totalRemaining = loans.reduce((sum: number, l: any) => sum + (l.remaining || 0), 0)
+  const totalAmount = loans.reduce((sum: number, l: any) => sum + (Number(l.amount) || 0), 0)
+  const totalRemaining = loans.reduce((sum: number, l: any) => sum + (Number(l.outstanding_balance) || 0), 0)
 
   return (
     <div className="space-y-6">

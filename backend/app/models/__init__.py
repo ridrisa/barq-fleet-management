@@ -55,15 +55,66 @@ from app.models.accommodation.bed import Bed, BedStatus
 from app.models.accommodation.allocation import Allocation
 
 # ============================================================================
-# Workflow Models - Working relationships
+# Workflow Models - Complete workflow engine
 # ============================================================================
-from app.models.workflow.template import WorkflowTemplate
+from app.models.workflow.template import WorkflowTemplate, WorkflowTemplateCategory
 from app.models.workflow.instance import WorkflowInstance, WorkflowStatus
+from app.models.workflow.approval_chain import (
+    ApprovalChain,
+    ApprovalChainApprover,
+    ApprovalRequest,
+    ApprovalStatus,
+)
+from app.models.workflow.sla import (
+    WorkflowSLA,
+    WorkflowSLAInstance,
+    SLAEvent,
+    SLAStatus,
+    SLAPriority,
+)
+from app.models.workflow.automation import (
+    WorkflowAutomation,
+    AutomationExecutionLog,
+    AutomationTriggerType,
+    AutomationActionType,
+    AutomationStatus,
+)
+from app.models.workflow.trigger import (
+    WorkflowTrigger,
+    TriggerExecution,
+    TriggerType,
+    TriggerEventType,
+)
+from app.models.workflow.analytics import (
+    WorkflowMetrics,
+    WorkflowStepMetrics,
+    WorkflowPerformanceSnapshot,
+    WorkflowUserMetrics,
+)
+from app.models.workflow.comment import WorkflowComment
+from app.models.workflow.attachment import WorkflowAttachment, AttachmentType
+from app.models.workflow.history import (
+    WorkflowHistory,
+    WorkflowStepHistory,
+    WorkflowHistoryEventType,
+)
+from app.models.workflow.notification import (
+    WorkflowNotificationTemplate,
+    WorkflowNotification,
+    NotificationPreference,
+    NotificationType,
+    NotificationChannel,
+    NotificationStatus,
+)
 
 # ============================================================================
 # Analytics Models - Working relationships
 # ============================================================================
 from app.models.analytics.performance import PerformanceData
+from app.models.analytics.metric_snapshot import MetricSnapshot
+from app.models.analytics.report import Report, ReportType, ReportStatus, ReportFormat
+from app.models.analytics.dashboard import Dashboard
+from app.models.analytics.kpi import KPI, KPIPeriod, KPITrend
 
 # ============================================================================
 # Tenant Models - Working relationships
@@ -143,12 +194,64 @@ __all__ = [
     "Bed",
     "BedStatus",
     "Allocation",
-    # Workflow
+    # Workflow - Template & Instance
     "WorkflowTemplate",
+    "WorkflowTemplateCategory",
     "WorkflowInstance",
     "WorkflowStatus",
+    # Workflow - Approval
+    "ApprovalChain",
+    "ApprovalChainApprover",
+    "ApprovalRequest",
+    "ApprovalStatus",
+    # Workflow - SLA
+    "WorkflowSLA",
+    "WorkflowSLAInstance",
+    "SLAEvent",
+    "SLAStatus",
+    "SLAPriority",
+    # Workflow - Automation
+    "WorkflowAutomation",
+    "AutomationExecutionLog",
+    "AutomationTriggerType",
+    "AutomationActionType",
+    "AutomationStatus",
+    # Workflow - Trigger
+    "WorkflowTrigger",
+    "TriggerExecution",
+    "TriggerType",
+    "TriggerEventType",
+    # Workflow - Analytics
+    "WorkflowMetrics",
+    "WorkflowStepMetrics",
+    "WorkflowPerformanceSnapshot",
+    "WorkflowUserMetrics",
+    # Workflow - Comment & Attachment
+    "WorkflowComment",
+    "WorkflowAttachment",
+    "AttachmentType",
+    # Workflow - History
+    "WorkflowHistory",
+    "WorkflowStepHistory",
+    "WorkflowHistoryEventType",
+    # Workflow - Notification
+    "WorkflowNotificationTemplate",
+    "WorkflowNotification",
+    "NotificationPreference",
+    "NotificationType",
+    "NotificationChannel",
+    "NotificationStatus",
     # Analytics
     "PerformanceData",
+    "MetricSnapshot",
+    "Report",
+    "ReportType",
+    "ReportStatus",
+    "ReportFormat",
+    "Dashboard",
+    "KPI",
+    "KPIPeriod",
+    "KPITrend",
     # Tenant
     "Organization",
     "SubscriptionPlan",

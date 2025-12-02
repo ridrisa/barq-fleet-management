@@ -1,0 +1,263 @@
+version: '3.8'
+
+# BARQ Fleet Management - Production-Optimized Docker Compose
+# Includes all performance optimization infrastructure
+
+services:
+  # PostgreSQL with performance tuning
+  postgres:
+    image: postgres:15-alpine
+    container_name: barq-postgres
+    environment:
+      POSTGRES_DB: barq_fleet
+      POSTGRES_USER: barq
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-barq_secure_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c work_mem=2621kB
+      -c min_wal_size=1GB
+      -c max_wal_size=4GB
+      -c max_worker_processes=4
+      -c max_parallel_workers_per_gather=2
+      -c max_parallel_workers=4
+      -c max_parallel_maintenance_workers=2
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+  # Redis for caching and Celery
+  redis:
+    image: redis:7-alpine
+    container_name: barq-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+  # FastAPI application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: barq-api
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --workers 4
+      --loop uvloop
+      --access-log
+      --log-level info
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://barq:${DB_PASSWORD:-barq_secure_password}@postgres:5432/barq_fleet
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - DB_POOL_SIZE=20
+      - DB_MAX_OVERFLOW=40
+      - REDIS_MAX_CONNECTIONS=50
+      - CACHE_DEFAULT_TTL=300
+      - CELERY_WORKER_CONCURRENCY=8
+      - PROFILING_ENABLED=false
+      - LOG_QUERIES=false
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/performance/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+  # Celery worker (default queue)
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: barq-celery-worker
+    command: >
+      celery -A app.workers.celery_app worker
+      --loglevel=info
+      --concurrency=8
+      --max-tasks-per-child=1000
+      --queues=default
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://barq:${DB_PASSWORD:-barq_secure_password}@postgres:5432/barq_fleet
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - DB_POOL_SIZE=10
+      - CELERY_WORKER_CONCURRENCY=8
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+  # Celery worker (high priority queue)
+  celery_worker_high:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: barq-celery-worker-high
+    command: >
+      celery -A app.workers.celery_app worker
+      --loglevel=info
+      --concurrency=4
+      --max-tasks-per-child=1000
+      --queues=high_priority
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://barq:${DB_PASSWORD:-barq_secure_password}@postgres:5432/barq_fleet
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - DB_POOL_SIZE=5
+      - CELERY_WORKER_CONCURRENCY=4
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+  # Celery worker (low priority queue)
+  celery_worker_low:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: barq-celery-worker-low
+    command: >
+      celery -A app.workers.celery_app worker
+      --loglevel=info
+      --concurrency=4
+      --max-tasks-per-child=1000
+      --queues=low_priority
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://barq:${DB_PASSWORD:-barq_secure_password}@postgres:5432/barq_fleet
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - DB_POOL_SIZE=5
+      - CELERY_WORKER_CONCURRENCY=4
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+  # Celery Beat (scheduler)
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: barq-celery-beat
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment:
+      - ENVIRONMENT=production
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+  # Flower (Celery monitoring)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: barq-flower
+    command: >
+      celery -A app.workers.celery_app flower
+      --port=5555
+      --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-admin}
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+  # Nginx (reverse proxy with caching)
+  nginx:
+    image: nginx:alpine
+    container_name: barq-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_cache:/var/cache/nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - barq-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  nginx_cache:
+    driver: local
+
+networks:
+  barq-network:
+    driver: bridge

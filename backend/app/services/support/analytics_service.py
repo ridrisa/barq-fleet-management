@@ -2,10 +2,11 @@
 from typing import Dict, List
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 from app.models.support import (
-    Ticket, TicketStatus, Feedback, KBArticle, ChatSession
+    Ticket, TicketStatus, TicketPriority, EscalationLevel,
+    Feedback, KBArticle, ChatSession
 )
 
 
@@ -52,14 +53,34 @@ class SupportAnalyticsService:
             .all()
         )
 
+        # Waiting tickets
+        waiting_tickets = query.filter(Ticket.status == TicketStatus.WAITING).count()
+
+        # By escalation
+        by_escalation = dict(
+            query.with_entities(Ticket.escalation_level, func.count(Ticket.id))
+            .group_by(Ticket.escalation_level)
+            .all()
+        )
+
+        escalated_count = query.filter(
+            Ticket.escalation_level != EscalationLevel.NONE
+        ).count()
+
+        merged_count = query.filter(Ticket.is_merged == True).count()
+
         return {
             "total_tickets": total_tickets,
             "open_tickets": open_tickets,
             "in_progress_tickets": in_progress_tickets,
+            "waiting_tickets": waiting_tickets,
             "resolved_tickets": resolved_tickets,
             "closed_tickets": closed_tickets,
             "by_priority": {k.value: v for k, v in by_priority.items()},
             "by_category": {k.value: v for k, v in by_category.items()},
+            "by_escalation": {k.value: v for k, v in by_escalation.items()},
+            "escalated_count": escalated_count,
+            "merged_count": merged_count,
         }
 
     def get_response_time_metrics(
@@ -344,6 +365,122 @@ class SupportAnalyticsService:
             "avg_chat_duration_minutes": round(avg_duration, 2),
             "total_messages": total_messages,
             "sessions_by_agent": {str(k): v for k, v in sessions_by_agent.items()},
+        }
+
+
+    def get_sla_metrics(
+        self,
+        db: Session,
+        *,
+        start_date: date = None,
+        end_date: date = None
+    ) -> Dict:
+        """Get SLA compliance metrics"""
+        query = db.query(Ticket).filter(Ticket.sla_due_at.isnot(None))
+
+        if start_date and end_date:
+            query = query.filter(
+                and_(
+                    Ticket.created_at >= start_date,
+                    Ticket.created_at <= end_date
+                )
+            )
+
+        total_with_sla = query.count()
+        sla_breached = query.filter(Ticket.sla_breached == True).count()
+        sla_met = total_with_sla - sla_breached
+
+        compliance_rate = (sla_met / total_with_sla * 100) if total_with_sla > 0 else 0.0
+
+        # At risk tickets
+        now = datetime.now(timezone.utc)
+        hours_threshold = timedelta(hours=2)
+        at_risk_count = query.filter(
+            and_(
+                Ticket.sla_breached == False,
+                Ticket.sla_due_at <= now + hours_threshold,
+                Ticket.status.in_([
+                    TicketStatus.OPEN,
+                    TicketStatus.IN_PROGRESS,
+                    TicketStatus.WAITING
+                ])
+            )
+        ).count()
+
+        # SLA by priority
+        by_priority = {}
+        for priority in TicketPriority:
+            priority_query = query.filter(Ticket.priority == priority)
+            priority_total = priority_query.count()
+            priority_breached = priority_query.filter(Ticket.sla_breached == True).count()
+            by_priority[priority.value] = {
+                "total": priority_total,
+                "breached": priority_breached,
+                "met": priority_total - priority_breached,
+                "compliance_rate": round(
+                    ((priority_total - priority_breached) / priority_total * 100)
+                    if priority_total > 0 else 0.0, 2
+                )
+            }
+
+        return {
+            "total_with_sla": total_with_sla,
+            "sla_met": sla_met,
+            "sla_breached": sla_breached,
+            "compliance_rate": round(compliance_rate, 2),
+            "avg_time_to_breach_hours": 0.0,  # TODO: Calculate
+            "at_risk_count": at_risk_count,
+            "by_priority": by_priority,
+        }
+
+    def get_escalation_analytics(
+        self,
+        db: Session,
+        *,
+        start_date: date = None,
+        end_date: date = None
+    ) -> Dict:
+        """Get escalation analytics"""
+        query = db.query(Ticket).filter(
+            Ticket.escalation_level != EscalationLevel.NONE
+        )
+
+        if start_date and end_date:
+            query = query.filter(
+                and_(
+                    Ticket.created_at >= start_date,
+                    Ticket.created_at <= end_date
+                )
+            )
+
+        total_escalated = query.count()
+
+        # By level
+        by_level = dict(
+            query.with_entities(Ticket.escalation_level, func.count(Ticket.id))
+            .group_by(Ticket.escalation_level)
+            .all()
+        )
+
+        # Total tickets for rate calculation
+        total_tickets = db.query(Ticket)
+        if start_date and end_date:
+            total_tickets = total_tickets.filter(
+                and_(
+                    Ticket.created_at >= start_date,
+                    Ticket.created_at <= end_date
+                )
+            )
+        total_count = total_tickets.count()
+
+        escalation_rate = (total_escalated / total_count * 100) if total_count > 0 else 0.0
+
+        return {
+            "total_escalated": total_escalated,
+            "by_level": {k.value: v for k, v in by_level.items()},
+            "avg_time_to_escalate_hours": 0.0,  # TODO: Calculate
+            "escalation_rate": round(escalation_rate, 2),
+            "top_reasons": [],  # TODO: Get top escalation reasons
         }
 
 

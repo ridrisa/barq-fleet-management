@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: barq-frontend-service
+  namespace: barq-fleet
+  labels:
+    app: barq-frontend
+    tier: web
+spec:
+  type: ClusterIP
+  selector:
+    app: barq-frontend
+    tier: web
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http

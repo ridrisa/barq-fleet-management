@@ -84,9 +84,9 @@ export default function AttendanceTracking() {
       sortable: true,
     },
     {
-      key: 'courier_name',
+      key: 'courier',
       header: 'Courier Name',
-      render: (row: any) => row.courier_name || 'N/A',
+      render: (row: any) => row.courier?.full_name || row.courier_name || 'N/A',
     },
     {
       key: 'check_in',

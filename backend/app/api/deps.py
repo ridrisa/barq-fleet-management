@@ -20,12 +20,17 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            options={"verify_aud": False}  # Skip audience verification for flexibility
+        )
         token_data = TokenPayload(**payload)
         if token_data.sub is None:
             raise credentials_exception
         user_id = int(token_data.sub)
-    except (JWTError, ValueError):
+    except (JWTError, ValueError) as e:
         raise credentials_exception
 
     user = crud_user.get(db, id=user_id)
