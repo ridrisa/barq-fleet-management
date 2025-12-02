@@ -14,6 +14,7 @@ export interface Vehicle {
   id: VehicleId
   plate_number: string
   type: VehicleType
+  vehicle_type?: string | null
   make: string
   model: string
   year: number
@@ -22,12 +23,15 @@ export interface Vehicle {
   ownership: VehicleOwnership
   status: VehicleStatus
   mileage?: number | null
+  current_mileage?: number | null
   vin?: string | null
   purchase_date?: string | null
   registration_expiry?: string | null
   insurance_expiry?: string | null
   last_maintenance?: string | null
   assigned_courier_id?: number | null
+  assigned_to_city?: string | null
+  gps_device_id?: string | null
   created_at?: string
   updated_at?: string
 }

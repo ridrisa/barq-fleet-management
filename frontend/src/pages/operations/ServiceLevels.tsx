@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Select'
+import { BarChart } from '@/components/charts/BarChart'
 import { serviceLevelsAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 import { useCRUD } from '@/hooks/useCRUD'
@@ -312,15 +313,29 @@ export default function ServiceLevels() {
         </Card>
       </div>
 
-      {/* Performance Trend Chart */}
+      {/* Performance Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>SLA Performance Trend</CardTitle>
+          <CardTitle>SLA Performance Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-            <p className="text-gray-500">Performance trend chart will be displayed here</p>
-          </div>
+          {filteredData.length > 0 ? (
+            <BarChart
+              data={filteredData.slice(0, 10).map((sla: any) => ({
+                name: sla.service_type || `SLA-${sla.id}`,
+                'Target': sla.target_time || 0,
+                'Actual': sla.current_performance || 0,
+              }))}
+              xKey="name"
+              yKeys={['Target', 'Actual']}
+              colors={['#3b82f6', '#22c55e']}
+              height={280}
+            />
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              No SLA data available
+            </div>
+          )}
         </CardContent>
       </Card>
 

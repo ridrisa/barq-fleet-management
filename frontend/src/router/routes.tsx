@@ -20,6 +20,7 @@ const MaintenanceSchedule = lazyWithRetry(() => import('@/pages/fleet/Maintenanc
 const CourierPerformance = lazyWithRetry(() => import('@/pages/fleet/CourierPerformance'))
 const CourierDocuments = lazyWithRetry(() => import('@/pages/fleet/CourierDocuments'))
 const VehicleHistory = lazyWithRetry(() => import('@/pages/fleet/VehicleHistory'))
+const LiveTracking = lazyWithRetry(() => import('@/pages/fleet/LiveTracking'))
 
 // HR & Finance Module
 const LeaveManagement = lazyWithRetry(() => import('@/pages/hr-finance/LeaveManagement'))
@@ -104,7 +105,7 @@ const ContactSupport = lazyWithRetry(() => import('@/pages/support/ContactSuppor
 const Documentation = lazyWithRetry(() => import('@/pages/support/Documentation'))
 
 // Analytics Module - Lazy load on demand (heavy charts dependency)
-const Overview = lazyWithRetry(() => import('@/pages/analytics/Overview'))
+const AnalyticsOverview = lazyWithRetry(() => import('@/pages/analytics/AnalyticsOverview'))
 const FleetAnalytics = lazyWithRetry(() => import('@/pages/analytics/FleetAnalytics'))
 const HRAnalytics = lazyWithRetry(() => import('@/pages/analytics/HRAnalytics'))
 const FinancialAnalytics = lazyWithRetry(() => import('@/pages/analytics/FinancialAnalytics'))
@@ -162,6 +163,7 @@ export const routes: RouteObject[] = [
       { path: 'fleet/performance', element: <CourierPerformance /> },
       { path: 'fleet/documents', element: <CourierDocuments /> },
       { path: 'fleet/vehicle-history', element: <VehicleHistory /> },
+      { path: 'fleet/live-tracking', element: <LiveTracking /> },
 
       // HR & Finance routes
       { path: 'hr/leave', element: <LeaveManagement /> },
@@ -246,7 +248,7 @@ export const routes: RouteObject[] = [
       { path: 'support/analytics', element: <SupportAnalytics /> },
 
       // Analytics routes
-      { path: 'analytics/overview', element: <Overview /> },
+      { path: 'analytics/overview', element: <AnalyticsOverview /> },
       { path: 'analytics/fleet', element: <FleetAnalytics /> },
       { path: 'analytics/hr', element: <HRAnalytics /> },
       { path: 'analytics/financial', element: <FinancialAnalytics /> },

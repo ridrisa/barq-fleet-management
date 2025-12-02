@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Select'
+import { AreaChart } from '@/components/charts/AreaChart'
 import { qualityControlAPI, couriersAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 import { useCRUD } from '@/hooks/useCRUD'
@@ -305,9 +306,36 @@ export default function QualityControl() {
           <CardTitle>Quality Metrics Trend</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-            <p className="text-gray-500">Quality metrics chart will be displayed here</p>
-          </div>
+          {filteredData.length > 0 ? (
+            <AreaChart
+              data={(() => {
+                // Group by date and calculate pass rate
+                const dateGroups: Record<string, { total: number; passed: number }> = {}
+                filteredData.forEach((i: any) => {
+                  const date = new Date(i.check_date || i.created_at).toISOString().split('T')[0]
+                  if (!dateGroups[date]) dateGroups[date] = { total: 0, passed: 0 }
+                  dateGroups[date].total++
+                  if (i.passed) dateGroups[date].passed++
+                })
+                return Object.entries(dateGroups)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .slice(-14)
+                  .map(([date, data]) => ({
+                    date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    'Pass Rate': data.total > 0 ? Math.round((data.passed / data.total) * 100) : 0,
+                    'Inspections': data.total,
+                  }))
+              })()}
+              xKey="date"
+              yKeys={['Pass Rate', 'Inspections']}
+              colors={['#22c55e', '#3b82f6']}
+              height={280}
+            />
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              No quality inspection data available
+            </div>
+          )}
         </CardContent>
       </Card>
 

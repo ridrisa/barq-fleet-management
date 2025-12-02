@@ -1,8 +1,14 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent } from '@/components/ui/Card'
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
+import { Spinner } from '@/components/ui/Spinner'
+import { Pagination } from '@/components/ui/Pagination'
+import { bedAssignmentsAPI } from '@/lib/api'
+import { useDataTable } from '@/hooks/useDataTable'
+import { exportToExcel } from '@/lib/export'
+import { Download, Search, ArrowRight, Calendar } from 'lucide-react'
 
 interface Transfer {
   id: number
@@ -21,73 +27,47 @@ interface Transfer {
 }
 
 export default function TransferHistory() {
-  const [transfers, setTransfers] = useState<Transfer[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
   const [dateRange, setDateRange] = useState({ from: '', to: '' })
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-      // Mock data
-      const mockTransfers: Transfer[] = [
-        {
-          id: 1,
-          courier_name: 'Ahmed Ali',
-          from_building: 'Marina Tower',
-          from_room: '301',
-          from_bed: 'A',
-          to_building: 'Downtown Residence',
-          to_room: '101',
-          to_bed: 'A',
-          transfer_date: '2024-01-15',
-          reason: 'Requested room change - closer to workplace',
-          requested_by: 'Ahmed Ali',
-          approved_by: 'Manager 1',
-          status: 'completed',
-        },
-        {
-          id: 2,
-          courier_name: 'Mohammed Hassan',
-          from_building: 'Downtown Residence',
-          from_room: '102',
-          from_bed: 'B',
-          to_building: 'Marina Tower',
-          to_room: '305',
-          to_bed: 'A',
-          transfer_date: '2024-02-10',
-          reason: 'Room maintenance required',
-          requested_by: 'Manager 1',
-          approved_by: 'Manager 1',
-          status: 'completed',
-        },
-        {
-          id: 3,
-          courier_name: 'Fatima Ahmed',
-          from_building: 'Downtown Residence',
-          from_room: '103',
-          from_bed: 'C',
-          to_building: 'Marina Tower',
-          to_room: '302',
-          to_bed: 'B',
-          transfer_date: '2024-03-05',
-          reason: 'Personal preference',
-          requested_by: 'Fatima Ahmed',
-          approved_by: 'Pending',
-          status: 'pending',
-        },
-      ]
-      setTransfers(mockTransfers)
-    } catch (error) {
-      console.error('Failed to fetch transfers:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const {
+    isLoading,
+    error,
+    currentPage,
+    pageSize,
+    totalPages,
+    searchTerm,
+    setSearchTerm,
+    setCurrentPage,
+    filteredData,
+    paginatedData: transfers,
+  } = useDataTable({
+    queryKey: 'transfer-history',
+    queryFn: async () => {
+      try {
+        const assignments = await bedAssignmentsAPI.getAll()
+        // Transform bed assignments to transfer history format
+        return assignments.map((a: any, index: number) => ({
+          id: a.id || index + 1,
+          courier_name: a.courier_name || `Courier ${a.courier_id}`,
+          from_building: a.previous_building || 'N/A',
+          from_room: a.previous_room || 'N/A',
+          from_bed: a.previous_bed || 'N/A',
+          to_building: a.building_name || a.building || 'N/A',
+          to_room: a.room_number || a.room || 'N/A',
+          to_bed: a.bed_number || a.bed || 'N/A',
+          transfer_date: a.assigned_date || a.created_at || new Date().toISOString(),
+          reason: a.reason || a.notes || 'Standard assignment',
+          requested_by: a.requested_by || 'System',
+          approved_by: a.approved_by || 'Manager',
+          status: a.status || 'completed',
+        }))
+      } catch (err) {
+        console.error('Error fetching transfers:', err)
+        return []
+      }
+    },
+    pageSize: 10,
+  })
 
   const getStatusColor = (status: Transfer['status']) => {
     const colors = {
@@ -99,57 +79,137 @@ export default function TransferHistory() {
     return colors[status] as 'warning' | 'primary' | 'success' | 'error'
   }
 
-  const filteredTransfers = transfers.filter((transfer) => {
-    const matchesSearch =
-      transfer.courier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transfer.from_building.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transfer.to_building.toLowerCase().includes(searchTerm.toLowerCase())
-
-    return matchesSearch
+  // Apply date filter
+  const displayData = (filteredData as Transfer[]).filter((transfer) => {
+    if (!dateRange.from && !dateRange.to) return true
+    const transferDate = new Date(transfer.transfer_date)
+    const fromDate = dateRange.from ? new Date(dateRange.from) : new Date(0)
+    const toDate = dateRange.to ? new Date(dateRange.to) : new Date()
+    return transferDate >= fromDate && transferDate <= toDate
   })
 
-  const exportToExcel = () => {
-    console.log('Exporting to Excel...', filteredTransfers)
-    // In real implementation, use a library like xlsx or csv-writer
-    alert('Export functionality would download Excel file here')
+  const handleExport = () => {
+    const exportData = displayData.map((t: Transfer) => ({
+      'Courier': t.courier_name,
+      'From Building': t.from_building,
+      'From Room': t.from_room,
+      'From Bed': t.from_bed,
+      'To Building': t.to_building,
+      'To Room': t.to_room,
+      'To Bed': t.to_bed,
+      'Transfer Date': t.transfer_date,
+      'Reason': t.reason,
+      'Status': t.status,
+    }))
+    exportToExcel(exportData, `transfer-history-${new Date().toISOString().split('T')[0]}`)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-800">Error loading transfer history: {(error as Error).message}</p>
+      </div>
+    )
+  }
+
+  // Summary stats
+  const typedData = filteredData as Transfer[]
+  const stats = {
+    total: typedData.length,
+    completed: typedData.filter((t) => t.status === 'completed').length,
+    pending: typedData.filter((t) => t.status === 'pending').length,
+    rejected: typedData.filter((t) => t.status === 'rejected').length,
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Transfer History</h1>
-        <Button onClick={exportToExcel}>Export to Excel</Button>
+        <Button onClick={handleExport}>
+          <Download className="h-4 w-4 mr-2" />
+          Export to Excel
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
+              <p className="text-sm text-gray-600">Total Transfers</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+              <p className="text-sm text-gray-600">Completed</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+              <p className="text-sm text-gray-600">Pending</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+              <p className="text-sm text-gray-600">Rejected</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+          <CardTitle>Transfer Records</CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <Input
               placeholder="Search courier or building..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              leftIcon={<Search className="h-4 w-4 text-gray-400" />}
             />
-            <input
+            <Input
               type="date"
-              className="px-3 py-2 border border-gray-300 rounded-lg"
               placeholder="From Date"
               value={dateRange.from}
               onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+              leftIcon={<Calendar className="h-4 w-4 text-gray-400" />}
             />
-            <input
+            <Input
               type="date"
-              className="px-3 py-2 border border-gray-300 rounded-lg"
               placeholder="To Date"
               value={dateRange.to}
               onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+              leftIcon={<Calendar className="h-4 w-4 text-gray-400" />}
             />
           </div>
 
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : (
-            <div className="space-y-4">
-              {filteredTransfers.map((transfer) => (
+          <div className="space-y-4">
+            {transfers.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No transfer records found
+              </div>
+            ) : (
+              (transfers as Transfer[]).map((transfer) => (
                 <Card key={transfer.id} className="border-l-4 border-blue-500">
                   <CardContent className="pt-4">
                     <div className="flex justify-between items-start mb-3">
@@ -164,19 +224,18 @@ export default function TransferHistory() {
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                      <div>
+                    <div className="flex items-center gap-4 mb-3">
+                      <div className="flex-1 p-3 bg-gray-50 rounded-lg">
                         <p className="text-xs text-gray-500 mb-1">From</p>
                         <p className="font-medium">
-                          {transfer.from_building} - Room {transfer.from_room}, Bed{' '}
-                          {transfer.from_bed}
+                          {transfer.from_building} - Room {transfer.from_room}, Bed {transfer.from_bed}
                         </p>
                       </div>
-                      <div>
+                      <ArrowRight className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                      <div className="flex-1 p-3 bg-blue-50 rounded-lg">
                         <p className="text-xs text-gray-500 mb-1">To</p>
                         <p className="font-medium">
-                          {transfer.to_building} - Room {transfer.to_room}, Bed{' '}
-                          {transfer.to_bed}
+                          {transfer.to_building} - Room {transfer.to_room}, Bed {transfer.to_bed}
                         </p>
                       </div>
                     </div>
@@ -192,9 +251,19 @@ export default function TransferHistory() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
+
+          <div className="mt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={displayData.length}
+              pageSize={pageSize}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

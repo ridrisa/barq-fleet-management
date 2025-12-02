@@ -1,12 +1,15 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TrendingUp, TrendingDown, Clock, Package, Target, AlertTriangle, Download } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
+import { LineChart } from '@/components/charts/LineChart'
+import { PieChart } from '@/components/charts/PieChart'
 import { deliveriesAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
+import { exportToExcel } from '@/lib/export'
 
 export default function PerformanceMetrics() {
   useTranslation()
@@ -69,8 +72,55 @@ export default function PerformanceMetrics() {
     revenue: 'up',
   }
 
+  // Prepare chart data
+  const trendData = useMemo(() => {
+    // Group deliveries by date for trend chart
+    const dateGroups: Record<string, { total: number; delivered: number; onTime: number }> = {}
+
+    displayData.forEach((d: any) => {
+      const date = new Date(d.delivery_date || d.created_at).toISOString().split('T')[0]
+      if (!dateGroups[date]) {
+        dateGroups[date] = { total: 0, delivered: 0, onTime: 0 }
+      }
+      dateGroups[date].total++
+      if (d.status === 'delivered') dateGroups[date].delivered++
+      if (d.status === 'delivered' && !d.is_delayed) dateGroups[date].onTime++
+    })
+
+    return Object.entries(dateGroups)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-14) // Last 14 days
+      .map(([date, data]) => ({
+        date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        'Success Rate': data.total > 0 ? Math.round((data.delivered / data.total) * 100) : 0,
+        'On-Time Rate': data.total > 0 ? Math.round((data.onTime / data.total) * 100) : 0,
+      }))
+  }, [displayData])
+
+  const statusDistribution = useMemo(() => {
+    const delivered = displayData.filter((d: any) => d.status === 'delivered').length
+    const inTransit = displayData.filter((d: any) => d.status === 'in_transit').length
+    const pending = displayData.filter((d: any) => d.status === 'pending').length
+    const failed = displayData.filter((d: any) => d.status === 'failed' || d.status === 'returned').length
+
+    return [
+      { name: 'Delivered', value: delivered, color: '#22c55e' },
+      { name: 'In Transit', value: inTransit, color: '#f59e0b' },
+      { name: 'Pending', value: pending, color: '#6b7280' },
+      { name: 'Failed', value: failed, color: '#ef4444' },
+    ].filter(item => item.value > 0)
+  }, [displayData])
+
   const handleExportReport = () => {
-    alert('Exporting performance report to PDF...')
+    const exportData = displayData.map((d: any) => ({
+      'Tracking #': d.tracking_number || `TRK-${d.id}`,
+      'Status': d.status,
+      'Customer': d.customer_name || d.receiver_name,
+      'Address': d.delivery_address,
+      'COD Amount': d.cod_amount || d.amount || 0,
+      'Date': d.delivery_date || d.created_at,
+    }))
+    exportToExcel(exportData, `performance-report-${new Date().toISOString().split('T')[0]}`)
   }
 
   if (isLoading) {
@@ -279,13 +329,19 @@ export default function PerformanceMetrics() {
             <CardTitle>Delivery Performance Trend</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="bg-gray-100 rounded-lg p-12 text-center">
-              <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">Performance trend chart will be displayed here</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Shows on-time %, success rate, and avg delivery time over time
-              </p>
-            </div>
+            {trendData.length > 0 ? (
+              <LineChart
+                data={trendData}
+                xKey="date"
+                yKeys={['Success Rate', 'On-Time Rate']}
+                colors={['#22c55e', '#3b82f6']}
+                height={280}
+              />
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-500">
+                No trend data available for the selected period
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -294,29 +350,42 @@ export default function PerformanceMetrics() {
             <CardTitle>Delivery Status Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="bg-gray-100 rounded-lg p-12 text-center">
-              <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">Pie chart showing delivery status breakdown</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Delivered, In Transit, Pending, Failed
-              </p>
-            </div>
+            {statusDistribution.length > 0 ? (
+              <PieChart
+                data={statusDistribution}
+                height={280}
+              />
+            ) : (
+              <div className="h-64 flex items-center justify-center text-gray-500">
+                No delivery data available
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Top Performers */}
+      {/* Delivery Summary by Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Top Performing Couriers</CardTitle>
+          <CardTitle>Delivery Summary</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-100 rounded-lg p-12 text-center">
-            <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Courier performance leaderboard will be displayed here</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Ranked by on-time delivery rate and total deliveries
-            </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {statusDistribution.map((item) => (
+              <div key={item.name} className="p-4 bg-gray-50 rounded-lg text-center">
+                <div
+                  className="w-4 h-4 rounded-full mx-auto mb-2"
+                  style={{ backgroundColor: item.color }}
+                />
+                <p className="text-2xl font-bold" style={{ color: item.color }}>
+                  {item.value}
+                </p>
+                <p className="text-sm text-gray-600">{item.name}</p>
+                <p className="text-xs text-gray-500">
+                  {totalDeliveries > 0 ? ((item.value / totalDeliveries) * 100).toFixed(1) : 0}%
+                </p>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

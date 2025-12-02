@@ -15,8 +15,8 @@ from sqlalchemy import func, and_, or_, case, extract
 
 from app.models.fleet.vehicle import Vehicle, VehicleStatus
 from app.models.fleet.courier import Courier, CourierStatus
-from app.models.fleet.assignment import Assignment
-from app.models.fleet.maintenance import Maintenance
+from app.models.fleet.assignment import CourierVehicleAssignment as Assignment
+from app.models.fleet.maintenance import VehicleMaintenance as Maintenance
 from app.models.operations.delivery import Delivery, DeliveryStatus
 
 

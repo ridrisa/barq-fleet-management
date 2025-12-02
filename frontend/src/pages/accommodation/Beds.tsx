@@ -11,12 +11,11 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Select'
 import { useDataTable } from '@/hooks/useDataTable'
 import { useCRUD } from '@/hooks/useCRUD'
+import { bedsAPI } from '@/lib/api'
 
-// Mock beds API
-const bedsAPI = {
-  getAll: async () => {
-    // Mock data with comprehensive bed information
-    return [
+// Temporary mock data for development - will be replaced with actual API data
+const getMockBeds = () => {
+  return [
       {
         id: 1,
         bed_id: 'B-DT-101-01',
@@ -130,18 +129,6 @@ const bedsAPI = {
         created_at: '2024-02-20',
       },
     ]
-  },
-  create: async (data: any) => {
-    console.log('Creating bed:', data)
-    return { id: Date.now(), ...data }
-  },
-  update: async (id: number, data: any) => {
-    console.log('Updating bed:', id, data)
-    return { id, ...data }
-  },
-  delete: async (id: number) => {
-    console.log('Deleting bed:', id)
-  },
 }
 
 interface BedFormData {
@@ -175,7 +162,15 @@ export default function Beds() {
     filteredData,
   } = useDataTable({
     queryKey: 'beds',
-    queryFn: bedsAPI.getAll,
+    queryFn: async () => {
+      try {
+        return await bedsAPI.getAll()
+      } catch (err) {
+        // Fallback to mock data if API is not ready
+        console.warn('Using mock data for beds:', err)
+        return getMockBeds()
+      }
+    },
     pageSize: 10,
   })
 

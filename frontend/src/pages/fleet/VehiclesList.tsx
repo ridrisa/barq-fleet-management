@@ -172,7 +172,7 @@ export default function VehiclesList() {
               leftIcon={<Search className="h-4 w-4 text-gray-400" />}
             />
           </div>
-          <Table data={vehicles} columns={columns} />
+          <Table data={vehicles as Vehicle[]} columns={columns} />
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -190,7 +190,7 @@ export default function VehiclesList() {
         size="lg"
       >
         <VehicleForm
-          initialData={editingVehicle}
+          initialData={editingVehicle as VehicleFormData | undefined}
           onSubmit={handleSubmit}
           onCancel={handleCloseModal}
           isLoading={isMutating}

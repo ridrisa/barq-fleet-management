@@ -202,18 +202,53 @@ export default function ScheduledDeliveries() {
         </Card>
       </div>
 
-      {/* Calendar View Placeholder */}
+      {/* Simple Calendar View */}
       <Card>
         <CardHeader>
-          <CardTitle>Calendar View</CardTitle>
+          <CardTitle>Delivery Calendar - Next 7 Days</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-100 rounded-lg p-12 text-center">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Monthly calendar view will be displayed here</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Shows scheduled deliveries by date with color coding
-            </p>
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 7 }, (_, i) => {
+              const date = new Date()
+              date.setDate(date.getDate() + i)
+              const dateStr = date.toISOString().split('T')[0]
+              const dayDeliveries = scheduledData.filter((d: any) => {
+                const scheduled = new Date(d.scheduled_date || d.delivery_date).toISOString().split('T')[0]
+                return scheduled === dateStr
+              })
+              const isToday = i === 0
+
+              return (
+                <div
+                  key={i}
+                  className={`p-3 rounded-lg text-center ${
+                    isToday ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50'
+                  }`}
+                >
+                  <p className="text-xs text-gray-500">
+                    {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                  </p>
+                  <p className={`text-lg font-bold ${isToday ? 'text-blue-600' : 'text-gray-900'}`}>
+                    {date.getDate()}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {date.toLocaleDateString('en-US', { month: 'short' })}
+                  </p>
+                  <div className="mt-2">
+                    {dayDeliveries.length > 0 ? (
+                      <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full">
+                        {dayDeliveries.length}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center justify-center w-6 h-6 bg-gray-200 text-gray-400 text-xs rounded-full">
+                        0
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </CardContent>
       </Card>

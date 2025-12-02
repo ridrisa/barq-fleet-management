@@ -283,19 +283,60 @@ export default function RouteOptimization() {
         </CardContent>
       </Card>
 
-      {/* Route Visualization */}
+      {/* Route Overview */}
       <Card>
         <CardHeader>
-          <CardTitle>Route Visualization</CardTitle>
+          <CardTitle>Route Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-100 rounded-lg p-12 text-center">
-            <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Interactive route map will be displayed here</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Shows route waypoints, optimized path, and distance calculations
-            </p>
-          </div>
+          {filteredData.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredData.slice(0, 6).map((route: any, index: number) => (
+                <div key={route.id || index} className="p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-gray-900">{route.name || `Route #${route.id}`}</span>
+                    <Badge variant={route.status === 'active' ? 'success' : 'default'}>
+                      {route.status || 'draft'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <MapPin className="h-4 w-4" />
+                      <span>{route.waypoints?.length || route.stops_count || 0} stops</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Navigation className="h-4 w-4" />
+                      <span>{(route.distance || route.total_distance || 0).toFixed(1)} km</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Optimization</span>
+                      <span className={`text-sm font-semibold ${
+                        (route.optimization_score || 75) >= 80 ? 'text-green-600' : 'text-yellow-600'
+                      }`}>
+                        {route.optimization_score || 75}%
+                      </span>
+                    </div>
+                    <div className="mt-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          (route.optimization_score || 75) >= 80 ? 'bg-green-500' : 'bg-yellow-500'
+                        }`}
+                        style={{ width: `${route.optimization_score || 75}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <Navigation className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <p>No routes available</p>
+              <p className="text-sm">Create a route to get started</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

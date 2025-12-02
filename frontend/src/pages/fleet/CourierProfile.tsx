@@ -1,5 +1,9 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import {
   ArrowLeft,
   User,
@@ -25,18 +29,71 @@ import {
   ClipboardList,
   Fuel,
   Route,
+  RefreshCw,
+  Gauge,
+  Radio,
+  CheckCircle,
+  XCircle,
+  Gift,
+  Truck,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tabs } from '@/components/ui/Tabs'
-import { Table } from '@/components/ui/Table'
-import { couriersAPI, vehiclesAPI, leavesAPI, loansAPI, assetsAPI, assignmentsAPI, fmsAPI, salaryAPI, vehicleLogsAPI } from '@/lib/api'
+import { couriersAPI, vehiclesAPI, leavesAPI, loansAPI, assetsAPI, assignmentsAPI, fmsAPI, salaryAPI, vehicleLogsAPI, fmsSyncAPI, attendanceAPI, deliveriesAPI, bonusesAPI } from '@/lib/api'
+
+// Custom marker icon for courier location
+const createCourierMarkerIcon = (isMoving: boolean) => {
+  const color = isMoving ? '#22c55e' : '#f59e0b'
+  const iconHtml = `
+    <div style="
+      background: ${color};
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 4px solid white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      ${isMoving ? 'animation: pulse 2s infinite;' : ''}
+    ">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+        ${isMoving
+          ? '<path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>'
+          : '<circle cx="12" cy="12" r="6"/>'
+        }
+      </svg>
+    </div>
+  `
+  return L.divIcon({
+    html: iconHtml,
+    className: 'courier-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20],
+  })
+}
+
+// Animation styles for marker
+const markerStyles = `
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  .courier-marker {
+    background: transparent;
+    border: none;
+  }
+`
 
 export default function CourierProfile() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [isRefreshingLocation, setIsRefreshingLocation] = useState(false)
 
   // Fetch courier details
   const { data: courier, isLoading: courierLoading, error: courierError } = useQuery({
@@ -104,6 +161,49 @@ export default function CourierProfile() {
     queryFn: vehicleLogsAPI.getAll,
   })
 
+  // Fetch attendance records for this courier
+  const { data: attendance = [] } = useQuery({
+    queryKey: ['attendance'],
+    queryFn: attendanceAPI.getAll,
+  })
+
+  // Fetch deliveries for this courier
+  const { data: deliveries = [] } = useQuery({
+    queryKey: ['deliveries'],
+    queryFn: deliveriesAPI.getAll,
+  })
+
+  // Fetch bonuses for this courier
+  const { data: bonuses = [] } = useQuery({
+    queryKey: ['bonuses'],
+    queryFn: bonusesAPI.getAll,
+  })
+
+  // Fetch live location from FMS using courier's barq_id
+  const { data: liveLocationData, refetch: refetchLocation } = useQuery({
+    queryKey: ['courier-live-location', courier?.barq_id],
+    queryFn: async () => {
+      if (!courier?.barq_id) return null
+      try {
+        // Get all live locations and find this courier by barq_id
+        const response = await fmsSyncAPI.getLiveLocations()
+        const locations = response.locations || []
+        return locations.find((loc: any) => loc.barq_id === courier.barq_id) || null
+      } catch {
+        return null
+      }
+    },
+    enabled: !!courier?.barq_id,
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+  })
+
+  // Manual refresh location handler
+  const handleRefreshLocation = async () => {
+    setIsRefreshingLocation(true)
+    await refetchLocation()
+    setIsRefreshingLocation(false)
+  }
+
   if (courierLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -139,6 +239,12 @@ export default function CourierProfile() {
     })
   const courierVehicleLogs = vehicleLogs.filter((l: any) => l.courier_id === courier.id)
     .sort((a: any, b: any) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime())
+  const courierAttendance = attendance.filter((a: any) => a.courier_id === courier.id)
+    .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const courierDeliveries = deliveries.filter((d: any) => d.courier_id === courier.id)
+    .sort((a: any, b: any) => new Date(b.created_at || b.delivery_date).getTime() - new Date(a.created_at || a.delivery_date).getTime())
+  const courierBonuses = bonuses.filter((b: any) => b.courier_id === courier.id)
+    .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   // Get asset type icon
   const getAssetIcon = (type: string) => {
@@ -168,6 +274,156 @@ export default function CourierProfile() {
 
   // Define tabs for the Tabs component
   const tabs = [
+    {
+      id: 'live-location',
+      label: 'Live Location',
+      icon: <Radio className="h-4 w-4" />,
+      content: (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Radio className="h-5 w-5 text-green-600" />
+                Live GPS Location
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshLocation}
+                disabled={isRefreshingLocation}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshingLocation ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Add marker animation styles */}
+            <style>{markerStyles}</style>
+
+            {liveLocationData ? (
+              <div className="space-y-4">
+                {/* Status badges */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${
+                    liveLocationData.speed_kmh > 5
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {liveLocationData.speed_kmh > 5 ? (
+                      <>
+                        <Navigation className="w-4 h-4" />
+                        Moving
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-4 h-4" />
+                        Idle
+                      </>
+                    )}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                    <Gauge className="w-4 h-4" />
+                    {liveLocationData.speed_kmh?.toFixed(0) || 0} km/h
+                  </span>
+                  {liveLocationData.gps_timestamp && (
+                    <span className="text-sm text-gray-500">
+                      Last update: {new Date(liveLocationData.gps_timestamp).toLocaleString()}
+                    </span>
+                  )}
+                </div>
+
+                {/* Map */}
+                <div className="h-[400px] rounded-lg overflow-hidden border">
+                  <MapContainer
+                    center={[
+                      liveLocationData.position.latitude,
+                      liveLocationData.position.longitude
+                    ]}
+                    zoom={15}
+                    className="h-full w-full"
+                    scrollWheelZoom={true}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <Marker
+                      position={[
+                        liveLocationData.position.latitude,
+                        liveLocationData.position.longitude
+                      ]}
+                      icon={createCourierMarkerIcon(liveLocationData.speed_kmh > 5)}
+                    >
+                      <Popup>
+                        <div className="min-w-[200px]">
+                          <div className="font-semibold text-gray-900 mb-2 pb-2 border-b">
+                            {courier?.full_name || liveLocationData.driver_name || 'Unknown'}
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">BARQ ID:</span>
+                              <span className="font-medium">{liveLocationData.barq_id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Vehicle:</span>
+                              <span className="font-medium">{liveLocationData.asset_name || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Speed:</span>
+                              <span className={`font-medium ${liveLocationData.speed_kmh > 5 ? 'text-green-600' : 'text-yellow-600'}`}>
+                                {liveLocationData.speed_kmh?.toFixed(1) || 0} km/h
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Coordinates:</span>
+                              <span className="font-medium text-xs">
+                                {liveLocationData.position.latitude?.toFixed(5)}, {liveLocationData.position.longitude?.toFixed(5)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  </MapContainer>
+                </div>
+
+                {/* Location details */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500">Latitude</p>
+                    <p className="font-medium">{liveLocationData.position.latitude?.toFixed(6)}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500">Longitude</p>
+                    <p className="font-medium">{liveLocationData.position.longitude?.toFixed(6)}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500">FMS Asset ID</p>
+                    <p className="font-medium">{liveLocationData.fms_asset_id}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500">Vehicle</p>
+                    <p className="font-medium">{liveLocationData.asset_name || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <MapPin className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium text-gray-600">No Live Location Available</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  This courier is not connected to FMS GPS tracking or the device is offline.
+                </p>
+                <p className="text-xs text-gray-400 mt-4">
+                  BARQ ID: {courier?.barq_id || 'N/A'} | Iqama: {courier?.iqama_number || 'N/A'}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ),
+    },
     {
       id: 'documents',
       label: 'Documents',
@@ -863,6 +1119,293 @@ export default function CourierProfile() {
       ),
     },
     {
+      id: 'attendance',
+      label: `Attendance (${courierAttendance.length})`,
+      icon: <CheckCircle className="h-4 w-4" />,
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {courierAttendance.length > 0 ? (
+              <>
+                {/* Attendance Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="p-4 bg-green-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      {courierAttendance.filter((a: any) => a.status === 'present').length}
+                    </p>
+                    <p className="text-sm text-gray-500">Present</p>
+                  </div>
+                  <div className="p-4 bg-red-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-red-600">
+                      {courierAttendance.filter((a: any) => a.status === 'absent').length}
+                    </p>
+                    <p className="text-sm text-gray-500">Absent</p>
+                  </div>
+                  <div className="p-4 bg-yellow-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {courierAttendance.filter((a: any) => a.status === 'late').length}
+                    </p>
+                    <p className="text-sm text-gray-500">Late</p>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-blue-600">
+                      {courierAttendance.filter((a: any) => a.status === 'on_leave').length}
+                    </p>
+                    <p className="text-sm text-gray-500">On Leave</p>
+                  </div>
+                </div>
+                {/* Attendance List */}
+                <div className="space-y-2">
+                  {courierAttendance.slice(0, 20).map((record: any) => (
+                    <div key={record.id} className="p-3 border rounded-lg flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${
+                          record.status === 'present' ? 'bg-green-100' :
+                          record.status === 'absent' ? 'bg-red-100' :
+                          record.status === 'late' ? 'bg-yellow-100' :
+                          'bg-blue-100'
+                        }`}>
+                          {record.status === 'present' ? <CheckCircle className="h-4 w-4 text-green-600" /> :
+                           record.status === 'absent' ? <XCircle className="h-4 w-4 text-red-600" /> :
+                           <Clock className="h-4 w-4 text-yellow-600" />}
+                        </div>
+                        <div>
+                          <p className="font-medium">{record.date ? new Date(record.date).toLocaleDateString() : 'N/A'}</p>
+                          {record.check_in && (
+                            <p className="text-xs text-gray-500">
+                              In: {record.check_in} {record.check_out && `| Out: ${record.check_out}`}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Badge
+                        variant={
+                          record.status === 'present' ? 'success' :
+                          record.status === 'absent' ? 'danger' :
+                          record.status === 'late' ? 'warning' :
+                          'default'
+                        }
+                      >
+                        {record.status?.replace('_', ' ') || 'Unknown'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+                {courierAttendance.length > 20 && (
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-gray-500">Showing 20 of {courierAttendance.length} records</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <CheckCircle className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <p>No attendance records found</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ),
+    },
+    {
+      id: 'deliveries',
+      label: `Deliveries (${courierDeliveries.length})`,
+      icon: <Truck className="h-4 w-4" />,
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>Delivery History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {courierDeliveries.length > 0 ? (
+              <>
+                {/* Delivery Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="p-4 bg-blue-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-blue-600">{courierDeliveries.length}</p>
+                    <p className="text-sm text-gray-500">Total Deliveries</p>
+                  </div>
+                  <div className="p-4 bg-green-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      {courierDeliveries.filter((d: any) => d.status === 'delivered').length}
+                    </p>
+                    <p className="text-sm text-gray-500">Completed</p>
+                  </div>
+                  <div className="p-4 bg-yellow-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {courierDeliveries.filter((d: any) => d.status === 'in_transit' || d.status === 'pending').length}
+                    </p>
+                    <p className="text-sm text-gray-500">In Progress</p>
+                  </div>
+                  <div className="p-4 bg-red-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-red-600">
+                      {courierDeliveries.filter((d: any) => d.status === 'failed' || d.status === 'returned').length}
+                    </p>
+                    <p className="text-sm text-gray-500">Failed/Returned</p>
+                  </div>
+                </div>
+                {/* Delivery List */}
+                <div className="space-y-3">
+                  {courierDeliveries.slice(0, 15).map((delivery: any) => (
+                    <div key={delivery.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${
+                            delivery.status === 'delivered' ? 'bg-green-100' :
+                            delivery.status === 'in_transit' ? 'bg-blue-100' :
+                            delivery.status === 'failed' ? 'bg-red-100' :
+                            'bg-gray-100'
+                          }`}>
+                            <Truck className={`h-5 w-5 ${
+                              delivery.status === 'delivered' ? 'text-green-600' :
+                              delivery.status === 'in_transit' ? 'text-blue-600' :
+                              delivery.status === 'failed' ? 'text-red-600' :
+                              'text-gray-600'
+                            }`} />
+                          </div>
+                          <div>
+                            <p className="font-medium">
+                              {delivery.tracking_number || `DEL-${delivery.id?.toString().padStart(5, '0')}`}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {delivery.delivery_date ? new Date(delivery.delivery_date).toLocaleDateString() : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={
+                            delivery.status === 'delivered' ? 'success' :
+                            delivery.status === 'in_transit' ? 'primary' :
+                            delivery.status === 'failed' || delivery.status === 'returned' ? 'danger' :
+                            'warning'
+                          }
+                        >
+                          {delivery.status?.replace('_', ' ') || 'pending'}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <p className="text-gray-500">Customer</p>
+                          <p className="font-medium truncate">{delivery.customer_name || delivery.receiver_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Address</p>
+                          <p className="font-medium truncate">{delivery.delivery_address || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">COD Amount</p>
+                          <p className="font-medium">SAR {Number(delivery.cod_amount || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Payment</p>
+                          <p className="font-medium capitalize">{delivery.payment_method || delivery.payment_status || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {courierDeliveries.length > 15 && (
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-gray-500">Showing 15 of {courierDeliveries.length} deliveries</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Truck className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <p>No delivery records found</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ),
+    },
+    {
+      id: 'bonuses',
+      label: `Bonuses (${courierBonuses.length})`,
+      icon: <Gift className="h-4 w-4" />,
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>Bonus History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {courierBonuses.length > 0 ? (
+              <>
+                {/* Bonus Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="p-4 bg-green-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-green-600">
+                      SAR {courierBonuses.reduce((sum: number, b: any) => sum + (Number(b.amount) || 0), 0).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-gray-500">Total Bonuses</p>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-blue-600">
+                      {courierBonuses.filter((b: any) => b.status === 'paid').length}
+                    </p>
+                    <p className="text-sm text-gray-500">Paid</p>
+                  </div>
+                  <div className="p-4 bg-yellow-50 rounded-lg text-center">
+                    <p className="text-2xl font-bold text-yellow-600">
+                      {courierBonuses.filter((b: any) => b.status === 'pending' || b.status === 'approved').length}
+                    </p>
+                    <p className="text-sm text-gray-500">Pending</p>
+                  </div>
+                </div>
+                {/* Bonus List */}
+                <div className="space-y-3">
+                  {courierBonuses.map((bonus: any) => (
+                    <div key={bonus.id} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-green-100 rounded-lg">
+                            <Gift className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium capitalize">{bonus.bonus_type?.replace('_', ' ') || 'Bonus'}</p>
+                            <p className="text-sm text-gray-500">
+                              {bonus.created_at ? new Date(bonus.created_at).toLocaleDateString() : 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-green-600">
+                            SAR {Number(bonus.amount || 0).toLocaleString()}
+                          </p>
+                          <Badge
+                            variant={
+                              bonus.status === 'paid' ? 'success' :
+                              bonus.status === 'approved' ? 'primary' :
+                              bonus.status === 'rejected' ? 'danger' :
+                              'warning'
+                            }
+                          >
+                            {bonus.status || 'pending'}
+                          </Badge>
+                        </div>
+                      </div>
+                      {bonus.reason && (
+                        <p className="text-sm text-gray-600 mt-2">{bonus.reason}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Gift className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                <p>No bonus records found</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ),
+    },
+    {
       id: 'banking',
       label: 'Banking',
       icon: <CreditCard className="h-4 w-4" />,
@@ -1046,7 +1589,7 @@ export default function CourierProfile() {
       </div>
 
       {/* Tabs for Related Data */}
-      <Tabs tabs={tabs} defaultTab="documents" />
+      <Tabs tabs={tabs} defaultTab="live-location" />
 
       {/* Notes Section */}
       {courier.notes && (

@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy.orm import Session
 from decimal import Decimal
+import logging
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
@@ -10,7 +11,10 @@ from app.schemas.hr import (
     LoanCreate, LoanUpdate, LoanResponse, LoanStatus
 )
 from app.services.hr import loan_service
+from app.services.workflow import event_trigger_service
+from app.models.workflow.trigger import TriggerEventType
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -51,8 +55,33 @@ def create_loan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create new loan request"""
-    return loan_service.create(db, obj_in=loan_in)
+    """Create new loan request - automatically triggers approval workflow if configured"""
+    # Create the loan
+    loan = loan_service.create(db, obj_in=loan_in)
+
+    # Trigger workflow for loan approval
+    try:
+        workflow_instance = event_trigger_service.trigger_workflow_for_entity(
+            db,
+            entity_type="loan",
+            entity_id=loan.id,
+            event_type=TriggerEventType.RECORD_CREATED,
+            entity_data={
+                "courier_id": loan.courier_id,
+                "amount": float(loan.amount) if loan.amount else 0,
+                "loan_type": loan.loan_type.value if loan.loan_type else None,
+                "reason": loan.reason,
+                "status": loan.status.value if loan.status else "pending",
+            },
+            initiated_by=current_user.id,
+        )
+        if workflow_instance:
+            logger.info(f"Workflow {workflow_instance.id} triggered for loan {loan.id}")
+    except Exception as e:
+        # Log but don't fail the loan creation
+        logger.warning(f"Failed to trigger workflow for loan {loan.id}: {e}")
+
+    return loan
 
 
 @router.get("/{loan_id}", response_model=LoanResponse)

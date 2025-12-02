@@ -89,6 +89,11 @@ class Vehicle(BaseModel):
     gps_device_imei = Column(String(50))
     is_gps_active = Column(Boolean, default=False)
 
+    # FMS Integration (machinestalk GPS tracking)
+    fms_asset_id = Column(Integer, unique=True, nullable=True, index=True, comment="FMS Asset ID")
+    fms_tracking_unit_id = Column(Integer, nullable=True, comment="FMS Tracking Unit ID")
+    fms_last_sync = Column(String(50), nullable=True, comment="Last FMS sync timestamp")
+
     # Assignment
     assigned_to_city = Column(String(100))
     assigned_to_project = Column(String(100))  # Which project/vertical uses this vehicle

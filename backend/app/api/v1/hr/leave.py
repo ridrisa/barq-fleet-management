@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from datetime import date
+import logging
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
@@ -10,7 +11,10 @@ from app.schemas.hr import (
     LeaveCreate, LeaveUpdate, LeaveResponse, LeaveStatus, LeaveType
 )
 from app.services.hr import leave_service
+from app.services.workflow import event_trigger_service
+from app.models.workflow.trigger import TriggerEventType
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -64,8 +68,34 @@ def create_leave(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create new leave request"""
-    return leave_service.create(db, obj_in=leave_in)
+    """Create new leave request - automatically triggers approval workflow if configured"""
+    # Create the leave request
+    leave = leave_service.create(db, obj_in=leave_in)
+
+    # Trigger workflow for leave approval
+    try:
+        workflow_instance = event_trigger_service.trigger_workflow_for_entity(
+            db,
+            entity_type="leave",
+            entity_id=leave.id,
+            event_type=TriggerEventType.RECORD_CREATED,
+            entity_data={
+                "courier_id": leave.courier_id,
+                "leave_type": leave.leave_type.value if leave.leave_type else None,
+                "start_date": str(leave.start_date) if leave.start_date else None,
+                "end_date": str(leave.end_date) if leave.end_date else None,
+                "reason": leave.reason,
+                "status": leave.status.value if leave.status else "pending",
+            },
+            initiated_by=current_user.id,
+        )
+        if workflow_instance:
+            logger.info(f"Workflow {workflow_instance.id} triggered for leave {leave.id}")
+    except Exception as e:
+        # Log but don't fail the leave creation
+        logger.warning(f"Failed to trigger workflow for leave {leave.id}: {e}")
+
+    return leave
 
 
 @router.get("/{leave_id}", response_model=LeaveResponse)

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, List
-from datetime import date, datetime
+from datetime import date as DateType, datetime
 from decimal import Decimal
 
 
@@ -10,7 +10,7 @@ class PerformanceBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     courier_id: int = Field(..., gt=0, description="Courier ID")
-    date: date = Field(..., description="Performance date")
+    date: DateType = Field(..., description="Performance date")
 
     orders_completed: int = Field(default=0, ge=0, description="Total orders completed")
     orders_failed: int = Field(default=0, ge=0, description="Total orders failed")
@@ -47,7 +47,7 @@ class PerformanceCreate(PerformanceBase):
 class PerformanceUpdate(BaseModel):
     """Schema for updating performance record - all fields optional"""
     courier_id: Optional[int] = Field(None, gt=0)
-    date: Optional[date] = None
+    date: Optional[DateType] = None
 
     orders_completed: Optional[int] = Field(None, ge=0)
     orders_failed: Optional[int] = Field(None, ge=0)
@@ -89,7 +89,7 @@ class PerformanceList(BaseModel):
 
     id: int
     courier_id: int
-    date: date
+    date: DateType
     orders_completed: int
     orders_failed: int
     revenue_generated: float
@@ -101,8 +101,8 @@ class PerformanceList(BaseModel):
 class PerformanceStats(BaseModel):
     """Aggregated performance statistics"""
     courier_id: int
-    period_start: date
-    period_end: date
+    period_start: DateType
+    period_end: DateType
 
     total_orders_completed: int = 0
     total_orders_failed: int = 0
@@ -140,7 +140,7 @@ class TopPerformer(BaseModel):
 # Schema for performance trends
 class PerformanceTrend(BaseModel):
     """Performance trend over time"""
-    date: date
+    date: DateType
     orders_completed: int
     revenue_generated: float
     efficiency_score: float
@@ -169,8 +169,8 @@ class CourierComparison(BaseModel):
 # Schema for date range query
 class DateRangeQuery(BaseModel):
     """Date range filter"""
-    start_date: date
-    end_date: date
+    start_date: DateType
+    end_date: DateType
 
     @model_validator(mode='after')
     def validate_date_range(self):

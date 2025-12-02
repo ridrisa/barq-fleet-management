@@ -240,18 +240,35 @@ export default function DeliveryTracking() {
         </CardContent>
       </Card>
 
-      {/* Map Placeholder */}
+      {/* Delivery Summary by Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Live Delivery Map</CardTitle>
+          <CardTitle>Delivery Status Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-100 rounded-lg p-12 text-center">
-            <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Interactive map view will be displayed here</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Shows real-time locations of all active deliveries
-            </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-blue-50 rounded-lg text-center">
+              <Package className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
+              <p className="text-sm text-gray-600">Total Deliveries</p>
+            </div>
+            <div className="p-4 bg-orange-50 rounded-lg text-center">
+              <MapPin className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-orange-600">{stats.inTransit}</p>
+              <p className="text-sm text-gray-600">In Transit</p>
+            </div>
+            <div className="p-4 bg-green-50 rounded-lg text-center">
+              <div className="h-8 w-8 rounded-full bg-green-600 mx-auto mb-2 flex items-center justify-center">
+                <span className="text-white text-lg">✓</span>
+              </div>
+              <p className="text-2xl font-bold text-green-600">{stats.delivered}</p>
+              <p className="text-sm text-gray-600">Delivered</p>
+            </div>
+            <div className="p-4 bg-gray-50 rounded-lg text-center">
+              <Clock className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-gray-600">{stats.pending}</p>
+              <p className="text-sm text-gray-600">Pending</p>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -9,6 +9,7 @@ import { Table } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
+import { BarChart } from '@/components/charts/BarChart'
 import { courierPerformanceAPI, couriersAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 
@@ -301,19 +302,36 @@ export default function CourierPerformance() {
         </Card>
       </div>
 
-      {/* Performance Chart Placeholder */}
+      {/* Performance Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Performance Trends</CardTitle>
+          <CardTitle>Performance Comparison (Top 10)</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-            <div className="text-center text-gray-500">
-              <TrendingUp className="h-12 w-12 mx-auto mb-2" />
-              <p>Performance chart will be displayed here</p>
-              <p className="text-sm">Showing trends for the selected period</p>
+          {filteredBycourier.length > 0 ? (
+            <BarChart
+              data={filteredBycourier
+                .sort((a: any, b: any) => (b.deliveries || 0) - (a.deliveries || 0))
+                .slice(0, 10)
+                .map((item: any) => ({
+                  name: getCourierName(item.courier_id).split(' ')[0],
+                  Deliveries: item.deliveries || 0,
+                  'On-Time %': item.on_time_rate || 0,
+                }))}
+              xKey="name"
+              yKeys={['Deliveries', 'On-Time %']}
+              colors={['#3b82f6', '#22c55e']}
+              height={280}
+            />
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <TrendingUp className="h-12 w-12 mx-auto mb-2" />
+                <p>No performance data available</p>
+                <p className="text-sm">Select a different period or check data availability</p>
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

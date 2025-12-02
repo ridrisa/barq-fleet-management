@@ -78,6 +78,11 @@ class Courier(BaseModel):
     hunger_rider_id = Column(String(50))
     mrsool_courier_id = Column(String(50))
 
+    # FMS Integration (machinestalk GPS tracking)
+    fms_asset_id = Column(Integer, unique=True, nullable=True, index=True, comment="FMS Asset ID for GPS tracking")
+    fms_driver_id = Column(Integer, nullable=True, comment="FMS Driver ID")
+    fms_last_sync = Column(String(50), nullable=True, comment="Last FMS sync timestamp")
+
     # Assignment
     current_vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="SET NULL"), nullable=True)
     supervisor_name = Column(String(200))

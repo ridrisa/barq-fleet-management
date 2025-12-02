@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -32,7 +32,7 @@ export default function GeneralSettings() {
   })
 
   // Update whenever settings data changes
-  useState(() => {
+  useEffect(() => {
     if (settings) {
       setFormData({
         company_name: settings.company_name || '',
@@ -46,7 +46,7 @@ export default function GeneralSettings() {
         currency_symbol: settings.currency_symbol || '$',
       })
     }
-  })
+  }, [settings])
 
   // Update settings mutation
   const updateMutation = useMutation({

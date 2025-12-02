@@ -4,8 +4,8 @@ from app.api.v1 import auth, health, dashboard  # users module temporarily disab
 from app.api.v1.admin import router as admin_router
 from app.api.v1.support import support_router
 from app.api.v1.performance import router as performance_router
-from app.api import fleet, hr, operations, accommodation, finance, workflow
-# from app.api import analytics, tenant  # temporarily disabled
+from app.api import fleet, hr, operations, accommodation, finance, workflow, fms, analytics
+# from app.api import tenant  # temporarily disabled
 
 api_router = APIRouter()
 
@@ -26,5 +26,6 @@ api_router.include_router(accommodation.router, prefix="/accommodation", tags=["
 api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
 api_router.include_router(workflow.router, prefix="/workflow", tags=["workflow"])
 api_router.include_router(support_router, prefix="/support", tags=["support"])
-# api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])  # temporarily disabled
+api_router.include_router(fms.router, prefix="/fms", tags=["FMS Tracking"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 # api_router.include_router(tenant.router, prefix="/tenant", tags=["tenant"])  # temporarily disabled

@@ -157,9 +157,7 @@ export default function Profile() {
 
   const handlePhotoUpload = () => {
     if (photoFile) {
-      const formData = new FormData()
-      formData.append('photo', photoFile)
-      uploadPhotoMutation.mutate(formData as any)
+      uploadPhotoMutation.mutate(photoFile)
     }
   }
 

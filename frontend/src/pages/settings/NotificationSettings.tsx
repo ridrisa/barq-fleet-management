@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -29,11 +29,11 @@ export default function NotificationSettings() {
   )
 
   // Update when settings load
-  useState(() => {
+  useEffect(() => {
     if (settings?.preferences) {
       setPreferences(settings.preferences)
     }
-  })
+  }, [settings])
 
   // Update settings mutation
   const updateMutation = useMutation({
