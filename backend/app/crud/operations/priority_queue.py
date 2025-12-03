@@ -12,8 +12,17 @@ from app.schemas.operations.priority_queue import PriorityQueueEntryCreate, Prio
 class CRUDPriorityQueueEntry(
     CRUDBase[PriorityQueueEntry, PriorityQueueEntryCreate, PriorityQueueEntryUpdate]
 ):
+    def get_multi(
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
+    ) -> List[PriorityQueueEntry]:
+        """Get multiple queue entries with optional organization filter"""
+        query = db.query(PriorityQueueEntry)
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.order_by(PriorityQueueEntry.queued_at.desc()).offset(skip).limit(limit).all()
+
     def create_with_number(
-        self, db: Session, *, obj_in: PriorityQueueEntryCreate
+        self, db: Session, *, obj_in: PriorityQueueEntryCreate, organization_id: int = None
     ) -> PriorityQueueEntry:
         """Create queue entry with auto-generated number and calculated priority"""
         last_entry = db.query(PriorityQueueEntry).order_by(PriorityQueueEntry.id.desc()).first()
@@ -22,6 +31,8 @@ class CRUDPriorityQueueEntry(
 
         # Calculate total priority score
         obj_in_data = obj_in.model_dump()
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
         total_score = (
             obj_in_data.get("base_priority_score", 0)
             + obj_in_data.get("time_factor_score", 0)
@@ -47,106 +58,90 @@ class CRUDPriorityQueueEntry(
         db.refresh(db_obj)
 
         # Update queue positions
-        self._recalculate_queue_positions(db)
+        self._recalculate_queue_positions(db, organization_id=organization_id)
 
         return db_obj
 
-    def get_by_number(self, db: Session, *, queue_number: str) -> Optional[PriorityQueueEntry]:
+    def get_by_number(
+        self, db: Session, *, queue_number: str, organization_id: int = None
+    ) -> Optional[PriorityQueueEntry]:
         """Get queue entry by number"""
-        return (
-            db.query(PriorityQueueEntry)
-            .filter(PriorityQueueEntry.queue_number == queue_number)
-            .first()
-        )
+        query = db.query(PriorityQueueEntry).filter(PriorityQueueEntry.queue_number == queue_number)
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.first()
 
-    def get_by_delivery(self, db: Session, *, delivery_id: int) -> Optional[PriorityQueueEntry]:
+    def get_by_delivery(
+        self, db: Session, *, delivery_id: int, organization_id: int = None
+    ) -> Optional[PriorityQueueEntry]:
         """Get queue entry for delivery"""
-        return (
-            db.query(PriorityQueueEntry)
-            .filter(PriorityQueueEntry.delivery_id == delivery_id)
-            .first()
-        )
+        query = db.query(PriorityQueueEntry).filter(PriorityQueueEntry.delivery_id == delivery_id)
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.first()
 
     def get_queued(
-        self, db: Session, *, skip: int = 0, limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[PriorityQueueEntry]:
         """Get all queued entries ordered by priority"""
-        return (
-            db.query(PriorityQueueEntry)
-            .filter(PriorityQueueEntry.status == QueueStatus.QUEUED)
-            .order_by(
-                PriorityQueueEntry.total_priority_score.desc(), PriorityQueueEntry.queued_at.asc()
-            )
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(PriorityQueueEntry).filter(PriorityQueueEntry.status == QueueStatus.QUEUED)
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.order_by(
+            PriorityQueueEntry.total_priority_score.desc(), PriorityQueueEntry.queued_at.asc()
+        ).offset(skip).limit(limit).all()
 
     def get_by_priority(
-        self, db: Session, *, priority: QueuePriority, skip: int = 0, limit: int = 100
+        self, db: Session, *, priority: QueuePriority, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[PriorityQueueEntry]:
         """Get entries by priority level"""
-        return (
-            db.query(PriorityQueueEntry)
-            .filter(
-                PriorityQueueEntry.priority == priority,
-                PriorityQueueEntry.status == QueueStatus.QUEUED,
-            )
-            .order_by(PriorityQueueEntry.total_priority_score.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
+        query = db.query(PriorityQueueEntry).filter(
+            PriorityQueueEntry.priority == priority,
+            PriorityQueueEntry.status == QueueStatus.QUEUED,
         )
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.order_by(PriorityQueueEntry.total_priority_score.desc()).offset(skip).limit(limit).all()
 
-    def get_urgent(self, db: Session) -> List[PriorityQueueEntry]:
+    def get_urgent(self, db: Session, organization_id: int = None) -> List[PriorityQueueEntry]:
         """Get urgent and critical entries"""
-        return (
-            db.query(PriorityQueueEntry)
-            .filter(
-                PriorityQueueEntry.status == QueueStatus.QUEUED,
-                PriorityQueueEntry.priority.in_([QueuePriority.CRITICAL, QueuePriority.URGENT]),
-            )
-            .order_by(PriorityQueueEntry.total_priority_score.desc())
-            .all()
+        query = db.query(PriorityQueueEntry).filter(
+            PriorityQueueEntry.status == QueueStatus.QUEUED,
+            PriorityQueueEntry.priority.in_([QueuePriority.CRITICAL, QueuePriority.URGENT]),
         )
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.order_by(PriorityQueueEntry.total_priority_score.desc()).all()
 
-    def get_at_risk(self, db: Session) -> List[PriorityQueueEntry]:
+    def get_at_risk(self, db: Session, organization_id: int = None) -> List[PriorityQueueEntry]:
         """Get entries at risk of SLA breach"""
         now = datetime.utcnow()
-        return (
-            db.query(PriorityQueueEntry)
-            .filter(
-                PriorityQueueEntry.status == QueueStatus.QUEUED,
-                PriorityQueueEntry.warning_threshold <= now,
-            )
-            .order_by(PriorityQueueEntry.sla_deadline.asc())
-            .all()
+        query = db.query(PriorityQueueEntry).filter(
+            PriorityQueueEntry.status == QueueStatus.QUEUED,
+            PriorityQueueEntry.warning_threshold <= now,
         )
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.order_by(PriorityQueueEntry.sla_deadline.asc()).all()
 
     def get_by_zone(
-        self, db: Session, *, zone_id: int, skip: int = 0, limit: int = 100
+        self, db: Session, *, zone_id: int, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[PriorityQueueEntry]:
         """Get queued entries for a zone"""
-        return (
-            db.query(PriorityQueueEntry)
-            .filter(
-                PriorityQueueEntry.required_zone_id == zone_id,
-                PriorityQueueEntry.status == QueueStatus.QUEUED,
-            )
-            .order_by(PriorityQueueEntry.total_priority_score.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
+        query = db.query(PriorityQueueEntry).filter(
+            PriorityQueueEntry.required_zone_id == zone_id,
+            PriorityQueueEntry.status == QueueStatus.QUEUED,
         )
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.order_by(PriorityQueueEntry.total_priority_score.desc()).offset(skip).limit(limit).all()
 
-    def get_escalated(self, db: Session) -> List[PriorityQueueEntry]:
+    def get_escalated(self, db: Session, organization_id: int = None) -> List[PriorityQueueEntry]:
         """Get escalated entries"""
-        return (
-            db.query(PriorityQueueEntry)
-            .filter(PriorityQueueEntry.is_escalated == True)
-            .order_by(PriorityQueueEntry.escalated_at.desc())
-            .all()
-        )
+        query = db.query(PriorityQueueEntry).filter(PriorityQueueEntry.is_escalated == True)
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        return query.order_by(PriorityQueueEntry.escalated_at.desc()).all()
 
     def mark_as_processing(self, db: Session, *, entry_id: int) -> Optional[PriorityQueueEntry]:
         """Mark entry as being processed"""
@@ -238,16 +233,14 @@ class CRUDPriorityQueueEntry(
             db.refresh(entry)
         return entry
 
-    def _recalculate_queue_positions(self, db: Session):
+    def _recalculate_queue_positions(self, db: Session, organization_id: int = None):
         """Recalculate queue positions for all queued entries"""
-        queued_entries = (
-            db.query(PriorityQueueEntry)
-            .filter(PriorityQueueEntry.status == QueueStatus.QUEUED)
-            .order_by(
-                PriorityQueueEntry.total_priority_score.desc(), PriorityQueueEntry.queued_at.asc()
-            )
-            .all()
-        )
+        query = db.query(PriorityQueueEntry).filter(PriorityQueueEntry.status == QueueStatus.QUEUED)
+        if organization_id:
+            query = query.filter(PriorityQueueEntry.organization_id == organization_id)
+        queued_entries = query.order_by(
+            PriorityQueueEntry.total_priority_score.desc(), PriorityQueueEntry.queued_at.asc()
+        ).all()
 
         for position, entry in enumerate(queued_entries, start=1):
             entry.queue_position = position

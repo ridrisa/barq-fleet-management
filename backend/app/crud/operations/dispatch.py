@@ -12,8 +12,17 @@ from app.schemas.operations.dispatch import DispatchAssignmentCreate, DispatchAs
 class CRUDDispatchAssignment(
     CRUDBase[DispatchAssignment, DispatchAssignmentCreate, DispatchAssignmentUpdate]
 ):
+    def get_multi(
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
+    ) -> List[DispatchAssignment]:
+        """Get multiple dispatch assignments with optional organization filter"""
+        query = db.query(DispatchAssignment)
+        if organization_id:
+            query = query.filter(DispatchAssignment.organization_id == organization_id)
+        return query.order_by(DispatchAssignment.created_at_time.desc()).offset(skip).limit(limit).all()
+
     def create_with_number(
-        self, db: Session, *, obj_in: DispatchAssignmentCreate
+        self, db: Session, *, obj_in: DispatchAssignmentCreate, organization_id: int = None
     ) -> DispatchAssignment:
         """Create dispatch assignment with auto-generated number"""
         last_assignment = (
@@ -23,6 +32,8 @@ class CRUDDispatchAssignment(
         assignment_number = f"DISP-{datetime.now().strftime('%Y%m%d')}-{next_number:04d}"
 
         obj_in_data = obj_in.model_dump()
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
         db_obj = DispatchAssignment(
             **obj_in_data, assignment_number=assignment_number, created_at_time=datetime.utcnow()
         )
@@ -31,83 +42,78 @@ class CRUDDispatchAssignment(
         db.refresh(db_obj)
         return db_obj
 
-    def get_by_number(self, db: Session, *, assignment_number: str) -> Optional[DispatchAssignment]:
+    def get_by_number(
+        self, db: Session, *, assignment_number: str, organization_id: int = None
+    ) -> Optional[DispatchAssignment]:
         """Get dispatch by assignment number"""
-        return (
-            db.query(DispatchAssignment)
-            .filter(DispatchAssignment.assignment_number == assignment_number)
-            .first()
+        query = db.query(DispatchAssignment).filter(
+            DispatchAssignment.assignment_number == assignment_number
         )
+        if organization_id:
+            query = query.filter(DispatchAssignment.organization_id == organization_id)
+        return query.first()
 
-    def get_by_delivery(self, db: Session, *, delivery_id: int) -> Optional[DispatchAssignment]:
+    def get_by_delivery(
+        self, db: Session, *, delivery_id: int, organization_id: int = None
+    ) -> Optional[DispatchAssignment]:
         """Get active dispatch assignment for delivery"""
-        return (
-            db.query(DispatchAssignment)
-            .filter(
-                DispatchAssignment.delivery_id == delivery_id,
-                DispatchAssignment.status.in_(
-                    [
-                        DispatchStatus.PENDING,
-                        DispatchStatus.ASSIGNED,
-                        DispatchStatus.ACCEPTED,
-                        DispatchStatus.IN_PROGRESS,
-                    ]
-                ),
-            )
-            .first()
+        query = db.query(DispatchAssignment).filter(
+            DispatchAssignment.delivery_id == delivery_id,
+            DispatchAssignment.status.in_(
+                [
+                    DispatchStatus.PENDING,
+                    DispatchStatus.ASSIGNED,
+                    DispatchStatus.ACCEPTED,
+                    DispatchStatus.IN_PROGRESS,
+                ]
+            ),
         )
+        if organization_id:
+            query = query.filter(DispatchAssignment.organization_id == organization_id)
+        return query.first()
 
     def get_by_courier(
-        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[DispatchAssignment]:
         """Get assignments for a courier"""
-        return (
-            db.query(DispatchAssignment)
-            .filter(DispatchAssignment.courier_id == courier_id)
-            .order_by(DispatchAssignment.created_at_time.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(DispatchAssignment).filter(DispatchAssignment.courier_id == courier_id)
+        if organization_id:
+            query = query.filter(DispatchAssignment.organization_id == organization_id)
+        return query.order_by(DispatchAssignment.created_at_time.desc()).offset(skip).limit(limit).all()
 
     def get_pending(
-        self, db: Session, *, skip: int = 0, limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[DispatchAssignment]:
         """Get all pending assignments"""
-        return (
-            db.query(DispatchAssignment)
-            .filter(DispatchAssignment.status == DispatchStatus.PENDING)
-            .order_by(DispatchAssignment.priority.desc(), DispatchAssignment.created_at_time.asc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(DispatchAssignment).filter(DispatchAssignment.status == DispatchStatus.PENDING)
+        if organization_id:
+            query = query.filter(DispatchAssignment.organization_id == organization_id)
+        return query.order_by(
+            DispatchAssignment.priority.desc(), DispatchAssignment.created_at_time.asc()
+        ).offset(skip).limit(limit).all()
 
-    def get_active_by_courier(self, db: Session, *, courier_id: int) -> List[DispatchAssignment]:
+    def get_active_by_courier(
+        self, db: Session, *, courier_id: int, organization_id: int = None
+    ) -> List[DispatchAssignment]:
         """Get active assignments for a courier"""
-        return (
-            db.query(DispatchAssignment)
-            .filter(
-                DispatchAssignment.courier_id == courier_id,
-                DispatchAssignment.status.in_(
-                    [DispatchStatus.ASSIGNED, DispatchStatus.ACCEPTED, DispatchStatus.IN_PROGRESS]
-                ),
-            )
-            .all()
+        query = db.query(DispatchAssignment).filter(
+            DispatchAssignment.courier_id == courier_id,
+            DispatchAssignment.status.in_(
+                [DispatchStatus.ASSIGNED, DispatchStatus.ACCEPTED, DispatchStatus.IN_PROGRESS]
+            ),
         )
+        if organization_id:
+            query = query.filter(DispatchAssignment.organization_id == organization_id)
+        return query.all()
 
     def get_by_zone(
-        self, db: Session, *, zone_id: int, skip: int = 0, limit: int = 100
+        self, db: Session, *, zone_id: int, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[DispatchAssignment]:
         """Get assignments for a zone"""
-        return (
-            db.query(DispatchAssignment)
-            .filter(DispatchAssignment.zone_id == zone_id)
-            .order_by(DispatchAssignment.created_at_time.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(DispatchAssignment).filter(DispatchAssignment.zone_id == zone_id)
+        if organization_id:
+            query = query.filter(DispatchAssignment.organization_id == organization_id)
+        return query.order_by(DispatchAssignment.created_at_time.desc()).offset(skip).limit(limit).all()
 
     def assign_to_courier(
         self, db: Session, *, assignment_id: int, courier_id: int, assigned_by_id: int

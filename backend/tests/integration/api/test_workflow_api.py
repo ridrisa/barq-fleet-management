@@ -8,7 +8,7 @@ Last Updated: 2025-12-02
 """
 
 import pytest
-from app.models.workflow.instance import WorkflowState
+from app.models.workflow.instance import WorkflowStatus
 from tests.utils.factories import (
     AdminUserFactory,
     UserFactory,

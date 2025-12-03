@@ -30,7 +30,7 @@ def list_routes(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List all routes with optional filters"""
-    routes = crud_route.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
+    routes = crud_route.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
     return routes
 
 

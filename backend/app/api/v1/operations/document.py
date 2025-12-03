@@ -62,7 +62,7 @@ def get_documents(
             db, category=doc_category, skip=skip, limit=limit, organization_id=current_org.id
         )
 
-    return operations_document.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
+    return operations_document.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
 
 
 @router.post("/", response_model=OperationsDocumentResponse, status_code=status.HTTP_201_CREATED)

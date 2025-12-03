@@ -26,7 +26,7 @@ def list_incidents(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List all incidents with optional filters"""
-    incidents = crud_incident.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
+    incidents = crud_incident.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
     return incidents
 
 

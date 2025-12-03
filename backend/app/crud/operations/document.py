@@ -17,30 +17,37 @@ class CRUDOperationsDocument(
 ):
     """CRUD operations for operations documents"""
 
-    def create(self, db: Session, *, obj_in: OperationsDocumentCreate) -> OperationsDocument:
+    def create(
+        self, db: Session, *, obj_in: OperationsDocumentCreate, organization_id: int = None
+    ) -> OperationsDocument:
         """Create with auto-generated doc_number"""
         # Generate doc_number
         max_id = db.query(func.coalesce(func.max(self.model.id), 0)).scalar() or 0
         doc_number = f"DOC-{(max_id + 1):05d}"
 
-        db_obj = self.model(**obj_in.model_dump(), doc_number=doc_number)
+        obj_data = obj_in.model_dump()
+        if organization_id:
+            obj_data["organization_id"] = organization_id
+        db_obj = self.model(**obj_data, doc_number=doc_number)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
         return db_obj
 
     def get_by_category(
-        self, db: Session, *, category: DocumentCategory, skip: int = 0, limit: int = 100
+        self,
+        db: Session,
+        *,
+        category: DocumentCategory,
+        skip: int = 0,
+        limit: int = 100,
+        organization_id: int = None,
     ) -> List[OperationsDocument]:
         """Get documents by category"""
-        return (
-            db.query(self.model)
-            .filter(self.model.category == category)
-            .order_by(self.model.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(self.model).filter(self.model.category == category)
+        if organization_id:
+            query = query.filter(self.model.organization_id == organization_id)
+        return query.order_by(self.model.created_at.desc()).offset(skip).limit(limit).all()
 
     def increment_view_count(self, db: Session, *, doc_id: int) -> Optional[OperationsDocument]:
         """Increment document view count"""
@@ -68,6 +75,7 @@ class CRUDOperationsDocument(
         category: Optional[DocumentCategory] = None,
         skip: int = 0,
         limit: int = 100,
+        organization_id: int = None,
     ) -> List[OperationsDocument]:
         """Search documents by name, description, or tags"""
         search_filter = (
@@ -77,6 +85,9 @@ class CRUDOperationsDocument(
         )
 
         q = db.query(self.model).filter(search_filter)
+
+        if organization_id:
+            q = q.filter(self.model.organization_id == organization_id)
 
         if category:
             q = q.filter(self.model.category == category)

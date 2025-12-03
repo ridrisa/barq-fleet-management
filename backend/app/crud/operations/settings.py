@@ -33,45 +33,59 @@ from app.schemas.operations.settings import (
 class CRUDOperationsSettings(
     CRUDBase[OperationsSettings, OperationsSettingsCreate, OperationsSettingsUpdate]
 ):
-    def get_by_key(self, db: Session, *, setting_key: str) -> Optional[OperationsSettings]:
+    def get_by_key(
+        self, db: Session, *, setting_key: str, organization_id: int = None
+    ) -> Optional[OperationsSettings]:
         """Get setting by key"""
-        return (
-            db.query(OperationsSettings)
-            .filter(OperationsSettings.setting_key == setting_key)
-            .first()
+        query = db.query(OperationsSettings).filter(
+            OperationsSettings.setting_key == setting_key
         )
+        if organization_id:
+            query = query.filter(OperationsSettings.organization_id == organization_id)
+        return query.first()
 
-    def get_by_group(self, db: Session, *, setting_group: str) -> List[OperationsSettings]:
+    def get_by_group(
+        self, db: Session, *, setting_group: str, organization_id: int = None
+    ) -> List[OperationsSettings]:
         """Get all settings in a group"""
-        return (
-            db.query(OperationsSettings)
-            .filter(
-                OperationsSettings.setting_group == setting_group,
-                OperationsSettings.is_active == True,
-            )
-            .order_by(OperationsSettings.setting_key)
-            .all()
+        query = db.query(OperationsSettings).filter(
+            OperationsSettings.setting_group == setting_group,
+            OperationsSettings.is_active == True,
         )
+        if organization_id:
+            query = query.filter(OperationsSettings.organization_id == organization_id)
+        return query.order_by(OperationsSettings.setting_key).all()
 
-    def get_active_settings(self, db: Session) -> List[OperationsSettings]:
+    def get_active_settings(
+        self, db: Session, organization_id: int = None
+    ) -> List[OperationsSettings]:
         """Get all active settings"""
-        return (
-            db.query(OperationsSettings)
-            .filter(OperationsSettings.is_active == True)
-            .order_by(OperationsSettings.setting_group, OperationsSettings.setting_key)
-            .all()
-        )
+        query = db.query(OperationsSettings).filter(OperationsSettings.is_active == True)
+        if organization_id:
+            query = query.filter(OperationsSettings.organization_id == organization_id)
+        return query.order_by(
+            OperationsSettings.setting_group, OperationsSettings.setting_key
+        ).all()
 
-    def get_groups(self, db: Session) -> List[str]:
+    def get_groups(self, db: Session, organization_id: int = None) -> List[str]:
         """Get all setting groups"""
-        groups = db.query(OperationsSettings.setting_group).distinct().all()
+        query = db.query(OperationsSettings.setting_group).distinct()
+        if organization_id:
+            query = query.filter(OperationsSettings.organization_id == organization_id)
+        groups = query.all()
         return [g[0] for g in groups]
 
     def set_value(
-        self, db: Session, *, setting_key: str, value: Any, modified_by_id: int = None
+        self,
+        db: Session,
+        *,
+        setting_key: str,
+        value: Any,
+        modified_by_id: int = None,
+        organization_id: int = None,
     ) -> Optional[OperationsSettings]:
         """Set setting value"""
-        setting = self.get_by_key(db, setting_key=setting_key)
+        setting = self.get_by_key(db, setting_key=setting_key, organization_id=organization_id)
         if not setting:
             return None
 
@@ -96,40 +110,75 @@ class CRUDOperationsSettings(
         db.refresh(setting)
         return setting
 
-    def get_value(self, db: Session, *, setting_key: str, default: Any = None) -> Any:
+    def get_value(
+        self, db: Session, *, setting_key: str, default: Any = None, organization_id: int = None
+    ) -> Any:
         """Get setting value"""
-        setting = self.get_by_key(db, setting_key=setting_key)
+        setting = self.get_by_key(db, setting_key=setting_key, organization_id=organization_id)
         if not setting or not setting.is_active:
             return default
         return setting.value
 
+    def create(
+        self, db: Session, *, obj_in: OperationsSettingsCreate, organization_id: int = None
+    ) -> OperationsSettings:
+        """Create with organization_id"""
+        from fastapi.encoders import jsonable_encoder
+
+        obj_in_data = jsonable_encoder(obj_in)
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
+        db_obj = OperationsSettings(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
 
 class CRUDDispatchRule(CRUDBase[DispatchRule, DispatchRuleCreate, DispatchRuleUpdate]):
-    def get_by_code(self, db: Session, *, rule_code: str) -> Optional[DispatchRule]:
+    def get_by_code(
+        self, db: Session, *, rule_code: str, organization_id: int = None
+    ) -> Optional[DispatchRule]:
         """Get rule by code"""
-        return db.query(DispatchRule).filter(DispatchRule.rule_code == rule_code).first()
+        query = db.query(DispatchRule).filter(DispatchRule.rule_code == rule_code)
+        if organization_id:
+            query = query.filter(DispatchRule.organization_id == organization_id)
+        return query.first()
 
-    def get_active_rules(self, db: Session) -> List[DispatchRule]:
+    def get_active_rules(self, db: Session, organization_id: int = None) -> List[DispatchRule]:
         """Get all active rules ordered by priority"""
-        return (
-            db.query(DispatchRule)
-            .filter(DispatchRule.is_active == True)
-            .order_by(DispatchRule.priority.asc())
-            .all()
-        )
+        query = db.query(DispatchRule).filter(DispatchRule.is_active == True)
+        if organization_id:
+            query = query.filter(DispatchRule.organization_id == organization_id)
+        return query.order_by(DispatchRule.priority.asc()).all()
 
-    def get_rules_for_zone(self, db: Session, *, zone_id: int) -> List[DispatchRule]:
+    def get_rules_for_zone(
+        self, db: Session, *, zone_id: int, organization_id: int = None
+    ) -> List[DispatchRule]:
         """Get rules applicable to a zone"""
-        return (
-            db.query(DispatchRule)
-            .filter(
-                DispatchRule.is_active == True,
-                (DispatchRule.applies_to_all_zones == True)
-                | (DispatchRule.zone_ids.contains(str(zone_id))),
-            )
-            .order_by(DispatchRule.priority.asc())
-            .all()
+        query = db.query(DispatchRule).filter(
+            DispatchRule.is_active == True,
+            (DispatchRule.applies_to_all_zones == True)
+            | (DispatchRule.zone_ids.contains(str(zone_id))),
         )
+        if organization_id:
+            query = query.filter(DispatchRule.organization_id == organization_id)
+        return query.order_by(DispatchRule.priority.asc()).all()
+
+    def create(
+        self, db: Session, *, obj_in: DispatchRuleCreate, organization_id: int = None
+    ) -> DispatchRule:
+        """Create with organization_id"""
+        from fastapi.encoders import jsonable_encoder
+
+        obj_in_data = jsonable_encoder(obj_in)
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
+        db_obj = DispatchRule(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
 
     def increment_triggered(
         self, db: Session, *, rule_id: int, success: bool
@@ -159,49 +208,67 @@ class CRUDDispatchRule(CRUDBase[DispatchRule, DispatchRuleCreate, DispatchRuleUp
 
 
 class CRUDSLAThreshold(CRUDBase[SLAThreshold, SLAThresholdCreate, SLAThresholdUpdate]):
-    def get_by_code(self, db: Session, *, threshold_code: str) -> Optional[SLAThreshold]:
+    def get_by_code(
+        self, db: Session, *, threshold_code: str, organization_id: int = None
+    ) -> Optional[SLAThreshold]:
         """Get threshold by code"""
-        return db.query(SLAThreshold).filter(SLAThreshold.threshold_code == threshold_code).first()
+        query = db.query(SLAThreshold).filter(SLAThreshold.threshold_code == threshold_code)
+        if organization_id:
+            query = query.filter(SLAThreshold.organization_id == organization_id)
+        return query.first()
 
-    def get_active_thresholds(self, db: Session) -> List[SLAThreshold]:
+    def get_active_thresholds(self, db: Session, organization_id: int = None) -> List[SLAThreshold]:
         """Get all active thresholds"""
-        return db.query(SLAThreshold).filter(SLAThreshold.is_active == True).all()
+        query = db.query(SLAThreshold).filter(SLAThreshold.is_active == True)
+        if organization_id:
+            query = query.filter(SLAThreshold.organization_id == organization_id)
+        return query.all()
 
-    def get_by_sla_type(self, db: Session, *, sla_type: str) -> List[SLAThreshold]:
+    def get_by_sla_type(
+        self, db: Session, *, sla_type: str, organization_id: int = None
+    ) -> List[SLAThreshold]:
         """Get thresholds by SLA type"""
-        return (
-            db.query(SLAThreshold)
-            .filter(SLAThreshold.sla_type == sla_type, SLAThreshold.is_active == True)
-            .all()
+        query = db.query(SLAThreshold).filter(
+            SLAThreshold.sla_type == sla_type, SLAThreshold.is_active == True
         )
+        if organization_id:
+            query = query.filter(SLAThreshold.organization_id == organization_id)
+        return query.all()
 
-    def get_by_service_type(self, db: Session, *, service_type: str) -> List[SLAThreshold]:
+    def get_by_service_type(
+        self, db: Session, *, service_type: str, organization_id: int = None
+    ) -> List[SLAThreshold]:
         """Get thresholds by service type"""
-        return (
-            db.query(SLAThreshold)
-            .filter(SLAThreshold.service_type == service_type, SLAThreshold.is_active == True)
-            .all()
+        query = db.query(SLAThreshold).filter(
+            SLAThreshold.service_type == service_type, SLAThreshold.is_active == True
         )
+        if organization_id:
+            query = query.filter(SLAThreshold.organization_id == organization_id)
+        return query.all()
 
     def get_for_zone(
-        self, db: Session, *, zone_id: int, sla_type: str = None
+        self, db: Session, *, zone_id: int, sla_type: str = None, organization_id: int = None
     ) -> List[SLAThreshold]:
         """Get thresholds for a specific zone"""
         query = db.query(SLAThreshold).filter(
             SLAThreshold.is_active == True,
             (SLAThreshold.applies_to_all_zones == True) | (SLAThreshold.zone_id == zone_id),
         )
+        if organization_id:
+            query = query.filter(SLAThreshold.organization_id == organization_id)
         if sla_type:
             query = query.filter(SLAThreshold.sla_type == sla_type)
         return query.all()
 
     def get_threshold_for_delivery(
-        self, db: Session, *, service_type: str, zone_id: int = None
+        self, db: Session, *, service_type: str, zone_id: int = None, organization_id: int = None
     ) -> Optional[SLAThreshold]:
         """Get applicable threshold for a delivery"""
         query = db.query(SLAThreshold).filter(
             SLAThreshold.is_active == True, SLAThreshold.sla_type == "delivery_time"
         )
+        if organization_id:
+            query = query.filter(SLAThreshold.organization_id == organization_id)
 
         # Try zone-specific first
         if zone_id:
@@ -220,60 +287,109 @@ class CRUDSLAThreshold(CRUDBase[SLAThreshold, SLAThresholdCreate, SLAThresholdUp
         # Fall back to global default
         return query.filter(SLAThreshold.applies_to_all_zones == True).first()
 
+    def create(
+        self, db: Session, *, obj_in: SLAThresholdCreate, organization_id: int = None
+    ) -> SLAThreshold:
+        """Create with organization_id"""
+        from fastapi.encoders import jsonable_encoder
+
+        obj_in_data = jsonable_encoder(obj_in)
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
+        db_obj = SLAThreshold(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
 
 class CRUDNotificationSetting(
     CRUDBase[NotificationSetting, NotificationSettingCreate, NotificationSettingUpdate]
 ):
-    def get_by_code(self, db: Session, *, setting_code: str) -> Optional[NotificationSetting]:
+    def get_by_code(
+        self, db: Session, *, setting_code: str, organization_id: int = None
+    ) -> Optional[NotificationSetting]:
         """Get notification setting by code"""
-        return (
-            db.query(NotificationSetting)
-            .filter(NotificationSetting.setting_code == setting_code)
-            .first()
+        query = db.query(NotificationSetting).filter(
+            NotificationSetting.setting_code == setting_code
         )
+        if organization_id:
+            query = query.filter(NotificationSetting.organization_id == organization_id)
+        return query.first()
 
-    def get_active_settings(self, db: Session) -> List[NotificationSetting]:
+    def get_active_settings(
+        self, db: Session, organization_id: int = None
+    ) -> List[NotificationSetting]:
         """Get all active notification settings"""
-        return db.query(NotificationSetting).filter(NotificationSetting.is_active == True).all()
+        query = db.query(NotificationSetting).filter(NotificationSetting.is_active == True)
+        if organization_id:
+            query = query.filter(NotificationSetting.organization_id == organization_id)
+        return query.all()
 
-    def get_by_event_type(self, db: Session, *, event_type: str) -> Optional[NotificationSetting]:
+    def get_by_event_type(
+        self, db: Session, *, event_type: str, organization_id: int = None
+    ) -> Optional[NotificationSetting]:
         """Get notification setting by event type"""
-        return (
-            db.query(NotificationSetting)
-            .filter(
-                NotificationSetting.event_type == event_type, NotificationSetting.is_active == True
-            )
-            .first()
+        query = db.query(NotificationSetting).filter(
+            NotificationSetting.event_type == event_type, NotificationSetting.is_active == True
         )
+        if organization_id:
+            query = query.filter(NotificationSetting.organization_id == organization_id)
+        return query.first()
 
-    def get_events_for_role(self, db: Session, *, role: str) -> List[NotificationSetting]:
+    def get_events_for_role(
+        self, db: Session, *, role: str, organization_id: int = None
+    ) -> List[NotificationSetting]:
         """Get notification settings that notify a specific role"""
-        return (
-            db.query(NotificationSetting)
-            .filter(
-                NotificationSetting.notify_roles.contains(role),
-                NotificationSetting.is_active == True,
-            )
-            .all()
+        query = db.query(NotificationSetting).filter(
+            NotificationSetting.notify_roles.contains(role),
+            NotificationSetting.is_active == True,
         )
+        if organization_id:
+            query = query.filter(NotificationSetting.organization_id == organization_id)
+        return query.all()
+
+    def create(
+        self, db: Session, *, obj_in: NotificationSettingCreate, organization_id: int = None
+    ) -> NotificationSetting:
+        """Create with organization_id"""
+        from fastapi.encoders import jsonable_encoder
+
+        obj_in_data = jsonable_encoder(obj_in)
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
+        db_obj = NotificationSetting(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
 
 
 class CRUDZoneDefault(CRUDBase[ZoneDefault, ZoneDefaultCreate, ZoneDefaultUpdate]):
-    def get_by_code(self, db: Session, *, default_code: str) -> Optional[ZoneDefault]:
+    def get_by_code(
+        self, db: Session, *, default_code: str, organization_id: int = None
+    ) -> Optional[ZoneDefault]:
         """Get zone default by code"""
-        return db.query(ZoneDefault).filter(ZoneDefault.default_code == default_code).first()
+        query = db.query(ZoneDefault).filter(ZoneDefault.default_code == default_code)
+        if organization_id:
+            query = query.filter(ZoneDefault.organization_id == organization_id)
+        return query.first()
 
-    def get_active_defaults(self, db: Session) -> List[ZoneDefault]:
+    def get_active_defaults(self, db: Session, organization_id: int = None) -> List[ZoneDefault]:
         """Get all active zone defaults"""
-        return db.query(ZoneDefault).filter(ZoneDefault.is_active == True).all()
+        query = db.query(ZoneDefault).filter(ZoneDefault.is_active == True)
+        if organization_id:
+            query = query.filter(ZoneDefault.organization_id == organization_id)
+        return query.all()
 
-    def get_default_template(self, db: Session) -> Optional[ZoneDefault]:
+    def get_default_template(self, db: Session, organization_id: int = None) -> Optional[ZoneDefault]:
         """Get the default template"""
-        return (
-            db.query(ZoneDefault)
-            .filter(ZoneDefault.is_default == True, ZoneDefault.is_active == True)
-            .first()
+        query = db.query(ZoneDefault).filter(
+            ZoneDefault.is_default == True, ZoneDefault.is_active == True
         )
+        if organization_id:
+            query = query.filter(ZoneDefault.organization_id == organization_id)
+        return query.first()
 
     def set_as_default(self, db: Session, *, default_id: int) -> Optional[ZoneDefault]:
         """Set a zone default as the main default"""
@@ -288,6 +404,21 @@ class CRUDZoneDefault(CRUDBase[ZoneDefault, ZoneDefaultCreate, ZoneDefaultUpdate
             db.commit()
             db.refresh(zone_default)
         return zone_default
+
+    def create(
+        self, db: Session, *, obj_in: ZoneDefaultCreate, organization_id: int = None
+    ) -> ZoneDefault:
+        """Create with organization_id"""
+        from fastapi.encoders import jsonable_encoder
+
+        obj_in_data = jsonable_encoder(obj_in)
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
+        db_obj = ZoneDefault(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
 
 
 operations_settings = CRUDOperationsSettings(OperationsSettings)

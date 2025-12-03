@@ -266,7 +266,7 @@ def list_dispatch_rules(
     elif active_only:
         rules = dispatch_rule.get_active_rules(db, organization_id=current_org.id)
     else:
-        rules = dispatch_rule.get_multi(db, skip=0, limit=100, organization_id=current_org.id)
+        rules = dispatch_rule.get_multi(db, skip=0, limit=100, filters={"organization_id": current_org.id})
     return rules
 
 

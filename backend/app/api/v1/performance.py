@@ -101,7 +101,8 @@ def health_check(db: Session = Depends(get_db)):
 
     # Database check
     try:
-        db.execute("SELECT 1")
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
         health_status["checks"]["database"] = {
             "status": "healthy",
             "message": "Database connection successful",

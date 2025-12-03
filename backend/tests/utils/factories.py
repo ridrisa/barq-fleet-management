@@ -64,7 +64,6 @@ class UserFactory(BaseFactory):
     is_active = True
     is_superuser = False
     role = "user"
-    phone_number = Faker('phone_number')
 
 
 class AdminUserFactory(UserFactory):
@@ -185,7 +184,7 @@ class LoanFactory(BaseFactory):
     installment_amount = Decimal("500.00")
     remaining_amount = Decimal("5000.00")
     reason = "Personal loan"
-    status = LoanStatus.PENDING
+    status = LoanStatus.ACTIVE
     request_date = LazyAttribute(lambda _: datetime.now().date())
 
 
@@ -263,7 +262,7 @@ class RouteFactory(BaseFactory):
         model = Route
 
     name = Sequence(lambda n: f"Route-{n}")
-    status = RouteStatus.ACTIVE
+    status = RouteStatus.PLANNED
     start_location = "Warehouse A"
     end_location = "Distribution Center B"
     estimated_duration = 120  # minutes
@@ -317,7 +316,7 @@ class WorkflowInstanceFactory(BaseFactory):
     class Meta:
         model = WorkflowInstance
 
-    current_state = WorkflowStatus.PENDING
+    current_state = WorkflowStatus.DRAFT
     title = "Test Workflow Instance"
 
 

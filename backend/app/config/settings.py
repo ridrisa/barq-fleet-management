@@ -35,6 +35,9 @@ class Settings:
         # Google OAuth (optional)
         self.GOOGLE_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")
 
+        # Redis (optional - for token blacklist, rate limiting, caching)
+        self.REDIS_URL: Optional[str] = os.getenv("REDIS_URL")
+
         # CORS
         self.BACKEND_CORS_ORIGINS: List[str] = self._load_cors_origins()
 

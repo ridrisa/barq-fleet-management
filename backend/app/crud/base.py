@@ -19,8 +19,20 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def get(self, db: Session, id: Any) -> Optional[ModelType]:
         return db.get(self.model, id)
 
-    def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[ModelType]:
-        return db.query(self.model).offset(skip).limit(limit).all()
+    def get_multi(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[ModelType]:
+        query = db.query(self.model)
+        if filters:
+            for key, value in filters.items():
+                if hasattr(self.model, key):
+                    query = query.filter(getattr(self.model, key) == value)
+        return query.offset(skip).limit(limit).all()
 
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = jsonable_encoder(obj_in)

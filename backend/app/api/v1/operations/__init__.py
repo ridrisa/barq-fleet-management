@@ -6,6 +6,7 @@ from app.api.v1.operations import (
     cod,
     delivery,
     dispatch,
+    document,
     feedback,
     handovers,
     incidents,
@@ -36,5 +37,6 @@ router.include_router(quality.router, prefix="/quality", tags=["Operations-Quali
 router.include_router(sla.router, prefix="/sla", tags=["Operations-SLA"])
 router.include_router(feedback.router, prefix="/feedback", tags=["Operations-Feedback"])
 router.include_router(settings.router, prefix="/settings", tags=["Operations-Settings"])
+router.include_router(document.router, prefix="/documents", tags=["Operations-Documents"])
 
 __all__ = ["router"]

@@ -69,7 +69,7 @@ def get_deliveries(
             organization_id=current_org.id,
         )
 
-    return delivery_service.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
+    return delivery_service.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
 
 
 @router.post("/", response_model=DeliveryResponse, status_code=status.HTTP_201_CREATED)

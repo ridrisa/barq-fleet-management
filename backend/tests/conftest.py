@@ -46,7 +46,12 @@ from app.models.workflow.template import WorkflowTemplate
 # Set test environment
 os.environ["ENVIRONMENT"] = "testing"
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+
+# Use PostgreSQL for tests (required for JSONB columns in analytics models)
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql://postgres:postgres@localhost:5432/barq_fleet_test"
+)
 
 
 # ==================== Database Fixtures ====================
@@ -54,23 +59,18 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 @pytest.fixture(scope="session")
 def test_engine():
     """
-    Create a test database engine using SQLite in-memory
+    Create a test database engine using PostgreSQL
 
     Scope: session (created once per test session)
+
+    Note: Uses PostgreSQL instead of SQLite because some models
+    use PostgreSQL-specific types like JSONB.
     """
     engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-        echo=False
+        TEST_DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
     )
-
-    # Enable foreign keys for SQLite
-    @event.listens_for(engine, "connect")
-    def set_sqlite_pragma(dbapi_conn, connection_record):
-        cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
 
     # Create all tables
     Base.metadata.create_all(bind=engine)
@@ -97,6 +97,27 @@ def db_session(test_engine) -> Generator[Session, None, None]:
     )
 
     session = TestSessionLocal()
+
+    # Configure factories to use this session
+    from tests.utils.factories import (
+        UserFactory, AdminUserFactory, ManagerUserFactory,
+        CourierFactory, VehicleFactory, AssignmentFactory,
+        MaintenanceFactory, FuelLogFactory,
+        LeaveFactory, LoanFactory, SalaryFactory, AttendanceFactory, BonusFactory,
+        DeliveryFactory, CODCollectionFactory, RouteFactory, IncidentFactory,
+        TicketFactory, WorkflowTemplateFactory, WorkflowInstanceFactory
+    )
+
+    # Set session on all factories
+    for factory_class in [
+        UserFactory, AdminUserFactory, ManagerUserFactory,
+        CourierFactory, VehicleFactory, AssignmentFactory,
+        MaintenanceFactory, FuelLogFactory,
+        LeaveFactory, LoanFactory, SalaryFactory, AttendanceFactory, BonusFactory,
+        DeliveryFactory, CODCollectionFactory, RouteFactory, IncidentFactory,
+        TicketFactory, WorkflowTemplateFactory, WorkflowInstanceFactory
+    ]:
+        factory_class._meta.sqlalchemy_session = session
 
     try:
         yield session
@@ -345,7 +366,7 @@ def loan_factory(db_session: Session):
             "installment_amount": 500.00,
             "remaining_amount": 5000.00,
             "reason": "Personal loan",
-            "status": LoanStatus.PENDING,
+            "status": LoanStatus.ACTIVE,
         }
         default_data.update(kwargs)
 
@@ -464,7 +485,7 @@ def workflow_instance_factory(db_session: Session):
         default_data = {
             "template_id": template.id,
             "initiator_id": initiator.id,
-            "current_state": WorkflowStatus.PENDING,
+            "current_state": WorkflowStatus.DRAFT,
             "title": "Test Workflow Instance",
         }
         default_data.update(kwargs)

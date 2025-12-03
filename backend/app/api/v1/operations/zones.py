@@ -32,7 +32,7 @@ def list_zones(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     else:
-        zones = crud_zone.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
+        zones = crud_zone.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
     return zones
 
 

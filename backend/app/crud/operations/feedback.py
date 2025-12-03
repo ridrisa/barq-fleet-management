@@ -27,8 +27,17 @@ from app.schemas.operations.feedback import (
 class CRUDCustomerFeedback(
     CRUDBase[CustomerFeedback, CustomerFeedbackCreate, CustomerFeedbackUpdate]
 ):
+    def get_multi(
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
+    ) -> List[CustomerFeedback]:
+        """Get multiple feedbacks with optional organization filter"""
+        query = db.query(CustomerFeedback)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.submitted_at.desc()).offset(skip).limit(limit).all()
+
     def create_with_number(
-        self, db: Session, *, obj_in: CustomerFeedbackCreate
+        self, db: Session, *, obj_in: CustomerFeedbackCreate, organization_id: int = None
     ) -> CustomerFeedback:
         """Create feedback with auto-generated number"""
         last_feedback = db.query(CustomerFeedback).order_by(CustomerFeedback.id.desc()).first()
@@ -36,6 +45,8 @@ class CRUDCustomerFeedback(
         feedback_number = f"FB-{datetime.now().strftime('%Y%m%d')}-{next_number:04d}"
 
         obj_in_data = obj_in.model_dump()
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
         db_obj = CustomerFeedback(
             **obj_in_data,
             feedback_number=feedback_number,
@@ -46,112 +57,87 @@ class CRUDCustomerFeedback(
         db.refresh(db_obj)
         return db_obj
 
-    def get_by_number(self, db: Session, *, feedback_number: str) -> Optional[CustomerFeedback]:
+    def get_by_number(
+        self, db: Session, *, feedback_number: str, organization_id: int = None
+    ) -> Optional[CustomerFeedback]:
         """Get feedback by number"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(CustomerFeedback.feedback_number == feedback_number)
-            .first()
-        )
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.feedback_number == feedback_number)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.first()
 
-    def get_by_delivery(self, db: Session, *, delivery_id: int) -> List[CustomerFeedback]:
+    def get_by_delivery(
+        self, db: Session, *, delivery_id: int, organization_id: int = None
+    ) -> List[CustomerFeedback]:
         """Get all feedbacks for a delivery"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(CustomerFeedback.delivery_id == delivery_id)
-            .order_by(CustomerFeedback.submitted_at.desc())
-            .all()
-        )
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.delivery_id == delivery_id)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.submitted_at.desc()).all()
 
     def get_by_courier(
-        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[CustomerFeedback]:
         """Get feedbacks for a courier"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(CustomerFeedback.courier_id == courier_id)
-            .order_by(CustomerFeedback.submitted_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.courier_id == courier_id)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.submitted_at.desc()).offset(skip).limit(limit).all()
 
     def get_pending(
-        self, db: Session, *, skip: int = 0, limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[CustomerFeedback]:
         """Get pending feedbacks"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(CustomerFeedback.status == FeedbackStatus.PENDING)
-            .order_by(CustomerFeedback.submitted_at.asc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.status == FeedbackStatus.PENDING)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.submitted_at.asc()).offset(skip).limit(limit).all()
 
     def get_by_type(
-        self, db: Session, *, feedback_type: FeedbackType, skip: int = 0, limit: int = 100
+        self, db: Session, *, feedback_type: FeedbackType, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[CustomerFeedback]:
         """Get feedbacks by type"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(CustomerFeedback.feedback_type == feedback_type)
-            .order_by(CustomerFeedback.submitted_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.feedback_type == feedback_type)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.submitted_at.desc()).offset(skip).limit(limit).all()
 
     def get_complaints(
-        self, db: Session, *, skip: int = 0, limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[CustomerFeedback]:
         """Get all complaints"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(CustomerFeedback.is_complaint == True)
-            .order_by(CustomerFeedback.submitted_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.is_complaint == True)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.submitted_at.desc()).offset(skip).limit(limit).all()
 
     def get_negative_feedbacks(
-        self, db: Session, *, skip: int = 0, limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[CustomerFeedback]:
         """Get negative feedbacks (rating <= 2)"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(CustomerFeedback.overall_rating <= 2)
-            .order_by(CustomerFeedback.submitted_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.overall_rating <= 2)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.submitted_at.desc()).offset(skip).limit(limit).all()
 
     def get_escalated(
-        self, db: Session, *, skip: int = 0, limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int = None
     ) -> List[CustomerFeedback]:
         """Get escalated feedbacks"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(CustomerFeedback.is_escalated == True)
-            .order_by(CustomerFeedback.escalated_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.is_escalated == True)
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.escalated_at.desc()).offset(skip).limit(limit).all()
 
-    def get_requiring_followup(self, db: Session) -> List[CustomerFeedback]:
+    def get_requiring_followup(self, db: Session, organization_id: int = None) -> List[CustomerFeedback]:
         """Get feedbacks requiring follow-up"""
-        return (
-            db.query(CustomerFeedback)
-            .filter(
-                CustomerFeedback.requires_followup == True,
-                CustomerFeedback.followup_completed == False,
-            )
-            .order_by(CustomerFeedback.followup_date.asc())
-            .all()
+        query = db.query(CustomerFeedback).filter(
+            CustomerFeedback.requires_followup == True,
+            CustomerFeedback.followup_completed == False,
         )
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        return query.order_by(CustomerFeedback.followup_date.asc()).all()
 
     def respond(
         self, db: Session, *, feedback_id: int, response_text: str, responded_by_id: int
@@ -252,13 +238,14 @@ class CRUDCustomerFeedback(
             db.refresh(feedback)
         return feedback
 
-    def get_avg_rating_by_courier(self, db: Session, *, courier_id: int) -> float:
+    def get_avg_rating_by_courier(self, db: Session, *, courier_id: int, organization_id: int = None) -> float:
         """Get average rating for a courier"""
-        result = (
-            db.query(func.avg(CustomerFeedback.overall_rating))
-            .filter(CustomerFeedback.courier_id == courier_id)
-            .scalar()
+        query = db.query(func.avg(CustomerFeedback.overall_rating)).filter(
+            CustomerFeedback.courier_id == courier_id
         )
+        if organization_id:
+            query = query.filter(CustomerFeedback.organization_id == organization_id)
+        result = query.scalar()
         return float(result) if result else 0.0
 
     def get_feedback_counts_by_status(self, db: Session) -> dict:
@@ -274,40 +261,51 @@ class CRUDCustomerFeedback(
 class CRUDFeedbackTemplate(
     CRUDBase[FeedbackTemplate, FeedbackTemplateCreate, FeedbackTemplateUpdate]
 ):
-    def get_by_code(self, db: Session, *, template_code: str) -> Optional[FeedbackTemplate]:
+    def get_by_code(self, db: Session, *, template_code: str, organization_id: int = None) -> Optional[FeedbackTemplate]:
         """Get template by code"""
-        return (
-            db.query(FeedbackTemplate)
-            .filter(FeedbackTemplate.template_code == template_code)
-            .first()
-        )
+        query = db.query(FeedbackTemplate).filter(FeedbackTemplate.template_code == template_code)
+        if organization_id:
+            query = query.filter(FeedbackTemplate.organization_id == organization_id)
+        return query.first()
 
-    def get_active_templates(self, db: Session) -> List[FeedbackTemplate]:
+    def get_active_templates(self, db: Session, organization_id: int = None) -> List[FeedbackTemplate]:
         """Get all active templates"""
-        return db.query(FeedbackTemplate).filter(FeedbackTemplate.is_active == True).all()
+        query = db.query(FeedbackTemplate).filter(FeedbackTemplate.is_active == True)
+        if organization_id:
+            query = query.filter(FeedbackTemplate.organization_id == organization_id)
+        return query.all()
 
-    def get_by_type(self, db: Session, *, template_type: FeedbackType) -> List[FeedbackTemplate]:
+    def get_by_type(self, db: Session, *, template_type: FeedbackType, organization_id: int = None) -> List[FeedbackTemplate]:
         """Get templates by type"""
-        return (
-            db.query(FeedbackTemplate)
-            .filter(
-                FeedbackTemplate.template_type == template_type, FeedbackTemplate.is_active == True
-            )
-            .all()
+        query = db.query(FeedbackTemplate).filter(
+            FeedbackTemplate.template_type == template_type, FeedbackTemplate.is_active == True
         )
+        if organization_id:
+            query = query.filter(FeedbackTemplate.organization_id == organization_id)
+        return query.all()
 
     def get_by_sentiment(
-        self, db: Session, *, sentiment_type: FeedbackSentiment
+        self, db: Session, *, sentiment_type: FeedbackSentiment, organization_id: int = None
     ) -> List[FeedbackTemplate]:
         """Get templates by sentiment"""
-        return (
-            db.query(FeedbackTemplate)
-            .filter(
-                FeedbackTemplate.sentiment_type == sentiment_type,
-                FeedbackTemplate.is_active == True,
-            )
-            .all()
+        query = db.query(FeedbackTemplate).filter(
+            FeedbackTemplate.sentiment_type == sentiment_type,
+            FeedbackTemplate.is_active == True,
         )
+        if organization_id:
+            query = query.filter(FeedbackTemplate.organization_id == organization_id)
+        return query.all()
+
+    def create(self, db: Session, *, obj_in: FeedbackTemplateCreate, organization_id: int = None) -> FeedbackTemplate:
+        """Create template with organization_id"""
+        obj_in_data = obj_in.model_dump()
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
+        db_obj = FeedbackTemplate(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
 
     def increment_usage(self, db: Session, *, template_id: int) -> Optional[FeedbackTemplate]:
         """Increment template usage count"""

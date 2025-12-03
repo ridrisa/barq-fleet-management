@@ -60,7 +60,7 @@ def get_cod_transactions(
             db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
         )
 
-    return cod_service.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
+    return cod_service.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
 
 
 @router.post("/", response_model=CODResponse, status_code=status.HTTP_201_CREATED)
