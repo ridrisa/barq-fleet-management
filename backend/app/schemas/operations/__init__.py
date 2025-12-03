@@ -1,123 +1,294 @@
 """
 Operations Schemas
 """
-from app.schemas.operations.cod import (
-    CODStatus,
-    CODBase, CODCreate, CODUpdate, CODResponse
-)
+
+from app.schemas.operations.cod import CODBase, CODCreate, CODResponse, CODStatus, CODUpdate
 from app.schemas.operations.delivery import (
+    DeliveryBase,
+    DeliveryCreate,
+    DeliveryResponse,
     DeliveryStatus,
-    DeliveryBase, DeliveryCreate, DeliveryUpdate, DeliveryResponse
-)
-from app.schemas.operations.route import (
-    RouteStatus,
-    RouteBase, RouteCreate, RouteUpdate, RouteResponse, RouteOptimize, RouteAssign, RouteMetrics
-)
-from app.schemas.operations.incident import (
-    IncidentType, IncidentStatus,
-    IncidentBase, IncidentCreate, IncidentUpdate, IncidentResponse
-)
-from app.schemas.operations.zone import (
-    ZoneStatus,
-    ZoneBase, ZoneCreate, ZoneUpdate, ZoneResponse, ZoneMetrics
-)
-from app.schemas.operations.handover import (
-    HandoverStatus, HandoverType,
-    HandoverBase, HandoverCreate, HandoverUpdate, HandoverResponse,
-    HandoverApproval, HandoverCompletion, HandoverHistory
-)
-from app.schemas.operations.quality import (
-    QualityMetricType, InspectionStatus,
-    QualityMetricBase, QualityMetricCreate, QualityMetricUpdate, QualityMetricResponse,
-    QualityInspectionBase, QualityInspectionCreate, QualityInspectionUpdate,
-    QualityInspectionComplete, QualityInspectionResponse, QualityReport
-)
-from app.schemas.operations.sla import (
-    SLAType, SLAPriority, SLAStatus,
-    SLADefinitionBase, SLADefinitionCreate, SLADefinitionUpdate, SLADefinitionResponse,
-    SLATrackingBase, SLATrackingCreate, SLATrackingUpdate, SLATrackingResponse,
-    SLABreachReport, SLAComplianceReport
+    DeliveryUpdate,
 )
 from app.schemas.operations.dispatch import (
-    DispatchStatus, DispatchPriority, DispatchAlgorithm,
-    DispatchAssignmentBase, DispatchAssignmentCreate, DispatchAssignmentUpdate, DispatchAssignmentResponse,
-    DispatchReassignment, DispatchAcceptance, CourierAvailability, DispatchRecommendation, DispatchMetrics
-)
-from app.schemas.operations.priority_queue import (
-    QueuePriority, QueueStatus,
-    PriorityQueueEntryBase, PriorityQueueEntryCreate, PriorityQueueEntryUpdate, PriorityQueueEntryResponse,
-    PriorityQueueEntryEscalate, QueueMetrics, QueuePosition
-)
-from app.schemas.operations.feedback import (
-    FeedbackType, FeedbackStatus, FeedbackSentiment,
-    CustomerFeedbackBase, CustomerFeedbackCreate, CustomerFeedbackUpdate, CustomerFeedbackResponse,
-    FeedbackRespondSchema, FeedbackResolveSchema, FeedbackEscalateSchema, FeedbackFollowupSchema,
-    FeedbackTemplateBase, FeedbackTemplateCreate, FeedbackTemplateUpdate, FeedbackTemplateResponse,
-    FeedbackMetrics, FeedbackSummary
-)
-from app.schemas.operations.settings import (
-    OperationsSettingsBase, OperationsSettingsCreate, OperationsSettingsUpdate, OperationsSettingsResponse,
-    SettingValue, SettingsGroup,
-    DispatchRuleBase, DispatchRuleCreate, DispatchRuleUpdate, DispatchRuleResponse,
-    SLAThresholdBase, SLAThresholdCreate, SLAThresholdUpdate, SLAThresholdResponse,
-    NotificationSettingBase, NotificationSettingCreate, NotificationSettingUpdate, NotificationSettingResponse,
-    ZoneDefaultBase, ZoneDefaultCreate, ZoneDefaultUpdate, ZoneDefaultResponse
+    CourierAvailability,
+    DispatchAcceptance,
+    DispatchAlgorithm,
+    DispatchAssignmentBase,
+    DispatchAssignmentCreate,
+    DispatchAssignmentResponse,
+    DispatchAssignmentUpdate,
+    DispatchMetrics,
+    DispatchPriority,
+    DispatchReassignment,
+    DispatchRecommendation,
+    DispatchStatus,
 )
 from app.schemas.operations.document import (
-    OperationsDocumentCreate, OperationsDocumentUpdate, OperationsDocumentResponse
+    OperationsDocumentCreate,
+    OperationsDocumentResponse,
+    OperationsDocumentUpdate,
+)
+from app.schemas.operations.feedback import (
+    CustomerFeedbackBase,
+    CustomerFeedbackCreate,
+    CustomerFeedbackResponse,
+    CustomerFeedbackUpdate,
+    FeedbackEscalateSchema,
+    FeedbackFollowupSchema,
+    FeedbackMetrics,
+    FeedbackResolveSchema,
+    FeedbackRespondSchema,
+    FeedbackSentiment,
+    FeedbackStatus,
+    FeedbackSummary,
+    FeedbackTemplateBase,
+    FeedbackTemplateCreate,
+    FeedbackTemplateResponse,
+    FeedbackTemplateUpdate,
+    FeedbackType,
+)
+from app.schemas.operations.handover import (
+    HandoverApproval,
+    HandoverBase,
+    HandoverCompletion,
+    HandoverCreate,
+    HandoverHistory,
+    HandoverResponse,
+    HandoverStatus,
+    HandoverType,
+    HandoverUpdate,
+)
+from app.schemas.operations.incident import (
+    IncidentBase,
+    IncidentCreate,
+    IncidentResponse,
+    IncidentStatus,
+    IncidentType,
+    IncidentUpdate,
+)
+from app.schemas.operations.priority_queue import (
+    PriorityQueueEntryBase,
+    PriorityQueueEntryCreate,
+    PriorityQueueEntryEscalate,
+    PriorityQueueEntryResponse,
+    PriorityQueueEntryUpdate,
+    QueueMetrics,
+    QueuePosition,
+    QueuePriority,
+    QueueStatus,
+)
+from app.schemas.operations.quality import (
+    InspectionStatus,
+    QualityInspectionBase,
+    QualityInspectionComplete,
+    QualityInspectionCreate,
+    QualityInspectionResponse,
+    QualityInspectionUpdate,
+    QualityMetricBase,
+    QualityMetricCreate,
+    QualityMetricResponse,
+    QualityMetricType,
+    QualityMetricUpdate,
+    QualityReport,
+)
+from app.schemas.operations.route import (
+    RouteAssign,
+    RouteBase,
+    RouteCreate,
+    RouteMetrics,
+    RouteOptimize,
+    RouteResponse,
+    RouteStatus,
+    RouteUpdate,
+)
+from app.schemas.operations.settings import (
+    DispatchRuleBase,
+    DispatchRuleCreate,
+    DispatchRuleResponse,
+    DispatchRuleUpdate,
+    NotificationSettingBase,
+    NotificationSettingCreate,
+    NotificationSettingResponse,
+    NotificationSettingUpdate,
+    OperationsSettingsBase,
+    OperationsSettingsCreate,
+    OperationsSettingsResponse,
+    OperationsSettingsUpdate,
+    SettingsGroup,
+    SettingValue,
+    SLAThresholdBase,
+    SLAThresholdCreate,
+    SLAThresholdResponse,
+    SLAThresholdUpdate,
+    ZoneDefaultBase,
+    ZoneDefaultCreate,
+    ZoneDefaultResponse,
+    ZoneDefaultUpdate,
+)
+from app.schemas.operations.sla import (
+    SLABreachReport,
+    SLAComplianceReport,
+    SLADefinitionBase,
+    SLADefinitionCreate,
+    SLADefinitionResponse,
+    SLADefinitionUpdate,
+    SLAPriority,
+    SLAStatus,
+    SLATrackingBase,
+    SLATrackingCreate,
+    SLATrackingResponse,
+    SLATrackingUpdate,
+    SLAType,
+)
+from app.schemas.operations.zone import (
+    ZoneBase,
+    ZoneCreate,
+    ZoneMetrics,
+    ZoneResponse,
+    ZoneStatus,
+    ZoneUpdate,
 )
 
 __all__ = [
     # COD
     "CODStatus",
-    "CODBase", "CODCreate", "CODUpdate", "CODResponse",
+    "CODBase",
+    "CODCreate",
+    "CODUpdate",
+    "CODResponse",
     # Delivery
     "DeliveryStatus",
-    "DeliveryBase", "DeliveryCreate", "DeliveryUpdate", "DeliveryResponse",
+    "DeliveryBase",
+    "DeliveryCreate",
+    "DeliveryUpdate",
+    "DeliveryResponse",
     # Route
     "RouteStatus",
-    "RouteBase", "RouteCreate", "RouteUpdate", "RouteResponse", "RouteOptimize", "RouteAssign", "RouteMetrics",
+    "RouteBase",
+    "RouteCreate",
+    "RouteUpdate",
+    "RouteResponse",
+    "RouteOptimize",
+    "RouteAssign",
+    "RouteMetrics",
     # Incident
-    "IncidentType", "IncidentStatus",
-    "IncidentBase", "IncidentCreate", "IncidentUpdate", "IncidentResponse",
+    "IncidentType",
+    "IncidentStatus",
+    "IncidentBase",
+    "IncidentCreate",
+    "IncidentUpdate",
+    "IncidentResponse",
     # Zone
     "ZoneStatus",
-    "ZoneBase", "ZoneCreate", "ZoneUpdate", "ZoneResponse", "ZoneMetrics",
+    "ZoneBase",
+    "ZoneCreate",
+    "ZoneUpdate",
+    "ZoneResponse",
+    "ZoneMetrics",
     # Handover
-    "HandoverStatus", "HandoverType",
-    "HandoverBase", "HandoverCreate", "HandoverUpdate", "HandoverResponse",
-    "HandoverApproval", "HandoverCompletion", "HandoverHistory",
+    "HandoverStatus",
+    "HandoverType",
+    "HandoverBase",
+    "HandoverCreate",
+    "HandoverUpdate",
+    "HandoverResponse",
+    "HandoverApproval",
+    "HandoverCompletion",
+    "HandoverHistory",
     # Quality
-    "QualityMetricType", "InspectionStatus",
-    "QualityMetricBase", "QualityMetricCreate", "QualityMetricUpdate", "QualityMetricResponse",
-    "QualityInspectionBase", "QualityInspectionCreate", "QualityInspectionUpdate",
-    "QualityInspectionComplete", "QualityInspectionResponse", "QualityReport",
+    "QualityMetricType",
+    "InspectionStatus",
+    "QualityMetricBase",
+    "QualityMetricCreate",
+    "QualityMetricUpdate",
+    "QualityMetricResponse",
+    "QualityInspectionBase",
+    "QualityInspectionCreate",
+    "QualityInspectionUpdate",
+    "QualityInspectionComplete",
+    "QualityInspectionResponse",
+    "QualityReport",
     # SLA
-    "SLAType", "SLAPriority", "SLAStatus",
-    "SLADefinitionBase", "SLADefinitionCreate", "SLADefinitionUpdate", "SLADefinitionResponse",
-    "SLATrackingBase", "SLATrackingCreate", "SLATrackingUpdate", "SLATrackingResponse",
-    "SLABreachReport", "SLAComplianceReport",
+    "SLAType",
+    "SLAPriority",
+    "SLAStatus",
+    "SLADefinitionBase",
+    "SLADefinitionCreate",
+    "SLADefinitionUpdate",
+    "SLADefinitionResponse",
+    "SLATrackingBase",
+    "SLATrackingCreate",
+    "SLATrackingUpdate",
+    "SLATrackingResponse",
+    "SLABreachReport",
+    "SLAComplianceReport",
     # Dispatch
-    "DispatchStatus", "DispatchPriority", "DispatchAlgorithm",
-    "DispatchAssignmentBase", "DispatchAssignmentCreate", "DispatchAssignmentUpdate", "DispatchAssignmentResponse",
-    "DispatchReassignment", "DispatchAcceptance", "CourierAvailability", "DispatchRecommendation", "DispatchMetrics",
+    "DispatchStatus",
+    "DispatchPriority",
+    "DispatchAlgorithm",
+    "DispatchAssignmentBase",
+    "DispatchAssignmentCreate",
+    "DispatchAssignmentUpdate",
+    "DispatchAssignmentResponse",
+    "DispatchReassignment",
+    "DispatchAcceptance",
+    "CourierAvailability",
+    "DispatchRecommendation",
+    "DispatchMetrics",
     # Priority Queue
-    "QueuePriority", "QueueStatus",
-    "PriorityQueueEntryBase", "PriorityQueueEntryCreate", "PriorityQueueEntryUpdate", "PriorityQueueEntryResponse",
-    "PriorityQueueEntryEscalate", "QueueMetrics", "QueuePosition",
+    "QueuePriority",
+    "QueueStatus",
+    "PriorityQueueEntryBase",
+    "PriorityQueueEntryCreate",
+    "PriorityQueueEntryUpdate",
+    "PriorityQueueEntryResponse",
+    "PriorityQueueEntryEscalate",
+    "QueueMetrics",
+    "QueuePosition",
     # Feedback
-    "FeedbackType", "FeedbackStatus", "FeedbackSentiment",
-    "CustomerFeedbackBase", "CustomerFeedbackCreate", "CustomerFeedbackUpdate", "CustomerFeedbackResponse",
-    "FeedbackRespondSchema", "FeedbackResolveSchema", "FeedbackEscalateSchema", "FeedbackFollowupSchema",
-    "FeedbackTemplateBase", "FeedbackTemplateCreate", "FeedbackTemplateUpdate", "FeedbackTemplateResponse",
-    "FeedbackMetrics", "FeedbackSummary",
+    "FeedbackType",
+    "FeedbackStatus",
+    "FeedbackSentiment",
+    "CustomerFeedbackBase",
+    "CustomerFeedbackCreate",
+    "CustomerFeedbackUpdate",
+    "CustomerFeedbackResponse",
+    "FeedbackRespondSchema",
+    "FeedbackResolveSchema",
+    "FeedbackEscalateSchema",
+    "FeedbackFollowupSchema",
+    "FeedbackTemplateBase",
+    "FeedbackTemplateCreate",
+    "FeedbackTemplateUpdate",
+    "FeedbackTemplateResponse",
+    "FeedbackMetrics",
+    "FeedbackSummary",
     # Settings
-    "OperationsSettingsBase", "OperationsSettingsCreate", "OperationsSettingsUpdate", "OperationsSettingsResponse",
-    "SettingValue", "SettingsGroup",
-    "DispatchRuleBase", "DispatchRuleCreate", "DispatchRuleUpdate", "DispatchRuleResponse",
-    "SLAThresholdBase", "SLAThresholdCreate", "SLAThresholdUpdate", "SLAThresholdResponse",
-    "NotificationSettingBase", "NotificationSettingCreate", "NotificationSettingUpdate", "NotificationSettingResponse",
-    "ZoneDefaultBase", "ZoneDefaultCreate", "ZoneDefaultUpdate", "ZoneDefaultResponse",
+    "OperationsSettingsBase",
+    "OperationsSettingsCreate",
+    "OperationsSettingsUpdate",
+    "OperationsSettingsResponse",
+    "SettingValue",
+    "SettingsGroup",
+    "DispatchRuleBase",
+    "DispatchRuleCreate",
+    "DispatchRuleUpdate",
+    "DispatchRuleResponse",
+    "SLAThresholdBase",
+    "SLAThresholdCreate",
+    "SLAThresholdUpdate",
+    "SLAThresholdResponse",
+    "NotificationSettingBase",
+    "NotificationSettingCreate",
+    "NotificationSettingUpdate",
+    "NotificationSettingResponse",
+    "ZoneDefaultBase",
+    "ZoneDefaultCreate",
+    "ZoneDefaultUpdate",
+    "ZoneDefaultResponse",
     # Document
-    "OperationsDocumentCreate", "OperationsDocumentUpdate", "OperationsDocumentResponse",
+    "OperationsDocumentCreate",
+    "OperationsDocumentUpdate",
+    "OperationsDocumentResponse",
 ]

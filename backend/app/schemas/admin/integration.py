@@ -1,12 +1,17 @@
 """Integration Schemas"""
-from typing import Optional, Dict, Any, List
+
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field, HttpUrl
 
 
 class IntegrationBase(BaseModel):
     """Base Integration schema"""
-    name: str = Field(..., min_length=1, max_length=100, description="Unique integration identifier")
+
+    name: str = Field(
+        ..., min_length=1, max_length=100, description="Unique integration identifier"
+    )
     display_name: str = Field(..., min_length=1, max_length=100, description="Human-readable name")
     description: Optional[str] = Field(None, description="Integration description")
     integration_type: str = Field(..., description="Type of integration")
@@ -19,18 +24,24 @@ class IntegrationBase(BaseModel):
     rate_limit_per_hour: Optional[int] = Field(None, ge=1, description="Rate limit per hour")
     rate_limit_per_day: Optional[int] = Field(None, ge=1, description="Rate limit per day")
     version: Optional[str] = Field(None, description="API version")
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata")
+    metadata: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
 
 
 class IntegrationCreate(IntegrationBase):
     """Schema for creating an integration"""
-    credentials: Optional[Dict[str, Any]] = Field(default_factory=dict, description="API credentials")
+
+    credentials: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="API credentials"
+    )
     oauth_client_id: Optional[str] = Field(None, description="OAuth client ID")
     oauth_client_secret: Optional[str] = Field(None, description="OAuth client secret")
 
 
 class IntegrationUpdate(BaseModel):
     """Schema for updating an integration"""
+
     display_name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
     is_enabled: Optional[bool] = None
@@ -51,6 +62,7 @@ class IntegrationUpdate(BaseModel):
 
 class IntegrationResponse(BaseModel):
     """Schema for integration response"""
+
     id: int
     name: str
     display_name: str
@@ -81,12 +93,14 @@ class IntegrationResponse(BaseModel):
 
 class IntegrationTestRequest(BaseModel):
     """Schema for testing an integration"""
+
     test_endpoint: Optional[str] = Field(None, description="Specific endpoint to test")
     test_data: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Test data")
 
 
 class IntegrationTestResponse(BaseModel):
     """Schema for integration test result"""
+
     success: bool
     message: str
     response_time_ms: Optional[int]
@@ -97,6 +111,7 @@ class IntegrationTestResponse(BaseModel):
 
 class IntegrationListResponse(BaseModel):
     """Schema for paginated integration list"""
+
     items: List[IntegrationResponse]
     total: int
     skip: int

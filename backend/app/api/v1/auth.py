@@ -7,17 +7,18 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_active_user
 from app.config.settings import settings
+from app.core.dependencies import get_current_active_user, get_db
 from app.core.security import create_access_token
 from app.crud.user import crud_user
-from app.models.user import User
 from app.models.tenant.organization import Organization
-from app.models.tenant.organization_user import OrganizationUser, OrganizationRole
-from app.schemas.token import Token, TokenWithOrganization
-from app.schemas.user import User as UserSchema, UserCreate
+from app.models.tenant.organization_user import OrganizationRole, OrganizationUser
+from app.models.user import User
 from app.schemas.tenant.organization import OrganizationResponse
 from app.schemas.tenant.organization_user import OrganizationUserWithDetails
+from app.schemas.token import Token, TokenWithOrganization
+from app.schemas.user import User as UserSchema
+from app.schemas.user import UserCreate
 from app.services.tenant.organization_service import organization_service
 from app.services.tenant.organization_user_service import organization_user_service
 
@@ -60,7 +61,7 @@ def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = 
             "org_id": organization_id,
             "org_role": organization_role,
         },
-        expires_delta=access_token_expires
+        expires_delta=access_token_expires,
     )
 
     return {
@@ -181,28 +182,32 @@ def register(*, db: Session = Depends(get_db), user_data: Dict[str, str] = Body(
     )
     user = crud_user.create(db, obj_in=user_in)
 
-    # Create default organization for user
-    organization_id: Optional[int] = None
-    org_name: Optional[str] = None
-    organization_role: Optional[str] = None
+    # ALWAYS create organization for user (use provided name or generate from email/name)
+    from app.schemas.tenant.organization import OrganizationCreate
+    from app.schemas.tenant.organization_user import OrganizationUserCreate
 
-    if organization_name:
-        from app.schemas.tenant.organization import OrganizationCreate
-        from app.schemas.tenant.organization_user import OrganizationUserCreate
-
-        org_in = OrganizationCreate(name=organization_name)
-        org = organization_service.create_organization(db, obj_in=org_in)
-
-        # Add user as owner
-        org_user_in = OrganizationUserCreate(
-            user_id=user.id,
-            role=OrganizationRole.OWNER,
+    # Generate organization name if not provided
+    if not organization_name:
+        # Use full_name's company or email prefix
+        organization_name = (
+            f"{full_name}'s Organization"
+            if full_name != "User"
+            else email.split("@")[0].title() + "'s Organization"
         )
-        organization_user_service.add_user(db, organization_id=org.id, obj_in=org_user_in)
 
-        organization_id = org.id
-        org_name = org.name
-        organization_role = OrganizationRole.OWNER.value
+    org_in = OrganizationCreate(name=organization_name)
+    org = organization_service.create_organization(db, obj_in=org_in)
+
+    # Add user as owner
+    org_user_in = OrganizationUserCreate(
+        user_id=user.id,
+        role=OrganizationRole.OWNER,
+    )
+    organization_user_service.add_user(db, organization_id=org.id, obj_in=org_user_in)
+
+    organization_id = org.id
+    org_name = org.name
+    organization_role = OrganizationRole.OWNER.value
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -244,26 +249,30 @@ def get_user_organizations(
     for m in memberships:
         org = organization_service.get(db, m.organization_id)
         if org and org.is_active:
-            result.append({
-                "organization": {
-                    "id": org.id,
-                    "name": org.name,
-                    "slug": org.slug,
-                    "is_active": org.is_active,
-                    "subscription_plan": org.subscription_plan.value,
-                    "subscription_status": org.subscription_status.value,
-                    "max_users": org.max_users,
-                    "max_couriers": org.max_couriers,
-                    "max_vehicles": org.max_vehicles,
-                    "trial_ends_at": org.trial_ends_at.isoformat() if org.trial_ends_at else None,
-                    "settings": org.settings,
-                    "created_at": org.created_at.isoformat(),
-                    "updated_at": org.updated_at.isoformat() if org.updated_at else None,
-                },
-                "role": m.role.value,
-                "is_active": m.is_active,
-                "permissions": m.permissions,
-            })
+            result.append(
+                {
+                    "organization": {
+                        "id": org.id,
+                        "name": org.name,
+                        "slug": org.slug,
+                        "is_active": org.is_active,
+                        "subscription_plan": org.subscription_plan.value,
+                        "subscription_status": org.subscription_status.value,
+                        "max_users": org.max_users,
+                        "max_couriers": org.max_couriers,
+                        "max_vehicles": org.max_vehicles,
+                        "trial_ends_at": (
+                            org.trial_ends_at.isoformat() if org.trial_ends_at else None
+                        ),
+                        "settings": org.settings,
+                        "created_at": org.created_at.isoformat(),
+                        "updated_at": org.updated_at.isoformat() if org.updated_at else None,
+                    },
+                    "role": m.role.value,
+                    "is_active": m.is_active,
+                    "permissions": m.permissions,
+                }
+            )
 
     return result
 

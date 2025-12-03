@@ -1,8 +1,10 @@
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum, JSON, Text, DateTime
+import enum
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class AutomationTriggerType(str, enum.Enum):
@@ -33,6 +35,7 @@ class AutomationStatus(str, enum.Enum):
 
 class WorkflowAutomation(TenantMixin, BaseModel):
     """Automation rules for workflows"""
+
     __tablename__ = "workflow_automations"
 
     name = Column(String, nullable=False)
@@ -68,11 +71,14 @@ class WorkflowAutomation(TenantMixin, BaseModel):
 
     # Relationships
     workflow_template = relationship("WorkflowTemplate", back_populates="automations")
-    execution_logs = relationship("AutomationExecutionLog", back_populates="automation", cascade="all, delete-orphan")
+    execution_logs = relationship(
+        "AutomationExecutionLog", back_populates="automation", cascade="all, delete-orphan"
+    )
 
 
 class AutomationExecutionLog(TenantMixin, BaseModel):
     """Log of automation executions"""
+
     __tablename__ = "automation_execution_logs"
 
     automation_id = Column(Integer, ForeignKey("workflow_automations.id"), nullable=False)

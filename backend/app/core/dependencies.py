@@ -13,18 +13,20 @@ Exports:
     - get_current_organization: Get current organization from JWT token
     - get_tenant_db_session: Get tenant-scoped database session with RLS
 """
-from typing import Optional, Generator
-from fastapi import Depends, HTTPException, status, Request
+
+from typing import Generator, Optional
+
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
-from app.core.database import get_db, db_manager
 from app.config.settings import settings
+from app.core.database import db_manager, get_db
 from app.crud.user import crud_user
-from app.models.user import User
 from app.models.tenant.organization import Organization
+from app.models.user import User
 from app.schemas.token import TokenPayload
 
 # Re-export get_db for convenience
@@ -41,10 +43,7 @@ __all__ = [
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
 
-def get_current_user(
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
-) -> User:
+def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
     """
     Get the current authenticated user from JWT token.
 
@@ -69,7 +68,7 @@ def get_current_user(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False}  # Skip audience verification for flexibility
+            options={"verify_aud": False},  # Skip audience verification for flexibility
         )
         token_data = TokenPayload(**payload)
         if token_data.sub is None:
@@ -85,9 +84,7 @@ def get_current_user(
     return user
 
 
-def get_current_active_user(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Get the current authenticated and active user.
 
@@ -105,9 +102,7 @@ def get_current_active_user(
     return current_user
 
 
-def get_current_superuser(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def get_current_superuser(current_user: User = Depends(get_current_user)) -> User:
     """
     Get the current authenticated superuser.
 
@@ -122,8 +117,7 @@ def get_current_superuser(
     """
     if not crud_user.is_superuser(current_user):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="The user doesn't have enough privileges"
+            status_code=status.HTTP_403_FORBIDDEN, detail="The user doesn't have enough privileges"
         )
     return current_user
 
@@ -131,6 +125,7 @@ def get_current_superuser(
 # ============================================================================
 # Multi-Tenancy Dependencies
 # ============================================================================
+
 
 def get_organization_id_from_token(token: str = Depends(oauth2_scheme)) -> Optional[int]:
     """
@@ -147,7 +142,7 @@ def get_organization_id_from_token(token: str = Depends(oauth2_scheme)) -> Optio
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False}
+            options={"verify_aud": False},
         )
         org_id = payload.get("org_id")
         return int(org_id) if org_id else None
@@ -156,8 +151,7 @@ def get_organization_id_from_token(token: str = Depends(oauth2_scheme)) -> Optio
 
 
 def get_current_organization(
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> Organization:
     """
     Get the current organization from JWT token.
@@ -187,7 +181,7 @@ def get_current_organization(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False}
+            options={"verify_aud": False},
         )
         org_id = payload.get("org_id")
         if org_id is None:
@@ -198,15 +192,11 @@ def get_current_organization(
 
     organization = db.query(Organization).filter(Organization.id == org_id).first()
     if organization is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Organization not found"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization not found")
 
     if not organization.is_active:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Organization is inactive"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Organization is inactive"
         )
 
     return organization
@@ -214,7 +204,7 @@ def get_current_organization(
 
 def get_tenant_db_session(
     current_user: User = Depends(get_current_user),
-    current_org: Organization = Depends(get_current_organization)
+    current_org: Organization = Depends(get_current_organization),
 ) -> Generator[Session, None, None]:
     """
     Get a tenant-scoped database session with RLS context.
@@ -256,8 +246,7 @@ def get_tenant_db_session(
 
 
 def get_optional_tenant_db_session(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> Generator[Session, None, None]:
     """
     Get a tenant-scoped database session if organization context is available.
@@ -313,7 +302,7 @@ class TenantRequired:
         self,
         current_user: User = Depends(get_current_user),
         current_org: Organization = Depends(get_current_organization),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
     ) -> Organization:
         """
         Validate user has required role in the organization.
@@ -333,22 +322,26 @@ class TenantRequired:
             # Import here to avoid circular imports
             from app.models.tenant.organization_user import OrganizationUser
 
-            org_user = db.query(OrganizationUser).filter(
-                OrganizationUser.organization_id == current_org.id,
-                OrganizationUser.user_id == current_user.id,
-                OrganizationUser.is_active == True
-            ).first()
+            org_user = (
+                db.query(OrganizationUser)
+                .filter(
+                    OrganizationUser.organization_id == current_org.id,
+                    OrganizationUser.user_id == current_user.id,
+                    OrganizationUser.is_active == True,
+                )
+                .first()
+            )
 
             if org_user is None:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="User is not a member of this organization"
+                    detail="User is not a member of this organization",
                 )
 
             if org_user.role.value not in self.roles:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Requires one of these roles: {', '.join(self.roles)}"
+                    detail=f"Requires one of these roles: {', '.join(self.roles)}",
                 )
 
         return current_org

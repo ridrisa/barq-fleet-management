@@ -1,23 +1,35 @@
 """
 Customer Feedback CRUD Operations
 """
-from typing import List, Optional
+
 from datetime import datetime
-from sqlalchemy.orm import Session
+from typing import List, Optional
+
 from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
 from app.crud.base import CRUDBase
 from app.models.operations.feedback import (
-    CustomerFeedback, FeedbackTemplate,
-    FeedbackType, FeedbackStatus, FeedbackSentiment
+    CustomerFeedback,
+    FeedbackSentiment,
+    FeedbackStatus,
+    FeedbackTemplate,
+    FeedbackType,
 )
 from app.schemas.operations.feedback import (
-    CustomerFeedbackCreate, CustomerFeedbackUpdate,
-    FeedbackTemplateCreate, FeedbackTemplateUpdate
+    CustomerFeedbackCreate,
+    CustomerFeedbackUpdate,
+    FeedbackTemplateCreate,
+    FeedbackTemplateUpdate,
 )
 
 
-class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, CustomerFeedbackUpdate]):
-    def create_with_number(self, db: Session, *, obj_in: CustomerFeedbackCreate) -> CustomerFeedback:
+class CRUDCustomerFeedback(
+    CRUDBase[CustomerFeedback, CustomerFeedbackCreate, CustomerFeedbackUpdate]
+):
+    def create_with_number(
+        self, db: Session, *, obj_in: CustomerFeedbackCreate
+    ) -> CustomerFeedback:
         """Create feedback with auto-generated number"""
         last_feedback = db.query(CustomerFeedback).order_by(CustomerFeedback.id.desc()).first()
         next_number = 1 if not last_feedback else last_feedback.id + 1
@@ -27,7 +39,7 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
         db_obj = CustomerFeedback(
             **obj_in_data,
             feedback_number=feedback_number,
-            submitted_at=obj_in.submitted_at or datetime.utcnow()
+            submitted_at=obj_in.submitted_at or datetime.utcnow(),
         )
         db.add(db_obj)
         db.commit()
@@ -36,15 +48,20 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
 
     def get_by_number(self, db: Session, *, feedback_number: str) -> Optional[CustomerFeedback]:
         """Get feedback by number"""
-        return db.query(CustomerFeedback).filter(
-            CustomerFeedback.feedback_number == feedback_number
-        ).first()
+        return (
+            db.query(CustomerFeedback)
+            .filter(CustomerFeedback.feedback_number == feedback_number)
+            .first()
+        )
 
     def get_by_delivery(self, db: Session, *, delivery_id: int) -> List[CustomerFeedback]:
         """Get all feedbacks for a delivery"""
-        return db.query(CustomerFeedback).filter(
-            CustomerFeedback.delivery_id == delivery_id
-        ).order_by(CustomerFeedback.submitted_at.desc()).all()
+        return (
+            db.query(CustomerFeedback)
+            .filter(CustomerFeedback.delivery_id == delivery_id)
+            .order_by(CustomerFeedback.submitted_at.desc())
+            .all()
+        )
 
     def get_by_courier(
         self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
@@ -59,7 +76,9 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
             .all()
         )
 
-    def get_pending(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[CustomerFeedback]:
+    def get_pending(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CustomerFeedback]:
         """Get pending feedbacks"""
         return (
             db.query(CustomerFeedback)
@@ -83,7 +102,9 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
             .all()
         )
 
-    def get_complaints(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[CustomerFeedback]:
+    def get_complaints(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CustomerFeedback]:
         """Get all complaints"""
         return (
             db.query(CustomerFeedback)
@@ -94,7 +115,9 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
             .all()
         )
 
-    def get_negative_feedbacks(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[CustomerFeedback]:
+    def get_negative_feedbacks(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CustomerFeedback]:
         """Get negative feedbacks (rating <= 2)"""
         return (
             db.query(CustomerFeedback)
@@ -105,7 +128,9 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
             .all()
         )
 
-    def get_escalated(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[CustomerFeedback]:
+    def get_escalated(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CustomerFeedback]:
         """Get escalated feedbacks"""
         return (
             db.query(CustomerFeedback)
@@ -122,7 +147,7 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
             db.query(CustomerFeedback)
             .filter(
                 CustomerFeedback.requires_followup == True,
-                CustomerFeedback.followup_completed == False
+                CustomerFeedback.followup_completed == False,
             )
             .order_by(CustomerFeedback.followup_date.asc())
             .all()
@@ -148,8 +173,15 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
         return feedback
 
     def resolve(
-        self, db: Session, *, feedback_id: int, resolution_text: str, resolved_by_id: int,
-        compensation_amount: float = 0.0, refund_amount: float = 0.0, action_taken: str = None
+        self,
+        db: Session,
+        *,
+        feedback_id: int,
+        resolution_text: str,
+        resolved_by_id: int,
+        compensation_amount: float = 0.0,
+        refund_amount: float = 0.0,
+        action_taken: str = None,
     ) -> Optional[CustomerFeedback]:
         """Resolve feedback"""
         feedback = self.get(db, id=feedback_id)
@@ -222,50 +254,60 @@ class CRUDCustomerFeedback(CRUDBase[CustomerFeedback, CustomerFeedbackCreate, Cu
 
     def get_avg_rating_by_courier(self, db: Session, *, courier_id: int) -> float:
         """Get average rating for a courier"""
-        result = db.query(func.avg(CustomerFeedback.overall_rating)).filter(
-            CustomerFeedback.courier_id == courier_id
-        ).scalar()
+        result = (
+            db.query(func.avg(CustomerFeedback.overall_rating))
+            .filter(CustomerFeedback.courier_id == courier_id)
+            .scalar()
+        )
         return float(result) if result else 0.0
 
     def get_feedback_counts_by_status(self, db: Session) -> dict:
         """Get feedback counts by status"""
-        counts = db.query(
-            CustomerFeedback.status,
-            func.count(CustomerFeedback.id)
-        ).group_by(CustomerFeedback.status).all()
+        counts = (
+            db.query(CustomerFeedback.status, func.count(CustomerFeedback.id))
+            .group_by(CustomerFeedback.status)
+            .all()
+        )
         return {status.value: count for status, count in counts}
 
 
-class CRUDFeedbackTemplate(CRUDBase[FeedbackTemplate, FeedbackTemplateCreate, FeedbackTemplateUpdate]):
+class CRUDFeedbackTemplate(
+    CRUDBase[FeedbackTemplate, FeedbackTemplateCreate, FeedbackTemplateUpdate]
+):
     def get_by_code(self, db: Session, *, template_code: str) -> Optional[FeedbackTemplate]:
         """Get template by code"""
-        return db.query(FeedbackTemplate).filter(
-            FeedbackTemplate.template_code == template_code
-        ).first()
+        return (
+            db.query(FeedbackTemplate)
+            .filter(FeedbackTemplate.template_code == template_code)
+            .first()
+        )
 
     def get_active_templates(self, db: Session) -> List[FeedbackTemplate]:
         """Get all active templates"""
-        return db.query(FeedbackTemplate).filter(
-            FeedbackTemplate.is_active == True
-        ).all()
+        return db.query(FeedbackTemplate).filter(FeedbackTemplate.is_active == True).all()
 
-    def get_by_type(
-        self, db: Session, *, template_type: FeedbackType
-    ) -> List[FeedbackTemplate]:
+    def get_by_type(self, db: Session, *, template_type: FeedbackType) -> List[FeedbackTemplate]:
         """Get templates by type"""
-        return db.query(FeedbackTemplate).filter(
-            FeedbackTemplate.template_type == template_type,
-            FeedbackTemplate.is_active == True
-        ).all()
+        return (
+            db.query(FeedbackTemplate)
+            .filter(
+                FeedbackTemplate.template_type == template_type, FeedbackTemplate.is_active == True
+            )
+            .all()
+        )
 
     def get_by_sentiment(
         self, db: Session, *, sentiment_type: FeedbackSentiment
     ) -> List[FeedbackTemplate]:
         """Get templates by sentiment"""
-        return db.query(FeedbackTemplate).filter(
-            FeedbackTemplate.sentiment_type == sentiment_type,
-            FeedbackTemplate.is_active == True
-        ).all()
+        return (
+            db.query(FeedbackTemplate)
+            .filter(
+                FeedbackTemplate.sentiment_type == sentiment_type,
+                FeedbackTemplate.is_active == True,
+            )
+            .all()
+        )
 
     def increment_usage(self, db: Session, *, template_id: int) -> Optional[FeedbackTemplate]:
         """Increment template usage count"""

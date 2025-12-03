@@ -1,29 +1,24 @@
 """Accommodation Schemas"""
+
+from app.schemas.accommodation.allocation import (
+    AllocationBase,
+    AllocationCreate,
+    AllocationResponse,
+    AllocationUpdate,
+)
+from app.schemas.accommodation.bed import BedBase, BedCreate, BedResponse, BedStatus, BedUpdate
 from app.schemas.accommodation.building import (
     BuildingBase,
     BuildingCreate,
+    BuildingResponse,
     BuildingUpdate,
-    BuildingResponse
 )
 from app.schemas.accommodation.room import (
     RoomBase,
     RoomCreate,
-    RoomUpdate,
     RoomResponse,
-    RoomStatus
-)
-from app.schemas.accommodation.bed import (
-    BedBase,
-    BedCreate,
-    BedUpdate,
-    BedResponse,
-    BedStatus
-)
-from app.schemas.accommodation.allocation import (
-    AllocationBase,
-    AllocationCreate,
-    AllocationUpdate,
-    AllocationResponse
+    RoomStatus,
+    RoomUpdate,
 )
 
 __all__ = [

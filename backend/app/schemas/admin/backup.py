@@ -1,11 +1,14 @@
 """Backup Schemas"""
-from typing import Optional, List
+
 from datetime import datetime
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class BackupBase(BaseModel):
     """Base Backup schema"""
+
     name: str = Field(..., min_length=1, max_length=200, description="Backup name")
     description: Optional[str] = Field(None, description="Backup description")
     backup_type: str = Field("full", description="Backup type (full, incremental, differential)")
@@ -24,11 +27,13 @@ class BackupBase(BaseModel):
 
 class BackupCreate(BackupBase):
     """Schema for creating a backup"""
+
     pass
 
 
 class BackupUpdate(BaseModel):
     """Schema for updating a backup"""
+
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     is_pinned: Optional[bool] = None
@@ -38,6 +43,7 @@ class BackupUpdate(BaseModel):
 
 class BackupResponse(BaseModel):
     """Schema for backup response"""
+
     id: int
     name: str
     description: Optional[str]
@@ -84,6 +90,7 @@ class BackupResponse(BaseModel):
 
 class BackupListResponse(BaseModel):
     """Schema for paginated backup list"""
+
     items: List[BackupResponse]
     total: int
     skip: int
@@ -92,6 +99,7 @@ class BackupListResponse(BaseModel):
 
 class BackupStatsResponse(BaseModel):
     """Schema for backup statistics"""
+
     total_backups: int
     total_size_bytes: int
     total_size_gb: float
@@ -107,13 +115,17 @@ class BackupStatsResponse(BaseModel):
 
 class BackupRestoreRequest(BaseModel):
     """Schema for backup restore request"""
+
     target_database: Optional[str] = Field(None, description="Target database name (optional)")
     confirm: bool = Field(False, description="Confirmation flag (must be true)")
-    restore_specific_tables: Optional[List[str]] = Field(None, description="Restore only specific tables")
+    restore_specific_tables: Optional[List[str]] = Field(
+        None, description="Restore only specific tables"
+    )
 
 
 class BackupRestoreResponse(BaseModel):
     """Schema for backup restore response"""
+
     success: bool
     message: str
     backup_id: int

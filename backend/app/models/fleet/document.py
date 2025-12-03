@@ -1,12 +1,17 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum as SQLEnum
+import enum
+
+from sqlalchemy import Column, Date
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class DocumentType(str, enum.Enum):
     """Document types"""
+
     DRIVER_LICENSE = "driver_license"
     VEHICLE_REGISTRATION = "vehicle_registration"
     INSURANCE = "insurance"
@@ -19,6 +24,7 @@ class DocumentType(str, enum.Enum):
 
 class DocumentEntity(str, enum.Enum):
     """Entity type that the document belongs to"""
+
     COURIER = "courier"
     VEHICLE = "vehicle"
 

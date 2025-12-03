@@ -65,19 +65,19 @@ Content-Type: application/json
 **Response:**
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer",
-  "expires_in": 3600,
-  "user": {
-    "id": 123,
-    "email": "user@example.com",
-    "name": "John Doe",
-    "role": "manager",
-    "permissions": ["fleet:read", "fleet:write", "deliveries:read"]
-  }
+  "user_id": 123,
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "role": "manager",
+  "org_id": 1,
+  "org_name": "ACME Corp",
+  "org_role": "admin"
 }
 ```
+
+**Note:** The response includes organization context (`org_id`, `org_name`, `org_role`) for multi-tenant support.
 
 ### Using JWT Tokens
 
@@ -100,30 +100,37 @@ header.payload.signature
 ```json
 {
   "sub": "123",
-  "email": "user@example.com",
-  "role": "manager",
-  "permissions": ["fleet:read", "fleet:write"],
   "exp": 1638360000,
   "iat": 1638356400,
-  "jti": "abc-123-def-456"
+  "nbf": 1638356400,
+  "iss": "barq-api",
+  "aud": "barq-client",
+  "jti": "abc-123-def-456",
+  "org_id": 1,
+  "org_role": "admin"
 }
 ```
 
+**Important:** The `org_id` and `org_role` claims are included for multi-tenant support. All API requests are scoped to the organization specified in the token.
+
 ---
 
-## Token Refresh
+## User Registration
 
-When an access token expires, use the refresh token to obtain a new one without requiring the user to log in again.
+New users can register and automatically get an organization created.
 
-**Endpoint:** `POST /api/v1/auth/refresh`
+**Endpoint:** `POST /api/v1/auth/register`
 
 **Request:**
 ```http
-POST /api/v1/auth/refresh
+POST /api/v1/auth/register
 Content-Type: application/json
 
 {
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "email": "user@example.com",
+  "password": "SecurePassword123!",
+  "full_name": "John Doe",
+  "organization_name": "ACME Corp"  // Optional - auto-generated if not provided
 }
 ```
 
@@ -132,7 +139,75 @@ Content-Type: application/json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer",
-  "expires_in": 3600
+  "user_id": 123,
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "org_id": 1,
+  "org_name": "ACME Corp",
+  "org_role": "OWNER"
+}
+```
+
+**Note:** The registering user automatically becomes the OWNER of their organization.
+
+---
+
+## Organization Switching
+
+Users who belong to multiple organizations can switch between them.
+
+**Endpoint:** `POST /api/v1/auth/switch-organization`
+
+**Request:**
+```http
+POST /api/v1/auth/switch-organization
+Authorization: Bearer {access_token}
+Content-Type: application/json
+
+{
+  "organization_id": 2
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user_id": 123,
+  "email": "user@example.com",
+  "full_name": "John Doe",
+  "org_id": 2,
+  "org_name": "New Organization",
+  "org_role": "admin"
+}
+```
+
+---
+
+## Get User Organizations
+
+Retrieve all organizations the current user belongs to.
+
+**Endpoint:** `GET /api/v1/auth/me/organizations`
+
+**Response:**
+```json
+{
+  "organizations": [
+    {
+      "id": 1,
+      "name": "ACME Corp",
+      "role": "OWNER",
+      "is_active": true
+    },
+    {
+      "id": 2,
+      "name": "Partner Org",
+      "role": "ADMIN",
+      "is_active": true
+    }
+  ]
 }
 ```
 
@@ -422,34 +497,20 @@ When creating user accounts:
 - At least one number
 - At least one special character
 
-### 7. Two-Factor Authentication (2FA)
+### 7. Organization Roles
 
-Enable 2FA for admin accounts:
+Users have roles within each organization:
 
-```http
-POST /api/v1/auth/2fa/enable
-Authorization: Bearer {access_token}
-```
+| Role | Description |
+|------|-------------|
+| `OWNER` | Full access, can delete organization |
+| `ADMIN` | Full access except deleting organization |
+| `MANAGER` | Can manage day-to-day operations |
+| `VIEWER` | Read-only access |
 
-### 8. Session Management
+### 8. Multi-Tenant Data Isolation
 
-**Logout:**
-```http
-POST /api/v1/auth/logout
-Authorization: Bearer {access_token}
-
-{
-  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-This invalidates the refresh token, preventing further use.
-
-**Logout All Devices:**
-```http
-POST /api/v1/auth/logout-all
-Authorization: Bearer {access_token}
-```
+All API endpoints automatically filter data by the organization specified in the JWT token. This is enforced at the database level using Row-Level Security (RLS).
 
 ---
 
@@ -681,5 +742,5 @@ For authentication issues:
 
 ---
 
-**Version:** 1.0.0
-**Last Updated:** December 2, 2025
+**Version:** 1.1.0
+**Last Updated:** December 3, 2025

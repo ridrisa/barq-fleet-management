@@ -1662,6 +1662,27 @@ export const organizationAPI = {
       return data
     },
   },
+  // Convenience aliases for OrganizationSettings page
+  get: async (id: number) => {
+    const { data } = await api.get(`/tenant/organizations/${id}`)
+    return data
+  },
+  getMembers: async (organizationId: number) => {
+    const { data } = await api.get(`/tenant/organizations/${organizationId}/members`)
+    return data
+  },
+  inviteMember: async (organizationId: number, memberData: { email: string; role: string }) => {
+    const { data } = await api.post(`/tenant/organizations/${organizationId}/invite`, memberData)
+    return data
+  },
+  removeMember: async (organizationId: number, userId: number) => {
+    const { data } = await api.delete(`/tenant/organizations/${organizationId}/members/${userId}`)
+    return data
+  },
+  updateMemberRole: async (organizationId: number, userId: number, role: string) => {
+    const { data } = await api.put(`/tenant/organizations/${organizationId}/members/${userId}`, { role })
+    return data
+  },
 }
 
 // Analytics Module APIs

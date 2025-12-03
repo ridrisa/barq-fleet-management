@@ -1,8 +1,8 @@
 # BARQ Fleet Management - Database Schema Documentation
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Database:** PostgreSQL 16
-**Last Updated:** November 23, 2025
+**Last Updated:** December 3, 2025
 
 ---
 
@@ -32,8 +32,8 @@
 - **Engine:** PostgreSQL 16
 - **Character Set:** UTF-8
 - **Collation:** en_US.UTF-8
-- **Total Tables:** 28
-- **Total Migrations:** 12
+- **Total Tables:** 69+
+- **Total Migrations:** 18
 
 ### Design Principles
 
@@ -52,9 +52,9 @@
 ### Entity Relationship Overview
 
 ```
-┌─────────────────┐
-│     tenants     │
-└────────┬────────┘
+┌─────────────────────┐
+│    organizations    │
+└────────┬────────────┘
          │
     ┌────┴────┐
     │         │
@@ -72,10 +72,9 @@
     │           │
     └─────┬─────┘
           │
-┌─────────▼──────────┐
-│courier_vehicles    │
-│(Assignment)        │
-└─────────┬──────────┘
+┌─────────▼───────────────────┐
+│courier_vehicle_assignments  │
+└─────────┬───────────────────┘
           │
     ┌─────┴─────┐
     │           │
@@ -95,7 +94,7 @@
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant association |
+| organization_id | INTEGER | FOREIGN KEY | Organization association |
 | email | VARCHAR(255) | UNIQUE, NOT NULL | User email |
 | password_hash | VARCHAR(255) | NOT NULL | Bcrypt password |
 | full_name | VARCHAR(255) | NOT NULL | Full name |
@@ -108,7 +107,7 @@
 
 **Indexes:**
 - `idx_users_email` (email)
-- `idx_users_tenant` (tenant_id)
+- `idx_users_organization` (organization_id)
 - `idx_users_role` (role_id)
 
 **Sample Query:**
@@ -129,7 +128,7 @@ WHERE u.is_active = true AND u.deleted_at IS NULL;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant association |
+| organization_id | INTEGER | FOREIGN KEY | Organization association |
 | name | VARCHAR(50) | NOT NULL | Role name |
 | description | TEXT | NULL | Role description |
 | permissions | JSONB | NOT NULL | Permission array |
@@ -138,7 +137,7 @@ WHERE u.is_active = true AND u.deleted_at IS NULL;
 
 **Indexes:**
 - `idx_roles_name` (name)
-- `idx_roles_tenant` (tenant_id)
+- `idx_roles_organization` (organization_id)
 
 **Sample Data:**
 ```sql
@@ -151,19 +150,44 @@ INSERT INTO roles (name, permissions) VALUES
 
 ---
 
-### Table: tenants
+### Table: organizations
 
-**Purpose:** Multi-tenancy support
+**Purpose:** Multi-tenancy support (tenant isolation)
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| id | UUID | PRIMARY KEY | Unique identifier |
-| name | VARCHAR(255) | NOT NULL | Tenant name |
-| subdomain | VARCHAR(50) | UNIQUE | Subdomain |
-| settings | JSONB | NULL | Tenant settings |
+| id | SERIAL | PRIMARY KEY | Unique identifier |
+| name | VARCHAR(255) | NOT NULL | Organization name |
+| slug | VARCHAR(100) | UNIQUE | URL-safe identifier |
+| settings | JSONB | NULL | Organization settings |
+| subscription_plan | VARCHAR(20) | DEFAULT 'FREE' | FREE/BASIC/PROFESSIONAL/ENTERPRISE |
+| subscription_status | VARCHAR(20) | DEFAULT 'TRIAL' | TRIAL/ACTIVE/SUSPENDED/CANCELLED |
+| trial_ends_at | TIMESTAMP | NULL | Trial expiration |
+| max_users | INTEGER | DEFAULT 5 | Max users allowed |
+| max_couriers | INTEGER | DEFAULT 50 | Max couriers allowed |
+| max_vehicles | INTEGER | DEFAULT 25 | Max vehicles allowed |
 | is_active | BOOLEAN | DEFAULT TRUE | Status |
 | created_at | TIMESTAMP | NOT NULL | Creation time |
 | updated_at | TIMESTAMP | NOT NULL | Last update |
+
+### Table: organization_users
+
+**Purpose:** Organization membership and roles
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | SERIAL | PRIMARY KEY | Unique identifier |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
+| user_id | INTEGER | FOREIGN KEY | User |
+| role | VARCHAR(20) | NOT NULL | OWNER/ADMIN/MANAGER/VIEWER |
+| is_active | BOOLEAN | DEFAULT TRUE | Membership status |
+| created_at | TIMESTAMP | NOT NULL | Creation time |
+| updated_at | TIMESTAMP | NOT NULL | Last update |
+
+**Indexes:**
+- `idx_org_users_org` (organization_id)
+- `idx_org_users_user` (user_id)
+- UNIQUE (organization_id, user_id)
 
 ---
 
@@ -174,7 +198,7 @@ INSERT INTO roles (name, permissions) VALUES
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | user_id | UUID | FOREIGN KEY | User who performed action |
 | action | VARCHAR(50) | NOT NULL | Action type |
 | entity_type | VARCHAR(50) | NOT NULL | Entity (e.g., 'courier') |
@@ -200,7 +224,7 @@ INSERT INTO roles (name, permissions) VALUES
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | name | VARCHAR(255) | NOT NULL | Full name |
 | email | VARCHAR(255) | UNIQUE | Email address |
 | phone | VARCHAR(20) | NOT NULL | Phone number |
@@ -228,7 +252,7 @@ INSERT INTO roles (name, permissions) VALUES
 - `idx_couriers_national_id` (national_id)
 - `idx_couriers_phone` (phone)
 - `idx_couriers_status` (status)
-- `idx_couriers_tenant` (tenant_id)
+- `idx_couriers_organization` (organization_id)
 
 **Sample Query:**
 ```sql
@@ -255,7 +279,7 @@ WHERE c.status = 'active' AND c.deleted_at IS NULL;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | plate_number | VARCHAR(20) | UNIQUE, NOT NULL | License plate |
 | model | VARCHAR(100) | NOT NULL | Vehicle model |
 | type | VARCHAR(20) | NOT NULL | motorcycle/car/van |
@@ -280,18 +304,18 @@ WHERE c.status = 'active' AND c.deleted_at IS NULL;
 - `idx_vehicles_plate` (plate_number)
 - `idx_vehicles_status` (status)
 - `idx_vehicles_type` (type)
-- `idx_vehicles_tenant` (tenant_id)
+- `idx_vehicles_organization` (organization_id)
 
 ---
 
-### Table: courier_vehicles
+### Table: courier_vehicle_assignments
 
 **Purpose:** Courier-vehicle assignment junction table
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | courier_id | UUID | FOREIGN KEY | Courier |
 | vehicle_id | UUID | FOREIGN KEY | Vehicle |
 | start_date | DATE | NOT NULL | Assignment start |
@@ -327,7 +351,7 @@ WHERE end_date IS NULL;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | vehicle_id | UUID | FOREIGN KEY | Vehicle |
 | log_type | VARCHAR(20) | NOT NULL | maintenance/repair/accident/inspection |
 | date | DATE | NOT NULL | Log date |
@@ -354,7 +378,7 @@ WHERE end_date IS NULL;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | courier_id | UUID | FOREIGN KEY | Courier |
 | date | DATE | NOT NULL | Attendance date |
 | check_in | TIME | NULL | Check-in time |
@@ -388,14 +412,14 @@ GROUP BY c.id, c.name;
 
 ---
 
-### Table: payroll
+### Table: salaries
 
-**Purpose:** Monthly payroll records
+**Purpose:** Monthly salary/payroll records
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | courier_id | UUID | FOREIGN KEY | Courier |
 | month | INTEGER | NOT NULL | Month (1-12) |
 | year | INTEGER | NOT NULL | Year |
@@ -428,7 +452,7 @@ GROUP BY c.id, c.name;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | courier_id | UUID | FOREIGN KEY | Courier |
 | amount | DECIMAL(10,2) | NOT NULL | Loan amount |
 | installments | INTEGER | NOT NULL | Number of installments |
@@ -450,14 +474,14 @@ GROUP BY c.id, c.name;
 
 ---
 
-### Table: leave_requests
+### Table: leaves
 
 **Purpose:** Leave request management
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | courier_id | UUID | FOREIGN KEY | Courier |
 | leave_type | VARCHAR(20) | NOT NULL | annual/sick/emergency/unpaid |
 | start_date | DATE | NOT NULL | Leave start |
@@ -486,7 +510,7 @@ GROUP BY c.id, c.name;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | courier_id | UUID | FOREIGN KEY | Courier (nullable) |
 | asset_type | VARCHAR(50) | NOT NULL | phone/tablet/uniform/bag |
 | asset_name | VARCHAR(255) | NOT NULL | Asset name |
@@ -512,7 +536,7 @@ GROUP BY c.id, c.name;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | courier_id | UUID | FOREIGN KEY | Assigned courier |
 | order_number | VARCHAR(50) | UNIQUE | Order reference |
 | customer_name | VARCHAR(255) | NOT NULL | Customer name |
@@ -544,7 +568,7 @@ GROUP BY c.id, c.name;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | courier_id | UUID | FOREIGN KEY | Involved courier |
 | vehicle_id | UUID | FOREIGN KEY | Involved vehicle |
 | incident_type | VARCHAR(20) | NOT NULL | accident/theft/damage/other |
@@ -574,7 +598,7 @@ GROUP BY c.id, c.name;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | name | VARCHAR(255) | NOT NULL | Building name |
 | address | TEXT | NOT NULL | Full address |
 | city | VARCHAR(100) | NOT NULL | City |
@@ -597,7 +621,7 @@ GROUP BY c.id, c.name;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | building_id | UUID | FOREIGN KEY | Building |
 | room_number | VARCHAR(20) | NOT NULL | Room number |
 | capacity | INTEGER | NOT NULL | Max occupants |
@@ -622,7 +646,7 @@ ON rooms (building_id, room_number);
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | room_id | UUID | FOREIGN KEY | Room |
 | courier_id | UUID | FOREIGN KEY | Courier |
 | start_date | DATE | NOT NULL | Assignment start |
@@ -634,14 +658,14 @@ ON rooms (building_id, room_number);
 
 ## Workflow Module
 
-### Table: workflow_definitions
+### Table: workflow_templates
 
 **Purpose:** Workflow templates
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | name | VARCHAR(255) | NOT NULL | Workflow name |
 | workflow_type | VARCHAR(50) | NOT NULL | leave_request/loan_request/etc |
 | steps | JSONB | NOT NULL | Workflow steps |
@@ -658,7 +682,7 @@ ON rooms (building_id, room_number);
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | workflow_definition_id | UUID | FOREIGN KEY | Definition |
 | entity_type | VARCHAR(50) | NOT NULL | Entity type |
 | entity_id | UUID | NOT NULL | Entity ID |
@@ -692,14 +716,14 @@ ON rooms (building_id, room_number);
 
 ## Support Module
 
-### Table: support_tickets
+### Table: tickets
 
 **Purpose:** Support ticket management
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | UUID | PRIMARY KEY | Unique identifier |
-| tenant_id | UUID | FOREIGN KEY | Tenant |
+| organization_id | INTEGER | FOREIGN KEY | Organization |
 | ticket_number | VARCHAR(20) | UNIQUE | Ticket number |
 | created_by | UUID | FOREIGN KEY | Creator |
 | assigned_to | UUID | FOREIGN KEY | Assignee |
@@ -728,9 +752,12 @@ ON rooms (building_id, room_number);
 | 007 | 2024-04-15 | Add support module |
 | 008 | 2024-05-01 | Add analytics module |
 | 009 | 2024-05-15 | Add audit logging |
-| 010 | 2024-06-01 | Add multi-tenancy |
+| 010 | 2024-06-01 | Add tenant tables (organizations) |
 | 011 | 2024-10-01 | Performance optimizations |
 | 012 | 2024-11-01 | Add soft deletes |
+| 013-016 | 2025-11 | Various feature additions |
+| 017 | 2025-12-03 | Add organization_id to all tables |
+| 018 | 2025-12-03 | Enable Row-Level Security (RLS) |
 
 ---
 
@@ -761,4 +788,4 @@ GROUP BY c.id, c.name, c.phone, c.status, v.plate_number, v.model;
 
 **Document Owner:** Database Team
 **Review Cycle:** Monthly
-**Last Updated:** November 23, 2025
+**Last Updated:** December 3, 2025

@@ -1,5 +1,17 @@
 from fastapi import APIRouter
-from app.api.hr import leaves, attendance, loans, assets, salaries, bonuses, penalties, payroll, gosi, eos
+
+from app.api.hr import (
+    assets,
+    attendance,
+    bonuses,
+    eos,
+    gosi,
+    leaves,
+    loans,
+    payroll,
+    penalties,
+    salaries,
+)
 
 router = APIRouter()
 

@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import Optional, List
 from datetime import datetime
-from enum import Enum
 from decimal import Decimal
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class HandoverStatus(str, Enum):
@@ -35,11 +36,11 @@ class HandoverBase(BaseModel):
     notes: Optional[str] = None
     special_instructions: Optional[str] = None
 
-    @field_validator('from_courier_id', 'to_courier_id')
+    @field_validator("from_courier_id", "to_courier_id")
     @classmethod
     def validate_courier_ids(cls, v):
         if v <= 0:
-            raise ValueError('Courier ID must be positive')
+            raise ValueError("Courier ID must be positive")
         return v
 
 
@@ -64,6 +65,7 @@ class HandoverUpdate(BaseModel):
 
 class HandoverApproval(BaseModel):
     """Schema for approving/rejecting handover"""
+
     approved: bool
     rejection_reason: Optional[str] = None
     notes: Optional[str] = None
@@ -71,6 +73,7 @@ class HandoverApproval(BaseModel):
 
 class HandoverCompletion(BaseModel):
     """Schema for completing handover"""
+
     from_courier_signature: str = Field(..., min_length=1)
     to_courier_signature: str = Field(..., min_length=1)
     vehicle_mileage_start: int = Field(..., ge=0)
@@ -104,6 +107,7 @@ class HandoverResponse(HandoverBase):
 
 class HandoverHistory(BaseModel):
     """Handover history for courier or vehicle"""
+
     handovers: List[HandoverResponse]
     total_handovers: int
     pending_handovers: int

@@ -1,13 +1,17 @@
-from sqlalchemy import Column, Integer, ForeignKey, Enum
+import enum
+
+from sqlalchemy import Column, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
+
 
 class BedStatus(str, enum.Enum):
     AVAILABLE = "available"
     OCCUPIED = "occupied"
     RESERVED = "reserved"
+
 
 class Bed(TenantMixin, BaseModel):
     __tablename__ = "beds"

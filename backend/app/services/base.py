@@ -1,9 +1,10 @@
-from typing import Generic, TypeVar, Type, Optional, List, Any, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
-from pydantic import BaseModel
-from app.models.base import BaseModel as DBBaseModel
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
+from pydantic import BaseModel
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
+from app.models.base import BaseModel as DBBaseModel
 
 ModelType = TypeVar("ModelType", bound=DBBaseModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -79,14 +80,19 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         return query.count()
 
-    def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
+    def create(
+        self, db: Session, *, obj_in: CreateSchemaType, organization_id: Optional[int] = None
+    ) -> ModelType:
         """
         Create a new record
         Args:
             db: Database session
             obj_in: Pydantic schema with creation data
+            organization_id: Optional organization ID for multi-tenant records
         """
         obj_in_data = obj_in.model_dump()
+        if organization_id is not None and hasattr(self.model, "organization_id"):
+            obj_in_data["organization_id"] = organization_id
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
         db.commit()
@@ -94,11 +100,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def update(
-        self,
-        db: Session,
-        *,
-        db_obj: ModelType,
-        obj_in: UpdateSchemaType | Dict[str, Any]
+        self, db: Session, *, db_obj: ModelType, obj_in: UpdateSchemaType | Dict[str, Any]
     ) -> ModelType:
         """
         Update an existing record
@@ -139,7 +141,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         search_term: str,
         search_fields: List[str],
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[ModelType]:
         """
         Search records across multiple fields
@@ -156,9 +158,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             search_filters = []
             for field in search_fields:
                 if hasattr(self.model, field):
-                    search_filters.append(
-                        getattr(self.model, field).ilike(f"%{search_term}%")
-                    )
+                    search_filters.append(getattr(self.model, field).ilike(f"%{search_term}%"))
 
             if search_filters:
                 query = query.filter(or_(*search_filters))
@@ -176,19 +176,15 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             db.refresh(obj)
         return db_objs
 
-    def bulk_update(
-        self,
-        db: Session,
-        *,
-        ids: List[int],
-        update_data: Dict[str, Any]
-    ) -> int:
+    def bulk_update(self, db: Session, *, ids: List[int], update_data: Dict[str, Any]) -> int:
         """
         Update multiple records at once
         Returns: Number of records updated
         """
-        result = db.query(self.model).filter(self.model.id.in_(ids)).update(
-            update_data, synchronize_session=False
+        result = (
+            db.query(self.model)
+            .filter(self.model.id.in_(ids))
+            .update(update_data, synchronize_session=False)
         )
         db.commit()
         return result
@@ -198,8 +194,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Delete multiple records at once
         Returns: Number of records deleted
         """
-        result = db.query(self.model).filter(self.model.id.in_(ids)).delete(
-            synchronize_session=False
+        result = (
+            db.query(self.model).filter(self.model.id.in_(ids)).delete(synchronize_session=False)
         )
         db.commit()
         return result

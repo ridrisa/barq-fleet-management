@@ -1,11 +1,11 @@
 from app.crud.base import CRUDBase
-from app.models.workflow.sla import WorkflowSLA, WorkflowSLAInstance, SLAEvent
+from app.models.workflow.sla import SLAEvent, WorkflowSLA, WorkflowSLAInstance
 from app.schemas.workflow.sla import (
+    SLAEventCreate,
     WorkflowSLACreate,
-    WorkflowSLAUpdate,
     WorkflowSLAInstanceCreate,
     WorkflowSLAInstanceUpdate,
-    SLAEventCreate,
+    WorkflowSLAUpdate,
 )
 
 workflow_sla = CRUDBase[WorkflowSLA, WorkflowSLACreate, WorkflowSLAUpdate](WorkflowSLA)

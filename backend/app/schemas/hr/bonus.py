@@ -1,8 +1,10 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class BonusType(str, Enum):
     PERFORMANCE = "performance"
@@ -10,10 +12,12 @@ class BonusType(str, Enum):
     SEASONAL = "seasonal"
     SPECIAL = "special"
 
+
 class PaymentStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     PAID = "paid"
+
 
 class BonusBase(BaseModel):
     courier_id: int = Field(..., description="Courier ID")
@@ -23,8 +27,10 @@ class BonusBase(BaseModel):
     description: Optional[str] = None
     notes: Optional[str] = None
 
+
 class BonusCreate(BonusBase):
     pass
+
 
 class BonusUpdate(BaseModel):
     bonus_type: Optional[BonusType] = None
@@ -35,6 +41,7 @@ class BonusUpdate(BaseModel):
     approval_date: Optional[date] = None
     description: Optional[str] = None
     notes: Optional[str] = None
+
 
 class BonusResponse(BonusBase):
     id: int

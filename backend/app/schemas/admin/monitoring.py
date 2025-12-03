@@ -1,11 +1,14 @@
 """System Monitoring Schemas"""
-from typing import Optional, Dict, Any, List
+
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class SystemHealthResponse(BaseModel):
     """Schema for system health status"""
+
     status: str = Field(..., description="Overall system status (healthy, degraded, unhealthy)")
     timestamp: datetime
     uptime_seconds: int
@@ -38,6 +41,7 @@ class SystemHealthResponse(BaseModel):
 
 class DatabaseStatsResponse(BaseModel):
     """Schema for database statistics"""
+
     # Connection info
     database_name: str
     database_version: str
@@ -67,6 +71,7 @@ class DatabaseStatsResponse(BaseModel):
 
 class APIMetricsResponse(BaseModel):
     """Schema for API metrics"""
+
     # Request statistics
     total_requests_last_hour: int
     total_requests_last_day: int
@@ -84,19 +89,18 @@ class APIMetricsResponse(BaseModel):
 
     # Popular endpoints
     top_endpoints: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Top 10 most called endpoints"
+        default_factory=list, description="Top 10 most called endpoints"
     )
 
     # Error details
     recent_errors: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Recent error details"
+        default_factory=list, description="Recent error details"
     )
 
 
 class ResourceUsageResponse(BaseModel):
     """Schema for resource usage metrics"""
+
     # CPU
     cpu_count: int
     cpu_usage_percent: float
@@ -124,6 +128,7 @@ class ResourceUsageResponse(BaseModel):
 
 class BackgroundJobStatsResponse(BaseModel):
     """Schema for background job statistics"""
+
     total_jobs: int
     active_jobs: int
     pending_jobs: int
@@ -131,20 +136,17 @@ class BackgroundJobStatsResponse(BaseModel):
     failed_jobs_last_hour: int
 
     # Job types
-    job_types: Dict[str, int] = Field(
-        default_factory=dict,
-        description="Count of jobs by type"
-    )
+    job_types: Dict[str, int] = Field(default_factory=dict, description="Count of jobs by type")
 
     # Recent failures
     recent_failures: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        description="Recent failed jobs"
+        default_factory=list, description="Recent failed jobs"
     )
 
 
 class ErrorLogResponse(BaseModel):
     """Schema for error log entry"""
+
     id: int
     timestamp: datetime
     level: str
@@ -162,6 +164,7 @@ class ErrorLogResponse(BaseModel):
 
 class ErrorLogListResponse(BaseModel):
     """Schema for paginated error log list"""
+
     items: List[ErrorLogResponse]
     total: int
     skip: int

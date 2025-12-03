@@ -1,6 +1,8 @@
 """System Settings Model"""
+
 import enum
-from sqlalchemy import Column, String, Text, Boolean, JSON
+
+from sqlalchemy import JSON, Boolean, Column, String, Text
 
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
@@ -8,6 +10,7 @@ from app.models.mixins import TenantMixin
 
 class SettingType(str, enum.Enum):
     """Setting data types"""
+
     STRING = "string"
     INTEGER = "integer"
     FLOAT = "float"
@@ -18,6 +21,7 @@ class SettingType(str, enum.Enum):
 
 class SettingCategory(str, enum.Enum):
     """Setting categories for organization"""
+
     GENERAL = "general"
     SECURITY = "security"
     EMAIL = "email"
@@ -48,6 +52,7 @@ class SystemSetting(TenantMixin, BaseModel):
     - Notification preferences
     - Backup schedules
     """
+
     __tablename__ = "system_settings"
 
     # Identification
@@ -82,7 +87,9 @@ class SystemSetting(TenantMixin, BaseModel):
     example_value = Column(Text, nullable=True)
 
     def __repr__(self):
-        return f"<SystemSetting(key={self.key}, category={self.category}, type={self.setting_type})>"
+        return (
+            f"<SystemSetting(key={self.key}, category={self.category}, type={self.setting_type})>"
+        )
 
     def get_value(self):
         """Get typed value based on setting_type"""
@@ -90,7 +97,7 @@ class SystemSetting(TenantMixin, BaseModel):
             return None
 
         if self.setting_type == SettingType.BOOLEAN.value:
-            return self.value.lower() in ('true', '1', 'yes', 'on')
+            return self.value.lower() in ("true", "1", "yes", "on")
         elif self.setting_type == SettingType.INTEGER.value:
             return int(self.value)
         elif self.setting_type == SettingType.FLOAT.value:

@@ -1,6 +1,7 @@
 """Tenant API module router"""
 
 from fastapi import APIRouter
+
 from app.api.v1.tenant import tenant_router
 
 router = APIRouter()

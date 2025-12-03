@@ -2,18 +2,20 @@
 Performance Monitoring API
 Endpoints for performance metrics, health checks, and system monitoring
 """
+
 import logging
-import psutil
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+import psutil
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
 from app.core.cache import cache_manager
-from app.middleware.performance import performance_metrics
-from app.utils.query_optimizer import query_analyzer, n1_detector
+from app.core.database import get_db
 from app.core.performance_config import performance_config
+from app.middleware.performance import performance_metrics
+from app.utils.query_optimizer import n1_detector, query_analyzer
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ def get_performance_metrics():
         # Get system metrics
         cpu_percent = psutil.cpu_percent(interval=1)
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage("/")
 
         return {
             "timestamp": datetime.utcnow().isoformat(),
@@ -45,20 +47,20 @@ def get_performance_metrics():
                 "thresholds": {
                     "response_p95_ms": performance_config.thresholds.api_response_p95,
                     "response_p99_ms": performance_config.thresholds.api_response_p99,
-                }
+                },
             },
             "cache": {
                 "stats": cache_manager.get_stats(),
                 "thresholds": {
                     "hit_rate_min": performance_config.thresholds.cache_hit_ratio_min,
-                }
+                },
             },
             "database": {
                 "queries": query_analyzer.get_stats(),
                 "thresholds": {
                     "avg_query_ms": performance_config.thresholds.db_query_avg,
                     "p95_query_ms": performance_config.thresholds.db_query_p95,
-                }
+                },
             },
             "system": {
                 "cpu_percent": cpu_percent,
@@ -75,16 +77,13 @@ def get_performance_metrics():
                 "thresholds": {
                     "cpu_max_percent": performance_config.thresholds.cpu_usage_max * 100,
                     "memory_max_percent": performance_config.thresholds.memory_usage_max * 100,
-                }
+                },
             },
-            "status": _evaluate_health()
+            "status": _evaluate_health(),
         }
     except Exception as e:
         logger.error(f"Error getting performance metrics: {e}")
-        return {
-            "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        return {"error": str(e), "timestamp": datetime.utcnow().isoformat()}
 
 
 @router.get("/health", summary="System health check")
@@ -98,24 +97,20 @@ def health_check(db: Session = Depends(get_db)):
     - System resources
     - Performance thresholds
     """
-    health_status = {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "checks": {}
-    }
+    health_status = {"status": "healthy", "timestamp": datetime.utcnow().isoformat(), "checks": {}}
 
     # Database check
     try:
         db.execute("SELECT 1")
         health_status["checks"]["database"] = {
             "status": "healthy",
-            "message": "Database connection successful"
+            "message": "Database connection successful",
         }
     except Exception as e:
         health_status["status"] = "unhealthy"
         health_status["checks"]["database"] = {
             "status": "unhealthy",
-            "message": f"Database connection failed: {str(e)}"
+            "message": f"Database connection failed: {str(e)}",
         }
 
     # Redis check
@@ -124,19 +119,19 @@ def health_check(db: Session = Depends(get_db)):
         if cache_stats.get("redis_cache", {}).get("connected"):
             health_status["checks"]["redis"] = {
                 "status": "healthy",
-                "message": "Redis connection successful"
+                "message": "Redis connection successful",
             }
         else:
             health_status["status"] = "degraded"
             health_status["checks"]["redis"] = {
                 "status": "degraded",
-                "message": "Redis not connected"
+                "message": "Redis not connected",
             }
     except Exception as e:
         health_status["status"] = "degraded"
         health_status["checks"]["redis"] = {
             "status": "degraded",
-            "message": f"Redis check failed: {str(e)}"
+            "message": f"Redis check failed: {str(e)}",
         }
 
     # System resources check
@@ -151,17 +146,17 @@ def health_check(db: Session = Depends(get_db)):
             health_status["status"] = "degraded"
             health_status["checks"]["resources"] = {
                 "status": "degraded",
-                "message": f"High resource usage (CPU: {cpu_percent}%, Memory: {memory_percent}%)"
+                "message": f"High resource usage (CPU: {cpu_percent}%, Memory: {memory_percent}%)",
             }
         else:
             health_status["checks"]["resources"] = {
                 "status": "healthy",
-                "message": f"Resources within limits (CPU: {cpu_percent}%, Memory: {memory_percent}%)"
+                "message": f"Resources within limits (CPU: {cpu_percent}%, Memory: {memory_percent}%)",
             }
     except Exception as e:
         health_status["checks"]["resources"] = {
             "status": "unknown",
-            "message": f"Resource check failed: {str(e)}"
+            "message": f"Resource check failed: {str(e)}",
         }
 
     return health_status
@@ -191,14 +186,11 @@ def get_slow_queries(limit: int = Query(10, ge=1, le=100)):
                     "timestamp": datetime.fromtimestamp(query["timestamp"]).isoformat(),
                 }
                 for query in slow_queries
-            ]
+            ],
         }
     except Exception as e:
         logger.error(f"Error getting slow queries: {e}")
-        return {
-            "error": str(e),
-            "queries": []
-        }
+        return {"error": str(e), "queries": []}
 
 
 @router.get("/cache/stats", summary="Get detailed cache statistics")
@@ -215,9 +207,7 @@ def get_cache_stats():
         return cache_manager.get_stats()
     except Exception as e:
         logger.error(f"Error getting cache stats: {e}")
-        return {
-            "error": str(e)
-        }
+        return {"error": str(e)}
 
 
 @router.post("/cache/clear", summary="Clear cache (use with caution)")
@@ -242,17 +232,10 @@ def clear_cache(namespace: Optional[str] = Query(None, description="Cache namesp
 
         logger.warning(f"Cache clear requested: {message}")
 
-        return {
-            "status": "success",
-            "message": message,
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        return {"status": "success", "message": message, "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"Error clearing cache: {e}")
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        return {"status": "error", "message": str(e)}
 
 
 @router.post("/query-analyzer/reset", summary="Reset query analyzer statistics")
@@ -269,14 +252,11 @@ def reset_query_analyzer():
         return {
             "status": "success",
             "message": "Query analyzer and performance metrics reset",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
         logger.error(f"Error resetting query analyzer: {e}")
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        return {"status": "error", "message": str(e)}
 
 
 @router.get("/configuration", summary="Get performance configuration")
@@ -297,7 +277,11 @@ def get_performance_configuration():
             "enable_read_replicas": performance_config.database.enable_read_replicas,
         },
         "cache": {
-            "redis_url": performance_config.cache.redis_url.split("@")[-1] if "@" in performance_config.cache.redis_url else "localhost",
+            "redis_url": (
+                performance_config.cache.redis_url.split("@")[-1]
+                if "@" in performance_config.cache.redis_url
+                else "localhost"
+            ),
             "default_ttl": performance_config.cache.default_ttl,
             "enable_memory_cache": performance_config.cache.enable_memory_cache,
             "memory_cache_size": performance_config.cache.memory_cache_size,
@@ -322,7 +306,7 @@ def get_performance_configuration():
             "cache_hit_ratio_min": performance_config.thresholds.cache_hit_ratio_min,
             "cpu_usage_max": performance_config.thresholds.cpu_usage_max,
             "memory_usage_max": performance_config.thresholds.memory_usage_max,
-        }
+        },
     }
 
 
@@ -339,8 +323,7 @@ def get_n1_query_patterns():
 
         # Filter patterns that exceed threshold
         suspicious_patterns = {
-            pattern: count for pattern, count in patterns.items()
-            if count >= n1_detector.threshold
+            pattern: count for pattern, count in patterns.items() if count >= n1_detector.threshold
         }
 
         return {
@@ -351,21 +334,16 @@ def get_n1_query_patterns():
                 {
                     "pattern": pattern[:200],  # Truncate long patterns
                     "count": count,
-                    "severity": "high" if count >= n1_detector.threshold * 2 else "medium"
+                    "severity": "high" if count >= n1_detector.threshold * 2 else "medium",
                 }
                 for pattern, count in sorted(
-                    suspicious_patterns.items(),
-                    key=lambda x: x[1],
-                    reverse=True
+                    suspicious_patterns.items(), key=lambda x: x[1], reverse=True
                 )
-            ]
+            ],
         }
     except Exception as e:
         logger.error(f"Error getting N+1 patterns: {e}")
-        return {
-            "error": str(e),
-            "patterns": []
-        }
+        return {"error": str(e), "patterns": []}
 
 
 def _evaluate_health() -> str:

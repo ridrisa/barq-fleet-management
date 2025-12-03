@@ -2,7 +2,9 @@
 FMS Geofences API Routes
 Provides endpoints for geofence/zone management from machinettalk.
 """
-from fastapi import APIRouter, Depends, Query, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.fms import get_fms_client
@@ -25,8 +27,7 @@ async def get_geofences(
 
     if result.get("error"):
         raise HTTPException(
-            status_code=502,
-            detail=result.get("message", "FMS service unavailable")
+            status_code=502, detail=result.get("message", "FMS service unavailable")
         )
 
     return result
@@ -47,7 +48,7 @@ async def get_geofence_by_id(
     if result.get("error"):
         raise HTTPException(
             status_code=502 if "unavailable" in str(result.get("message", "")).lower() else 404,
-            detail=result.get("message", "Geofence not found")
+            detail=result.get("message", "Geofence not found"),
         )
 
     return result

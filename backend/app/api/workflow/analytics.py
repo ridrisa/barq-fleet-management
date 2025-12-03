@@ -1,13 +1,14 @@
-from typing import List, Optional
 from datetime import date
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.crud.workflow import workflow_metrics
 from app.schemas.workflow import (
-    WorkflowMetricsResponse,
     WorkflowAnalyticsQuery,
+    WorkflowMetricsResponse,
 )
 
 router = APIRouter()

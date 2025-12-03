@@ -1,7 +1,9 @@
-from typing import List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
+from typing import List, Optional
+
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
 from app.crud.base import CRUDBase
 from app.models.operations.handover import Handover, HandoverStatus, HandoverType
 from app.schemas.operations.handover import HandoverCreate, HandoverUpdate
@@ -33,10 +35,7 @@ class CRUDHandover(CRUDBase[Handover, HandoverCreate, HandoverUpdate]):
         return (
             db.query(Handover)
             .filter(
-                or_(
-                    Handover.from_courier_id == courier_id,
-                    Handover.to_courier_id == courier_id
-                )
+                or_(Handover.from_courier_id == courier_id, Handover.to_courier_id == courier_id)
             )
             .order_by(Handover.created_at.desc())
             .offset(skip)
@@ -44,7 +43,9 @@ class CRUDHandover(CRUDBase[Handover, HandoverCreate, HandoverUpdate]):
             .all()
         )
 
-    def get_by_vehicle(self, db: Session, *, vehicle_id: int, skip: int = 0, limit: int = 100) -> List[Handover]:
+    def get_by_vehicle(
+        self, db: Session, *, vehicle_id: int, skip: int = 0, limit: int = 100
+    ) -> List[Handover]:
         """Get handovers for a specific vehicle"""
         return (
             db.query(Handover)

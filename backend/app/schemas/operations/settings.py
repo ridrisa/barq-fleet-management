@@ -1,10 +1,12 @@
 """
 Operations Settings Schemas
 """
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import Optional, List, Dict, Any, Union
+
 from datetime import datetime
 from decimal import Decimal
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # Operations Settings Schemas
@@ -63,6 +65,7 @@ class OperationsSettingsResponse(OperationsSettingsBase):
 
 class SettingValue(BaseModel):
     """Schema for setting a value"""
+
     value: Union[str, int, float, bool, Dict[str, Any]]
 
 
@@ -72,7 +75,9 @@ class DispatchRuleBase(BaseModel):
     rule_name: str = Field(..., min_length=3, max_length=200)
     description: Optional[str] = None
     priority: int = Field(100, ge=1, le=1000)
-    algorithm: str = Field("load_balanced", pattern="^(nearest|load_balanced|priority_based|round_robin|ai_optimized)$")
+    algorithm: str = Field(
+        "load_balanced", pattern="^(nearest|load_balanced|priority_based|round_robin|ai_optimized)$"
+    )
     max_distance_km: Optional[Decimal] = Field(None, ge=0, le=100)
     max_courier_load: Optional[int] = Field(None, ge=1, le=20)
     min_courier_rating: Optional[Decimal] = Field(None, ge=0, le=5)
@@ -83,7 +88,9 @@ class DispatchRuleCreate(DispatchRuleBase):
     actions: Dict[str, Any] = Field(..., description="Actions to take")
     zone_ids: Optional[str] = None
     applies_to_all_zones: bool = True
-    time_start: Optional[str] = Field(None, pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$")
+    time_start: Optional[str] = Field(
+        None, pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
+    )
     time_end: Optional[str] = Field(None, pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$")
     days_of_week: Optional[str] = None
     is_active: bool = True
@@ -95,7 +102,9 @@ class DispatchRuleUpdate(BaseModel):
     priority: Optional[int] = Field(None, ge=1, le=1000)
     conditions: Optional[Dict[str, Any]] = None
     actions: Optional[Dict[str, Any]] = None
-    algorithm: Optional[str] = Field(None, pattern="^(nearest|load_balanced|priority_based|round_robin|ai_optimized)$")
+    algorithm: Optional[str] = Field(
+        None, pattern="^(nearest|load_balanced|priority_based|round_robin|ai_optimized)$"
+    )
     max_distance_km: Optional[Decimal] = Field(None, ge=0, le=100)
     max_courier_load: Optional[int] = Field(None, ge=1, le=20)
     min_courier_rating: Optional[Decimal] = Field(None, ge=0, le=5)
@@ -132,18 +141,20 @@ class SLAThresholdBase(BaseModel):
     threshold_code: str = Field(..., min_length=2, max_length=50)
     threshold_name: str = Field(..., min_length=3, max_length=200)
     description: Optional[str] = None
-    sla_type: str = Field(..., pattern="^(delivery_time|response_time|pickup_time|resolution_time)$")
+    sla_type: str = Field(
+        ..., pattern="^(delivery_time|response_time|pickup_time|resolution_time)$"
+    )
     service_type: Optional[str] = Field(None, pattern="^(express|standard|economy)$")
     target_minutes: int = Field(..., ge=1, le=10000)
     warning_minutes: int = Field(..., ge=1, le=10000)
     critical_minutes: int = Field(..., ge=1, le=10000)
 
-    @field_validator('warning_minutes')
+    @field_validator("warning_minutes")
     @classmethod
     def warning_less_than_target(cls, v, info):
-        target = info.data.get('target_minutes')
+        target = info.data.get("target_minutes")
         if target and v >= target:
-            raise ValueError('Warning minutes must be less than target minutes')
+            raise ValueError("Warning minutes must be less than target minutes")
         return v
 
 
@@ -258,8 +269,12 @@ class ZoneDefaultCreate(ZoneDefaultBase):
     default_minimum_order: Decimal = Field(Decimal("0.0"), ge=0)
     default_delivery_time_minutes: int = Field(60, ge=10, le=1440)
     default_sla_target_minutes: int = Field(45, ge=5, le=1440)
-    operating_start: str = Field("08:00:00", pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$")
-    operating_end: str = Field("22:00:00", pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$")
+    operating_start: str = Field(
+        "08:00:00", pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
+    )
+    operating_end: str = Field(
+        "22:00:00", pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$"
+    )
     is_active: bool = True
     is_default: bool = False
 
@@ -302,6 +317,7 @@ class ZoneDefaultResponse(ZoneDefaultBase):
 # Settings Group Schema
 class SettingsGroup(BaseModel):
     """Group of related settings"""
+
     group_name: str
     settings: List[OperationsSettingsResponse]
 

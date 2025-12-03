@@ -2,8 +2,10 @@
 Workflow State Machine
 Manages workflow instance state transitions and validation
 """
-from typing import Dict, List, Optional, Tuple
+
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+
 from app.models.workflow.instance import WorkflowStatus
 
 
@@ -58,9 +60,7 @@ class WorkflowStateMachine:
     APPROVAL_STATES = [WorkflowStatus.PENDING_APPROVAL]
 
     @classmethod
-    def can_transition(
-        cls, from_status: WorkflowStatus, to_status: WorkflowStatus
-    ) -> bool:
+    def can_transition(cls, from_status: WorkflowStatus, to_status: WorkflowStatus) -> bool:
         """Check if transition from one status to another is valid"""
         if from_status not in cls.TRANSITIONS:
             return False
@@ -276,11 +276,13 @@ class WorkflowExecutionEngine:
 
         if not can_execute:
             # Skip this step
-            instance_data["steps_skipped"].append({
-                "step_index": next_step,
-                "reason": reason,
-                "skipped_at": datetime.utcnow().isoformat(),
-            })
+            instance_data["steps_skipped"].append(
+                {
+                    "step_index": next_step,
+                    "reason": reason,
+                    "skipped_at": datetime.utcnow().isoformat(),
+                }
+            )
             # Try next step recursively
             return self.advance_step(next_step, template_steps, instance_data)
 
@@ -291,17 +293,21 @@ class WorkflowExecutionEngine:
             )
             if success:
                 instance_data = updated_data
-                instance_data["steps_completed"].append({
-                    "step_index": next_step,
-                    "completed_at": datetime.utcnow().isoformat(),
-                })
+                instance_data["steps_completed"].append(
+                    {
+                        "step_index": next_step,
+                        "completed_at": datetime.utcnow().isoformat(),
+                    }
+                )
 
         # Record step transition
-        instance_data["step_history"].append({
-            "from_step": current_step,
-            "to_step": next_step,
-            "transitioned_at": datetime.utcnow().isoformat(),
-        })
+        instance_data["step_history"].append(
+            {
+                "from_step": current_step,
+                "to_step": next_step,
+                "transitioned_at": datetime.utcnow().isoformat(),
+            }
+        )
 
         return True, next_step, instance_data, None
 
@@ -326,9 +332,11 @@ class WorkflowExecutionEngine:
             instance_data.update(step_data)
 
         # Mark step as completed
-        instance_data["steps_completed"].append({
-            "step_index": current_step,
-            "completed_at": datetime.utcnow().isoformat(),
-        })
+        instance_data["steps_completed"].append(
+            {
+                "step_index": current_step,
+                "completed_at": datetime.utcnow().isoformat(),
+            }
+        )
 
         return True, instance_data, None

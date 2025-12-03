@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, Boolean, Float, Text, JSON, Enum as SQLEnum
+import enum
+
+from sqlalchemy import JSON, Boolean, Column
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Float, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class ZoneStatus(str, enum.Enum):
     """Zone operational status"""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     MAINTENANCE = "maintenance"
@@ -18,7 +23,9 @@ class Zone(TenantMixin, BaseModel):
     __tablename__ = "zones"
 
     # Basic Information
-    zone_code = Column(String(50), unique=True, nullable=False, index=True, comment="Unique zone identifier")
+    zone_code = Column(
+        String(50), unique=True, nullable=False, index=True, comment="Unique zone identifier"
+    )
     zone_name = Column(String(200), nullable=False, index=True)
     description = Column(Text)
 

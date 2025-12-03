@@ -1,20 +1,22 @@
 """Admin Integration Management API"""
-from typing import List, Optional
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
 
-from app.core.dependencies import get_db, get_current_superuser
-from app.models.user import User
+from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_superuser, get_db
 from app.models.admin.integration import Integration, IntegrationStatus
+from app.models.user import User
 from app.schemas.admin.integration import (
     IntegrationCreate,
-    IntegrationUpdate,
-    IntegrationResponse,
     IntegrationListResponse,
+    IntegrationResponse,
     IntegrationTestRequest,
     IntegrationTestResponse,
+    IntegrationUpdate,
 )
 
 router = APIRouter()
@@ -48,8 +50,8 @@ def list_integrations(
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
-            (Integration.name.ilike(search_pattern)) |
-            (Integration.display_name.ilike(search_pattern))
+            (Integration.name.ilike(search_pattern))
+            | (Integration.display_name.ilike(search_pattern))
         )
 
     # Get total count
@@ -58,12 +60,7 @@ def list_integrations(
     # Get paginated results
     integrations = query.order_by(Integration.name).offset(skip).limit(limit).all()
 
-    return IntegrationListResponse(
-        items=integrations,
-        total=total,
-        skip=skip,
-        limit=limit
-    )
+    return IntegrationListResponse(items=integrations, total=total, skip=skip, limit=limit)
 
 
 @router.post("/", response_model=IntegrationResponse, status_code=status.HTTP_201_CREATED)
@@ -82,7 +79,7 @@ def create_integration(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Integration with name '{integration_in.name}' already exists"
+            detail=f"Integration with name '{integration_in.name}' already exists",
         )
 
     # Create integration
@@ -110,7 +107,7 @@ def get_integration(
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Integration with id {integration_id} not found"
+            detail=f"Integration with id {integration_id} not found",
         )
     return integration
 
@@ -131,7 +128,7 @@ def update_integration(
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Integration with id {integration_id} not found"
+            detail=f"Integration with id {integration_id} not found",
         )
 
     update_data = integration_in.dict(exclude_unset=True)
@@ -158,7 +155,7 @@ def delete_integration(
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Integration with id {integration_id} not found"
+            detail=f"Integration with id {integration_id} not found",
         )
 
     db.delete(integration)
@@ -181,7 +178,7 @@ def enable_integration(
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Integration with id {integration_id} not found"
+            detail=f"Integration with id {integration_id} not found",
         )
 
     integration.is_enabled = True
@@ -208,7 +205,7 @@ def disable_integration(
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Integration with id {integration_id} not found"
+            detail=f"Integration with id {integration_id} not found",
         )
 
     integration.is_enabled = False
@@ -237,7 +234,7 @@ def test_integration(
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Integration with id {integration_id} not found"
+            detail=f"Integration with id {integration_id} not found",
         )
 
     # Placeholder for actual integration testing logic
@@ -254,7 +251,7 @@ def test_integration(
             response_time_ms=150,
             status_code=200,
             response_data={"status": "ok"},
-            error=None
+            error=None,
         )
     except Exception as e:
         integration.record_error(str(e))
@@ -266,7 +263,7 @@ def test_integration(
             response_time_ms=None,
             status_code=None,
             response_data=None,
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -287,7 +284,7 @@ def integration_health_check(
     if not integration:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Integration with id {integration_id} not found"
+            detail=f"Integration with id {integration_id} not found",
         )
 
     # Placeholder for actual health check logic
@@ -309,4 +306,5 @@ def list_integration_types(
     Requires superuser permission.
     """
     from app.models.admin.integration import IntegrationType
+
     return [t.value for t in IntegrationType]

@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, Date, ForeignKey
+from sqlalchemy import Column, Date, ForeignKey, Integer
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
+
 
 class Allocation(TenantMixin, BaseModel):
     __tablename__ = "allocations"

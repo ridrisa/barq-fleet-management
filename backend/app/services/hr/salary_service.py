@@ -1,13 +1,15 @@
 """Salary Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, extract
+
 from datetime import date
 from decimal import Decimal
+from typing import Dict, List, Optional
 
-from app.services.base import CRUDBase
+from sqlalchemy import and_, extract, func
+from sqlalchemy.orm import Session
+
 from app.models.hr.salary import Salary
 from app.schemas.hr.salary import SalaryCreate, SalaryUpdate
+from app.services.base import CRUDBase
 
 
 class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
@@ -20,7 +22,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
         courier_id: int,
         year: Optional[int] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Salary]:
         """
         Get salary records for a courier, optionally filtered by year
@@ -48,13 +50,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
         )
 
     def get_by_month(
-        self,
-        db: Session,
-        *,
-        month: int,
-        year: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, month: int, year: int, skip: int = 0, limit: int = 100
     ) -> List[Salary]:
         """
         Get all salary records for a specific month and year
@@ -71,24 +67,14 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
         """
         return (
             db.query(self.model)
-            .filter(
-                and_(
-                    self.model.month == month,
-                    self.model.year == year
-                )
-            )
+            .filter(and_(self.model.month == month, self.model.year == year))
             .offset(skip)
             .limit(limit)
             .all()
         )
 
     def get_salary_for_period(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        month: int,
-        year: int
+        self, db: Session, *, courier_id: int, month: int, year: int
     ) -> Optional[Salary]:
         """
         Get a specific salary record for a courier, month, and year
@@ -108,7 +94,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
                 and_(
                     self.model.courier_id == courier_id,
                     self.model.month == month,
-                    self.model.year == year
+                    self.model.year == year,
                 )
             )
             .first()
@@ -125,7 +111,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
         allowances: Decimal = Decimal("0"),
         deductions: Decimal = Decimal("0"),
         loan_deduction: Decimal = Decimal("0"),
-        gosi_employee: Decimal = Decimal("0")
+        gosi_employee: Decimal = Decimal("0"),
     ) -> Salary:
         """
         Calculate and create/update salary for a courier for a specific month
@@ -151,10 +137,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
 
         # Check if salary record already exists
         existing_salary = self.get_salary_for_period(
-            db,
-            courier_id=courier_id,
-            month=month,
-            year=year
+            db, courier_id=courier_id, month=month, year=year
         )
 
         if existing_salary:
@@ -166,7 +149,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
                 loan_deduction=loan_deduction,
                 gosi_employee=gosi_employee,
                 gross_salary=gross_salary,
-                net_salary=net_salary
+                net_salary=net_salary,
             )
             return self.update(db, db_obj=existing_salary, obj_in=update_data)
         else:
@@ -179,7 +162,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
                 allowances=allowances,
                 deductions=deductions,
                 loan_deduction=loan_deduction,
-                gosi_employee=gosi_employee
+                gosi_employee=gosi_employee,
             )
 
             # Create the salary record
@@ -193,11 +176,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
             return salary
 
     def mark_as_paid(
-        self,
-        db: Session,
-        *,
-        salary_id: int,
-        payment_date: Optional[date] = None
+        self, db: Session, *, salary_id: int, payment_date: Optional[date] = None
     ) -> Optional[Salary]:
         """
         Mark a salary as paid
@@ -221,11 +200,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
         return salary
 
     def get_statistics(
-        self,
-        db: Session,
-        *,
-        year: Optional[int] = None,
-        courier_id: Optional[int] = None
+        self, db: Session, *, year: Optional[int] = None, courier_id: Optional[int] = None
     ) -> Dict:
         """
         Get salary statistics for a year or overall
@@ -270,17 +245,15 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
             "total_deductions": float(total_deductions),
             "total_loan_deductions": float(total_loan_deductions),
             "total_gosi_contributions": float(total_gosi),
-            "average_gross_salary": float(total_gross_salary / total_records) if total_records > 0 else 0,
-            "average_net_salary": float(total_net_salary / total_records) if total_records > 0 else 0
+            "average_gross_salary": (
+                float(total_gross_salary / total_records) if total_records > 0 else 0
+            ),
+            "average_net_salary": (
+                float(total_net_salary / total_records) if total_records > 0 else 0
+            ),
         }
 
-    def get_annual_summary(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        year: int
-    ) -> Dict:
+    def get_annual_summary(self, db: Session, *, courier_id: int, year: int) -> Dict:
         """
         Get annual salary summary for a courier
 
@@ -297,8 +270,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
         total_gross = sum(salary.gross_salary for salary in salaries)
         total_net = sum(salary.net_salary for salary in salaries)
         total_deductions = sum(
-            salary.deductions + salary.loan_deduction + salary.gosi_employee
-            for salary in salaries
+            salary.deductions + salary.loan_deduction + salary.gosi_employee for salary in salaries
         )
 
         months_paid = len(salaries)
@@ -311,7 +283,7 @@ class SalaryService(CRUDBase[Salary, SalaryCreate, SalaryUpdate]):
             "total_net_salary": float(total_net),
             "total_deductions": float(total_deductions),
             "average_monthly_gross": float(total_gross / months_paid) if months_paid > 0 else 0,
-            "average_monthly_net": float(total_net / months_paid) if months_paid > 0 else 0
+            "average_monthly_net": float(total_net / months_paid) if months_paid > 0 else 0,
         }
 
 

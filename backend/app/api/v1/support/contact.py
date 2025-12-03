@@ -1,14 +1,13 @@
 """Contact Support API Routes"""
+
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
-from app.schemas.support import (
-    ContactFormSubmit, ContactFormResponse, DepartmentInfo
-)
+from app.schemas.support import ContactFormResponse, ContactFormSubmit, DepartmentInfo
 from app.services.support import contact_support_service
-
 
 router = APIRouter()
 
@@ -32,7 +31,7 @@ def submit_contact_form(
         message=form_data.message,
         phone=form_data.phone,
         department=form_data.department,
-        urgency=form_data.urgency
+        urgency=form_data.urgency,
     )
     return ContactFormResponse(**result)
 
@@ -64,18 +63,18 @@ def get_contact_info():
         "working_hours": {
             "weekdays": "Sunday - Thursday, 8:00 AM - 6:00 PM",
             "weekend": "Closed",
-            "timezone": "Arabia Standard Time (AST)"
+            "timezone": "Arabia Standard Time (AST)",
         },
         "emergency_support": {
             "available": True,
             "hours": "24/7 for critical issues",
-            "phone": "+966-XXX-XXX-XXXX"
+            "phone": "+966-XXX-XXX-XXXX",
         },
         "social_media": {
             "twitter": "@BARQFleet",
             "linkedin": "BARQ Fleet Management",
-            "facebook": "BARQFleetManagement"
-        }
+            "facebook": "BARQFleetManagement",
+        },
     }
 
 
@@ -91,18 +90,18 @@ def get_urgency_levels():
             "value": "normal",
             "label": "Normal",
             "description": "Standard inquiry, response within 24-48 hours",
-            "response_time": "24-48 hours"
+            "response_time": "24-48 hours",
         },
         {
             "value": "high",
             "label": "High",
             "description": "Important issue requiring faster response",
-            "response_time": "12-24 hours"
+            "response_time": "12-24 hours",
         },
         {
             "value": "critical",
             "label": "Critical",
             "description": "Urgent issue affecting operations",
-            "response_time": "2-4 hours"
-        }
+            "response_time": "2-4 hours",
+        },
     ]

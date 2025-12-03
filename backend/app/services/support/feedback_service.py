@@ -1,23 +1,20 @@
 """Customer Feedback Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from app.services.base import CRUDBase
+from typing import Dict, List, Optional
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.support import Feedback, FeedbackCategory, FeedbackStatus
 from app.schemas.support import FeedbackCreate, FeedbackUpdate
+from app.services.base import CRUDBase
 
 
 class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
     """Service for customer feedback operations"""
 
     def get_by_category(
-        self,
-        db: Session,
-        *,
-        category: FeedbackCategory,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, category: FeedbackCategory, skip: int = 0, limit: int = 100
     ) -> List[Feedback]:
         """Get feedback by category"""
         return (
@@ -30,12 +27,7 @@ class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
         )
 
     def get_by_status(
-        self,
-        db: Session,
-        *,
-        status: FeedbackStatus,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, status: FeedbackStatus, skip: int = 0, limit: int = 100
     ) -> List[Feedback]:
         """Get feedback by status"""
         return (
@@ -48,12 +40,7 @@ class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
         )
 
     def get_by_rating(
-        self,
-        db: Session,
-        *,
-        rating: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, rating: int, skip: int = 0, limit: int = 100
     ) -> List[Feedback]:
         """Get feedback by rating"""
         return (
@@ -66,11 +53,7 @@ class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
         )
 
     def get_positive_feedback(
-        self,
-        db: Session,
-        *,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[Feedback]:
         """Get positive feedback (4-5 stars)"""
         return (
@@ -83,11 +66,7 @@ class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
         )
 
     def get_negative_feedback(
-        self,
-        db: Session,
-        *,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100
     ) -> List[Feedback]:
         """Get negative feedback (1-2 stars)"""
         return (
@@ -100,12 +79,7 @@ class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
         )
 
     def respond_to_feedback(
-        self,
-        db: Session,
-        *,
-        feedback_id: int,
-        response: str,
-        responded_by: int
+        self, db: Session, *, feedback_id: int, response: str, responded_by: int
     ) -> Optional[Feedback]:
         """Respond to customer feedback"""
         feedback = self.get(db, id=feedback_id)
@@ -130,9 +104,7 @@ class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
 
         # By status
         by_status = dict(
-            db.query(self.model.status, func.count(self.model.id))
-            .group_by(self.model.status)
-            .all()
+            db.query(self.model.status, func.count(self.model.id)).group_by(self.model.status).all()
         )
 
         # By rating
@@ -144,23 +116,20 @@ class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
         )
 
         # Average rating
-        avg_rating = db.query(func.avg(self.model.rating)).filter(
-            self.model.rating.isnot(None)
-        ).scalar() or 0.0
+        avg_rating = (
+            db.query(func.avg(self.model.rating)).filter(self.model.rating.isnot(None)).scalar()
+            or 0.0
+        )
 
         # Positive/Negative counts
-        positive_count = db.query(func.count(self.model.id)).filter(
-            self.model.rating >= 4
-        ).scalar()
+        positive_count = db.query(func.count(self.model.id)).filter(self.model.rating >= 4).scalar()
 
-        negative_count = db.query(func.count(self.model.id)).filter(
-            self.model.rating <= 2
-        ).scalar()
+        negative_count = db.query(func.count(self.model.id)).filter(self.model.rating <= 2).scalar()
 
         # Response rate
-        responded = db.query(func.count(self.model.id)).filter(
-            self.model.response.isnot(None)
-        ).scalar()
+        responded = (
+            db.query(func.count(self.model.id)).filter(self.model.response.isnot(None)).scalar()
+        )
         response_rate = (responded / total * 100) if total > 0 else 0.0
 
         return {
@@ -171,7 +140,7 @@ class FeedbackService(CRUDBase[Feedback, FeedbackCreate, FeedbackUpdate]):
             "average_rating": round(avg_rating, 2),
             "positive_count": positive_count,
             "negative_count": negative_count,
-            "response_rate": round(response_rate, 2)
+            "response_rate": round(response_rate, 2),
         }
 
 

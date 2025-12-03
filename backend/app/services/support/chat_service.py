@@ -1,24 +1,22 @@
 """Live Chat Service"""
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
-from datetime import datetime
-import secrets
 
+import secrets
+from datetime import datetime
+from typing import List, Optional
+
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
+from app.models.support import ChatMessage, ChatSession, ChatStatus
+from app.schemas.support import ChatMessageCreate, ChatSessionCreate, ChatSessionUpdate
 from app.services.base import CRUDBase
-from app.models.support import ChatSession, ChatMessage, ChatStatus
-from app.schemas.support import ChatSessionCreate, ChatSessionUpdate, ChatMessageCreate
 
 
 class ChatSessionService(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpdate]):
     """Service for chat session operations"""
 
     def create_session(
-        self,
-        db: Session,
-        *,
-        customer_id: int,
-        initial_message: Optional[str] = None
+        self, db: Session, *, customer_id: int, initial_message: Optional[str] = None
     ) -> ChatSession:
         """Create a new chat session with unique session ID"""
         session_id = self._generate_session_id()
@@ -27,20 +25,14 @@ class ChatSessionService(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpd
             session_id=session_id,
             customer_id=customer_id,
             initial_message=initial_message,
-            status=ChatStatus.WAITING
+            status=ChatStatus.WAITING,
         )
         db.add(session)
         db.commit()
         db.refresh(session)
         return session
 
-    def assign_agent(
-        self,
-        db: Session,
-        *,
-        session_id: int,
-        agent_id: int
-    ) -> Optional[ChatSession]:
+    def assign_agent(self, db: Session, *, session_id: int, agent_id: int) -> Optional[ChatSession]:
         """Assign chat session to an agent"""
         session = self.get(db, id=session_id)
         if session:
@@ -52,11 +44,7 @@ class ChatSessionService(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpd
         return session
 
     def transfer_session(
-        self,
-        db: Session,
-        *,
-        session_id: int,
-        new_agent_id: int
+        self, db: Session, *, session_id: int, new_agent_id: int
     ) -> Optional[ChatSession]:
         """Transfer chat session to another agent"""
         session = self.get(db, id=session_id)
@@ -88,10 +76,7 @@ class ChatSessionService(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpd
         )
 
     def get_active_sessions(
-        self,
-        db: Session,
-        *,
-        agent_id: Optional[int] = None
+        self, db: Session, *, agent_id: Optional[int] = None
     ) -> List[ChatSession]:
         """Get active chat sessions"""
         query = db.query(self.model).filter(self.model.status == ChatStatus.ACTIVE)
@@ -102,12 +87,7 @@ class ChatSessionService(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpd
         return query.order_by(self.model.started_at.asc()).all()
 
     def get_by_customer(
-        self,
-        db: Session,
-        *,
-        customer_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, customer_id: int, skip: int = 0, limit: int = 100
     ) -> List[ChatSession]:
         """Get chat sessions for a customer"""
         return (
@@ -120,12 +100,7 @@ class ChatSessionService(CRUDBase[ChatSession, ChatSessionCreate, ChatSessionUpd
         )
 
     def get_by_agent(
-        self,
-        db: Session,
-        *,
-        agent_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, agent_id: int, skip: int = 0, limit: int = 100
     ) -> List[ChatSession]:
         """Get chat sessions handled by an agent"""
         return (
@@ -155,7 +130,7 @@ class ChatMessageService(CRUDBase[ChatMessage, ChatMessageCreate, None]):
         sender_id: int,
         message: str,
         is_agent: bool = False,
-        is_system: bool = False
+        is_system: bool = False,
     ) -> ChatMessage:
         """Create a new chat message"""
         chat_message = ChatMessage(
@@ -163,7 +138,7 @@ class ChatMessageService(CRUDBase[ChatMessage, ChatMessageCreate, None]):
             sender_id=sender_id,
             message=message,
             is_agent=is_agent,
-            is_system=is_system
+            is_system=is_system,
         )
         db.add(chat_message)
         db.commit()
@@ -171,12 +146,7 @@ class ChatMessageService(CRUDBase[ChatMessage, ChatMessageCreate, None]):
         return chat_message
 
     def get_by_session(
-        self,
-        db: Session,
-        *,
-        session_id: int,
-        skip: int = 0,
-        limit: int = 1000
+        self, db: Session, *, session_id: int, skip: int = 0, limit: int = 1000
     ) -> List[ChatMessage]:
         """Get all messages for a chat session"""
         return (

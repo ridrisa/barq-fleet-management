@@ -1,12 +1,14 @@
 """Ticket Template Service"""
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from app.services.base import CRUDBase
-from app.models.support import TicketTemplate, Ticket, TicketCategory, TicketPriority
-from app.schemas.support import TicketTemplateCreate, TicketTemplateUpdate, TicketCreate
 from datetime import datetime, timedelta, timezone
+from typing import List, Optional
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.models.support import Ticket, TicketCategory, TicketPriority, TicketTemplate
+from app.schemas.support import TicketCreate, TicketTemplateCreate, TicketTemplateUpdate
+from app.services.base import CRUDBase
 
 
 class TicketTemplateService(CRUDBase[TicketTemplate, TicketTemplateCreate, TicketTemplateUpdate]):
@@ -17,7 +19,7 @@ class TicketTemplateService(CRUDBase[TicketTemplate, TicketTemplateCreate, Ticke
     ) -> TicketTemplate:
         """Create a new ticket template"""
         obj_in_data = obj_in.model_dump()
-        obj_in_data['created_by'] = created_by
+        obj_in_data["created_by"] = created_by
 
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
@@ -48,10 +50,7 @@ class TicketTemplateService(CRUDBase[TicketTemplate, TicketTemplateCreate, Ticke
         """Get all public and active templates"""
         return (
             db.query(self.model)
-            .filter(
-                self.model.is_active == True,
-                self.model.is_public == True
-            )
+            .filter(self.model.is_active == True, self.model.is_public == True)
             .order_by(self.model.name)
             .offset(skip)
             .limit(limit)
@@ -64,10 +63,7 @@ class TicketTemplateService(CRUDBase[TicketTemplate, TicketTemplateCreate, Ticke
         """Get templates by default category"""
         return (
             db.query(self.model)
-            .filter(
-                self.model.is_active == True,
-                self.model.default_category == category
-            )
+            .filter(self.model.is_active == True, self.model.default_category == category)
             .order_by(self.model.name)
             .offset(skip)
             .limit(limit)
@@ -75,8 +71,7 @@ class TicketTemplateService(CRUDBase[TicketTemplate, TicketTemplateCreate, Ticke
         )
 
     def create_ticket_from_template(
-        self, db: Session, *, template_id: int, created_by: int,
-        overrides: Optional[dict] = None
+        self, db: Session, *, template_id: int, created_by: int, overrides: Optional[dict] = None
     ) -> Optional[Ticket]:
         """Create a ticket using a template"""
         template = self.get(db, id=template_id)
@@ -85,15 +80,15 @@ class TicketTemplateService(CRUDBase[TicketTemplate, TicketTemplateCreate, Ticke
 
         # Build ticket data from template
         ticket_data = {
-            'subject': template.default_subject or 'New Ticket',
-            'description': template.default_description or 'No description provided',
-            'category': template.default_category or TicketCategory.OTHER,
-            'priority': template.default_priority or TicketPriority.MEDIUM,
-            'department': template.default_department,
-            'tags': template.default_tags,
-            'custom_fields': template.default_custom_fields,
-            'template_id': template_id,
-            'created_by': created_by
+            "subject": template.default_subject or "New Ticket",
+            "description": template.default_description or "No description provided",
+            "category": template.default_category or TicketCategory.OTHER,
+            "priority": template.default_priority or TicketPriority.MEDIUM,
+            "department": template.default_department,
+            "tags": template.default_tags,
+            "custom_fields": template.default_custom_fields,
+            "template_id": template_id,
+            "created_by": created_by,
         }
 
         # Apply overrides
@@ -105,10 +100,13 @@ class TicketTemplateService(CRUDBase[TicketTemplate, TicketTemplateCreate, Ticke
         # Generate ticket ID
         today = datetime.now()
         date_prefix = today.strftime("%Y%m%d")
-        today_count = db.query(func.count(Ticket.id)).filter(
-            func.date(Ticket.created_at) == today.date()
-        ).scalar() or 0
-        ticket_data['ticket_id'] = f"TKT-{date_prefix}-{(today_count + 1):03d}"
+        today_count = (
+            db.query(func.count(Ticket.id))
+            .filter(func.date(Ticket.created_at) == today.date())
+            .scalar()
+            or 0
+        )
+        ticket_data["ticket_id"] = f"TKT-{date_prefix}-{(today_count + 1):03d}"
 
         # Create ticket
         ticket = Ticket(**ticket_data)

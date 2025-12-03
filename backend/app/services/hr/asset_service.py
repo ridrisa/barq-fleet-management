@@ -1,24 +1,21 @@
 """Asset Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
-from datetime import date
 
-from app.services.base import CRUDBase
-from app.models.hr.asset import Asset, AssetType, AssetStatus
+from datetime import date
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
+from app.models.hr.asset import Asset, AssetStatus, AssetType
 from app.schemas.hr.asset import AssetCreate, AssetUpdate
+from app.services.base import CRUDBase
 
 
 class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
     """Service for asset management operations"""
 
     def get_by_courier(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
     ) -> List[Asset]:
         """
         Get all assets assigned to a courier
@@ -42,12 +39,7 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
         )
 
     def get_by_status(
-        self,
-        db: Session,
-        *,
-        status: AssetStatus,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, status: AssetStatus, skip: int = 0, limit: int = 100
     ) -> List[Asset]:
         """
         Get assets by status
@@ -71,12 +63,7 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
         )
 
     def get_by_type(
-        self,
-        db: Session,
-        *,
-        asset_type: AssetType,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, asset_type: AssetType, skip: int = 0, limit: int = 100
     ) -> List[Asset]:
         """
         Get assets by type
@@ -99,13 +86,7 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
             .all()
         )
 
-    def assign_asset(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        asset_data: AssetCreate
-    ) -> Asset:
+    def assign_asset(self, db: Session, *, courier_id: int, asset_data: AssetCreate) -> Asset:
         """
         Assign a new asset to a courier
 
@@ -119,7 +100,7 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
         """
         # Ensure courier_id in asset_data matches the provided courier_id
         asset_dict = asset_data.model_dump()
-        asset_dict['courier_id'] = courier_id
+        asset_dict["courier_id"] = courier_id
 
         # Create asset with ASSIGNED status
         asset = self.model(**asset_dict)
@@ -136,7 +117,7 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
         *,
         asset_id: int,
         return_date: Optional[date] = None,
-        condition: Optional[str] = None
+        condition: Optional[str] = None,
     ) -> Optional[Asset]:
         """
         Mark an asset as returned
@@ -165,11 +146,7 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
         return asset
 
     def mark_as_damaged(
-        self,
-        db: Session,
-        *,
-        asset_id: int,
-        notes: Optional[str] = None
+        self, db: Session, *, asset_id: int, notes: Optional[str] = None
     ) -> Optional[Asset]:
         """
         Mark an asset as damaged
@@ -197,11 +174,7 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
         return asset
 
     def mark_as_lost(
-        self,
-        db: Session,
-        *,
-        asset_id: int,
-        notes: Optional[str] = None
+        self, db: Session, *, asset_id: int, notes: Optional[str] = None
     ) -> Optional[Asset]:
         """
         Mark an asset as lost
@@ -229,12 +202,7 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
         return asset
 
     def get_active_assets(
-        self,
-        db: Session,
-        *,
-        courier_id: Optional[int] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> List[Asset]:
         """
         Get currently assigned (active) assets
@@ -253,19 +221,9 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
         if courier_id:
             query = query.filter(self.model.courier_id == courier_id)
 
-        return (
-            query.order_by(self.model.issue_date.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.issue_date.desc()).offset(skip).limit(limit).all()
 
-    def get_statistics(
-        self,
-        db: Session,
-        *,
-        courier_id: Optional[int] = None
-    ) -> Dict:
+    def get_statistics(self, db: Session, *, courier_id: Optional[int] = None) -> Dict:
         """
         Get asset statistics
 
@@ -292,7 +250,9 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
 
         # Count by type
         uniform_count = sum(1 for asset in all_assets if asset.asset_type == AssetType.UNIFORM)
-        mobile_device_count = sum(1 for asset in all_assets if asset.asset_type == AssetType.MOBILE_DEVICE)
+        mobile_device_count = sum(
+            1 for asset in all_assets if asset.asset_type == AssetType.MOBILE_DEVICE
+        )
         equipment_count = sum(1 for asset in all_assets if asset.asset_type == AssetType.EQUIPMENT)
         tools_count = sum(1 for asset in all_assets if asset.asset_type == AssetType.TOOLS)
 
@@ -302,24 +262,19 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
                 "assigned": assigned_count,
                 "returned": returned_count,
                 "damaged": damaged_count,
-                "lost": lost_count
+                "lost": lost_count,
             },
             "by_type": {
                 "uniform": uniform_count,
                 "mobile_device": mobile_device_count,
                 "equipment": equipment_count,
-                "tools": tools_count
+                "tools": tools_count,
             },
             "active_assets": assigned_count,
-            "inactive_assets": returned_count + damaged_count + lost_count
+            "inactive_assets": returned_count + damaged_count + lost_count,
         }
 
-    def get_courier_assets_summary(
-        self,
-        db: Session,
-        *,
-        courier_id: int
-    ) -> Dict:
+    def get_courier_assets_summary(self, db: Session, *, courier_id: int) -> Dict:
         """
         Get a summary of all assets for a specific courier
 
@@ -349,10 +304,10 @@ class AssetService(CRUDBase[Asset, AssetCreate, AssetUpdate]):
                     "id": asset.id,
                     "type": asset.asset_type,
                     "issue_date": asset.issue_date.isoformat() if asset.issue_date else None,
-                    "condition": asset.condition
+                    "condition": asset.condition,
                 }
                 for asset in active_assets
-            ]
+            ],
         }
 
 

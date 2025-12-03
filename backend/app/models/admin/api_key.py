@@ -1,8 +1,10 @@
 """API Key Model for API Authentication"""
+
 import enum
 import secrets
 from datetime import datetime, timedelta
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, JSON
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -11,6 +13,7 @@ from app.models.mixins import TenantMixin
 
 class ApiKeyStatus(str, enum.Enum):
     """API Key status"""
+
     ACTIVE = "active"
     REVOKED = "revoked"
     EXPIRED = "expired"
@@ -35,6 +38,7 @@ class ApiKey(TenantMixin, BaseModel):
     - Backend services
     - Automation scripts
     """
+
     __tablename__ = "api_keys"
 
     # Basic fields

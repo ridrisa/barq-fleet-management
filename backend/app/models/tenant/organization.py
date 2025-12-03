@@ -1,12 +1,15 @@
 """Organization model for multi-tenant support"""
 
 import enum
-from sqlalchemy import Column, String, Boolean, Integer, Enum, DateTime, JSON
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String
+
 from app.models.base import BaseModel
 
 
 class SubscriptionPlan(enum.Enum):
     """Subscription plan types"""
+
     FREE = "free"
     BASIC = "basic"
     PROFESSIONAL = "professional"
@@ -15,6 +18,7 @@ class SubscriptionPlan(enum.Enum):
 
 class SubscriptionStatus(enum.Enum):
     """Subscription status types"""
+
     TRIAL = "trial"
     ACTIVE = "active"
     SUSPENDED = "suspended"
@@ -26,6 +30,7 @@ class Organization(BaseModel):
     Organization model for multi-tenant SaaS
     Each organization represents a separate tenant with its own data isolation
     """
+
     __tablename__ = "organizations"
 
     # Basic Information
@@ -35,14 +40,10 @@ class Organization(BaseModel):
 
     # Subscription Information
     subscription_plan = Column(
-        Enum(SubscriptionPlan),
-        default=SubscriptionPlan.FREE,
-        nullable=False
+        Enum(SubscriptionPlan), default=SubscriptionPlan.FREE, nullable=False
     )
     subscription_status = Column(
-        Enum(SubscriptionStatus),
-        default=SubscriptionStatus.TRIAL,
-        nullable=False
+        Enum(SubscriptionStatus), default=SubscriptionStatus.TRIAL, nullable=False
     )
 
     # Resource Limits

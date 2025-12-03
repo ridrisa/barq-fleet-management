@@ -1,13 +1,19 @@
 """Customer Feedback Model"""
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, Enum as SQLEnum
+
+import enum
+
+from sqlalchemy import Column
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class FeedbackCategory(str, enum.Enum):
     """Feedback category"""
+
     GENERAL = "general"
     FEATURE_REQUEST = "feature_request"
     BUG_REPORT = "bug_report"
@@ -18,6 +24,7 @@ class FeedbackCategory(str, enum.Enum):
 
 class FeedbackStatus(str, enum.Enum):
     """Feedback processing status"""
+
     NEW = "new"
     REVIEWED = "reviewed"
     IN_PROGRESS = "in_progress"
@@ -39,35 +46,20 @@ class Feedback(TenantMixin, BaseModel):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
-        comment="User who submitted feedback (nullable for anonymous)"
+        comment="User who submitted feedback (nullable for anonymous)",
     )
 
     # Content
-    subject = Column(
-        String(255),
-        nullable=False,
-        comment="Feedback subject"
-    )
-    message = Column(
-        Text,
-        nullable=False,
-        comment="Feedback message"
-    )
+    subject = Column(String(255), nullable=False, comment="Feedback subject")
+    message = Column(Text, nullable=False, comment="Feedback message")
 
     # Categorization
     category = Column(
-        SQLEnum(FeedbackCategory),
-        nullable=False,
-        index=True,
-        comment="Feedback category"
+        SQLEnum(FeedbackCategory), nullable=False, index=True, comment="Feedback category"
     )
 
     # Rating
-    rating = Column(
-        Integer,
-        nullable=True,
-        comment="Rating (1-5 stars)"
-    )
+    rating = Column(Integer, nullable=True, comment="Rating (1-5 stars)")
 
     # Status
     status = Column(
@@ -75,20 +67,16 @@ class Feedback(TenantMixin, BaseModel):
         default=FeedbackStatus.NEW,
         nullable=False,
         index=True,
-        comment="Feedback processing status"
+        comment="Feedback processing status",
     )
 
     # Response
-    response = Column(
-        Text,
-        nullable=True,
-        comment="Response to the feedback"
-    )
+    response = Column(Text, nullable=True, comment="Response to the feedback")
     responded_by = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        comment="User who responded to feedback"
+        comment="User who responded to feedback",
     )
 
     # Relationships

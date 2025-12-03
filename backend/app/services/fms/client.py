@@ -2,13 +2,15 @@
 FMS Client - Integration with machinettalk Fleet Management System
 Handles authentication, caching, and API calls to the FMS backend.
 """
+
+import logging
 import os
 import time
-import logging
-from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
-import httpx
 from functools import lru_cache
+from typing import Any, Dict, List, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ class FMSClient:
         api_key: Optional[str] = None,
         timeout: int = 30,
     ):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
         self.api_key = api_key
@@ -77,11 +79,14 @@ class FMSClient:
 
             # URL-encoded form data
             import urllib.parse
-            data = urllib.parse.urlencode({
-                "grant_type": "password",
-                "username": self.username,
-                "password": self.password,
-            })
+
+            data = urllib.parse.urlencode(
+                {
+                    "grant_type": "password",
+                    "username": self.username,
+                    "password": self.password,
+                }
+            )
             headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
             response = self._client.post(auth_url, content=data, headers=headers)
@@ -141,7 +146,7 @@ class FMSClient:
                 return {
                     "error": True,
                     "message": f"FMS API error: {response.status_code}",
-                    "details": response.text
+                    "details": response.text,
                 }
 
             return response.json()
@@ -194,9 +199,7 @@ class FMSClient:
             "to": to_time,
         }
         return self._make_request(
-            "GET",
-            f"/api/v1/assets/{asset_id}/locationhistory",
-            params=params
+            "GET", f"/api/v1/assets/{asset_id}/locationhistory", params=params
         )
 
     # ==================== Geofence APIs ====================
@@ -241,7 +244,9 @@ class FMSClient:
 
     def update_placemark(self, placemark_id: int, placemark_data: Dict[str, Any]) -> Dict[str, Any]:
         """Update a placemark."""
-        return self._make_request("PUT", f"/api/v1/placemarks/{placemark_id}", json_data=placemark_data)
+        return self._make_request(
+            "PUT", f"/api/v1/placemarks/{placemark_id}", json_data=placemark_data
+        )
 
     def delete_placemark(self, placemark_id: int) -> Dict[str, Any]:
         """Delete a placemark."""

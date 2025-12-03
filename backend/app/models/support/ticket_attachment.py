@@ -1,6 +1,8 @@
 """Ticket Attachment Model"""
-from sqlalchemy import Column, String, Integer, ForeignKey, BigInteger
+
+from sqlalchemy import BigInteger, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 
@@ -19,43 +21,27 @@ class TicketAttachment(TenantMixin, BaseModel):
         ForeignKey("tickets.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Parent ticket ID"
+        comment="Parent ticket ID",
     )
     reply_id = Column(
         Integer,
         ForeignKey("ticket_replies.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
-        comment="Reply ID if attachment is on a reply"
+        comment="Reply ID if attachment is on a reply",
     )
     uploaded_by = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=False,
-        comment="User who uploaded the file"
+        comment="User who uploaded the file",
     )
 
     # File Information
-    filename = Column(
-        String(255),
-        nullable=False,
-        comment="Original filename"
-    )
-    file_path = Column(
-        String(500),
-        nullable=False,
-        comment="Storage path for the file"
-    )
-    file_type = Column(
-        String(100),
-        nullable=False,
-        comment="MIME type of the file"
-    )
-    file_size = Column(
-        BigInteger,
-        nullable=False,
-        comment="File size in bytes"
-    )
+    filename = Column(String(255), nullable=False, comment="Original filename")
+    file_path = Column(String(500), nullable=False, comment="Storage path for the file")
+    file_type = Column(String(100), nullable=False, comment="MIME type of the file")
+    file_size = Column(BigInteger, nullable=False, comment="File size in bytes")
 
     # Relationships
     ticket = relationship("Ticket", back_populates="attachments")

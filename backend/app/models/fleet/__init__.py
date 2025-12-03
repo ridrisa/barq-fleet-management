@@ -1,38 +1,38 @@
 """Fleet Management models"""
 
-from app.models.fleet.courier import Courier, CourierStatus, SponsorshipStatus, ProjectType
-from app.models.fleet.vehicle import (
-    Vehicle,
-    VehicleStatus,
-    VehicleType,
-    FuelType,
-    OwnershipType,
-)
-from app.models.fleet.assignment import (
-    CourierVehicleAssignment,
-    AssignmentStatus,
-    AssignmentType,
-)
-from app.models.fleet.vehicle_log import VehicleLog, LogType, FuelProvider
-from app.models.fleet.maintenance import (
-    VehicleMaintenance,
-    MaintenanceType,
-    MaintenanceStatus,
-    ServiceProvider,
-)
-from app.models.fleet.inspection import (
-    Inspection,
-    InspectionType,
-    InspectionStatus,
-    VehicleCondition,
-)
 from app.models.fleet.accident_log import (
     AccidentLog,
     AccidentSeverity,
+    AccidentStatus,
     AccidentType,
     FaultStatus,
-    AccidentStatus,
 )
+from app.models.fleet.assignment import (
+    AssignmentStatus,
+    AssignmentType,
+    CourierVehicleAssignment,
+)
+from app.models.fleet.courier import Courier, CourierStatus, ProjectType, SponsorshipStatus
+from app.models.fleet.inspection import (
+    Inspection,
+    InspectionStatus,
+    InspectionType,
+    VehicleCondition,
+)
+from app.models.fleet.maintenance import (
+    MaintenanceStatus,
+    MaintenanceType,
+    ServiceProvider,
+    VehicleMaintenance,
+)
+from app.models.fleet.vehicle import (
+    FuelType,
+    OwnershipType,
+    Vehicle,
+    VehicleStatus,
+    VehicleType,
+)
+from app.models.fleet.vehicle_log import FuelProvider, LogType, VehicleLog
 
 __all__ = [
     # Models

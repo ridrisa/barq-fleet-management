@@ -1,6 +1,8 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.crud.base import CRUDBase
 from app.models.operations.zone import Zone, ZoneStatus
 from app.schemas.operations.zone import ZoneCreate, ZoneUpdate
@@ -14,31 +16,18 @@ class CRUDZone(CRUDBase[Zone, ZoneCreate, ZoneUpdate]):
     def get_active_zones(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[Zone]:
         """Get all active zones"""
         return (
-            db.query(Zone)
-            .filter(Zone.status == ZoneStatus.ACTIVE)
-            .offset(skip)
-            .limit(limit)
-            .all()
+            db.query(Zone).filter(Zone.status == ZoneStatus.ACTIVE).offset(skip).limit(limit).all()
         )
 
     def get_by_city(self, db: Session, *, city: str, skip: int = 0, limit: int = 100) -> List[Zone]:
         """Get zones by city"""
-        return (
-            db.query(Zone)
-            .filter(Zone.city == city)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return db.query(Zone).filter(Zone.city == city).offset(skip).limit(limit).all()
 
     def get_at_capacity(self, db: Session) -> List[Zone]:
         """Get zones at or near capacity"""
         return (
             db.query(Zone)
-            .filter(
-                Zone.status == ZoneStatus.ACTIVE,
-                Zone.current_couriers >= Zone.max_couriers
-            )
+            .filter(Zone.status == ZoneStatus.ACTIVE, Zone.current_couriers >= Zone.max_couriers)
             .all()
         )
 
@@ -63,10 +52,13 @@ class CRUDZone(CRUDBase[Zone, ZoneCreate, ZoneUpdate]):
         return zone
 
     def update_performance_metrics(
-        self, db: Session, *, zone_id: int,
+        self,
+        db: Session,
+        *,
+        zone_id: int,
         avg_delivery_time: float,
         total_deliveries: int,
-        success_rate: float
+        success_rate: float,
     ) -> Optional[Zone]:
         """Update zone performance metrics"""
         zone = self.get(db, id=zone_id)

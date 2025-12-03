@@ -1,13 +1,15 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import date, datetime, time
 from decimal import Decimal
+from typing import Optional
 
-from app.models.fleet import LogType, FuelProvider
+from pydantic import BaseModel, Field
+
+from app.models.fleet import FuelProvider, LogType
 
 
 class VehicleLogBase(BaseModel):
     """Base vehicle log schema"""
+
     vehicle_id: int
     courier_id: Optional[int] = None
     log_type: LogType = LogType.DAILY_LOG
@@ -51,11 +53,13 @@ class VehicleLogBase(BaseModel):
 
 class VehicleLogCreate(VehicleLogBase):
     """Schema for creating vehicle log"""
+
     pass
 
 
 class VehicleLogUpdate(BaseModel):
     """Schema for updating vehicle log"""
+
     log_type: Optional[LogType] = None
     log_time: Optional[time] = None
     end_mileage: Optional[Decimal] = Field(None, ge=0)
@@ -72,6 +76,7 @@ class VehicleLogUpdate(BaseModel):
 
 class VehicleLogResponse(VehicleLogBase):
     """Schema for vehicle log response"""
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -85,6 +90,7 @@ class VehicleLogResponse(VehicleLogBase):
 
 class VehicleLogList(BaseModel):
     """Minimal schema for list views"""
+
     id: int
     vehicle_id: int
     log_type: LogType

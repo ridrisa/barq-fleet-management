@@ -1,23 +1,19 @@
 """FAQ Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
 
-from app.services.base import CRUDBase
+from typing import Dict, List, Optional
+
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session
+
 from app.models.support import FAQ
 from app.schemas.support import FAQCreate, FAQUpdate
+from app.services.base import CRUDBase
 
 
 class FAQService(CRUDBase[FAQ, FAQCreate, FAQUpdate]):
     """Service for FAQ operations"""
 
-    def get_active(
-        self,
-        db: Session,
-        *,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[FAQ]:
+    def get_active(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[FAQ]:
         """Get active FAQs only"""
         return (
             db.query(self.model)
@@ -29,44 +25,26 @@ class FAQService(CRUDBase[FAQ, FAQCreate, FAQUpdate]):
         )
 
     def get_by_category(
-        self,
-        db: Session,
-        *,
-        category: str,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, category: str, skip: int = 0, limit: int = 100
     ) -> List[FAQ]:
         """Get FAQs by category"""
         return (
             db.query(self.model)
-            .filter(
-                self.model.category == category,
-                self.model.is_active == True
-            )
+            .filter(self.model.category == category, self.model.is_active == True)
             .order_by(self.model.order.asc())
             .offset(skip)
             .limit(limit)
             .all()
         )
 
-    def search(
-        self,
-        db: Session,
-        *,
-        query: str,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[FAQ]:
+    def search(self, db: Session, *, query: str, skip: int = 0, limit: int = 100) -> List[FAQ]:
         """Search FAQs by question or answer"""
         search_term = f"%{query}%"
         return (
             db.query(self.model)
             .filter(
                 self.model.is_active == True,
-                or_(
-                    self.model.question.ilike(search_term),
-                    self.model.answer.ilike(search_term)
-                )
+                or_(self.model.question.ilike(search_term), self.model.answer.ilike(search_term)),
             )
             .order_by(self.model.view_count.desc())
             .offset(skip)
@@ -102,12 +80,7 @@ class FAQService(CRUDBase[FAQ, FAQCreate, FAQUpdate]):
             db.refresh(faq)
         return faq
 
-    def get_top_viewed(
-        self,
-        db: Session,
-        *,
-        limit: int = 10
-    ) -> List[FAQ]:
+    def get_top_viewed(self, db: Session, *, limit: int = 10) -> List[FAQ]:
         """Get top viewed FAQs"""
         return (
             db.query(self.model)

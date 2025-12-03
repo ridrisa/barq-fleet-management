@@ -1,15 +1,21 @@
 """
 Route Management Model for Operations
 """
-from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, JSON, Enum as SQLEnum, Text, Numeric, Boolean
+
+import enum
+
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class RouteStatus(str, enum.Enum):
     """Route operational status"""
+
     PLANNED = "planned"
     ASSIGNED = "assigned"
     IN_PROGRESS = "in_progress"
@@ -51,8 +57,12 @@ class Route(TenantMixin, BaseModel):
     total_stops = Column(Integer, default=0, comment="Number of stops on route")
 
     # Distance and Time Estimates
-    total_distance_km = Column(Numeric(10, 2), name="total_distance", comment="Total distance in kilometers")
-    estimated_duration_minutes = Column(Integer, name="estimated_time", comment="Estimated duration in minutes")
+    total_distance_km = Column(
+        Numeric(10, 2), name="total_distance", comment="Total distance in kilometers"
+    )
+    estimated_duration_minutes = Column(
+        Integer, name="estimated_time", comment="Estimated duration in minutes"
+    )
     actual_distance_km = Column(Numeric(10, 2), comment="Actual distance traveled")
     actual_duration_minutes = Column(Integer, comment="Actual duration in minutes")
 
@@ -115,7 +125,9 @@ class Route(TenantMixin, BaseModel):
 
         # Deduct for distance variance
         if self.distance_variance_km and self.total_distance_km:
-            variance_pct = abs(float(self.distance_variance_km)) / float(self.total_distance_km) * 100
+            variance_pct = (
+                abs(float(self.distance_variance_km)) / float(self.total_distance_km) * 100
+            )
             score -= min(variance_pct, 20)  # Max 20 point deduction
 
         # Deduct for time variance

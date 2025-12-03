@@ -1,10 +1,20 @@
 """Operations API Routes"""
+
 from fastapi import APIRouter
 
 from app.api.v1.operations import (
-    delivery, cod, routes, incidents, handovers, zones,
-    dispatch, priority_queue, quality, sla,
-    feedback, settings
+    cod,
+    delivery,
+    dispatch,
+    feedback,
+    handovers,
+    incidents,
+    priority_queue,
+    quality,
+    routes,
+    settings,
+    sla,
+    zones,
 )
 
 router = APIRouter()
@@ -19,7 +29,9 @@ router.include_router(incidents.router, prefix="/incidents", tags=["Operations-I
 router.include_router(handovers.router, prefix="/handovers", tags=["Operations-Handovers"])
 router.include_router(zones.router, prefix="/zones", tags=["Operations-Zones"])
 router.include_router(dispatch.router, prefix="/dispatch", tags=["Operations-Dispatch"])
-router.include_router(priority_queue.router, prefix="/priority-queue", tags=["Operations-Priority-Queue"])
+router.include_router(
+    priority_queue.router, prefix="/priority-queue", tags=["Operations-Priority-Queue"]
+)
 router.include_router(quality.router, prefix="/quality", tags=["Operations-Quality"])
 router.include_router(sla.router, prefix="/sla", tags=["Operations-SLA"])
 router.include_router(feedback.router, prefix="/feedback", tags=["Operations-Feedback"])

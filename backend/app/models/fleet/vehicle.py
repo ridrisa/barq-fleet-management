@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, Boolean, Date, Numeric, Enum as SQLEnum, Text
+import enum
+
+from sqlalchemy import Boolean, Column, Date
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class VehicleStatus(str, enum.Enum):
     """Vehicle operational status"""
+
     ACTIVE = "active"
     MAINTENANCE = "maintenance"
     INACTIVE = "inactive"
@@ -16,6 +21,7 @@ class VehicleStatus(str, enum.Enum):
 
 class VehicleType(str, enum.Enum):
     """Vehicle category"""
+
     MOTORCYCLE = "motorcycle"
     CAR = "car"
     VAN = "van"
@@ -25,6 +31,7 @@ class VehicleType(str, enum.Enum):
 
 class FuelType(str, enum.Enum):
     """Fuel type"""
+
     GASOLINE = "gasoline"
     DIESEL = "diesel"
     ELECTRIC = "electric"
@@ -33,6 +40,7 @@ class FuelType(str, enum.Enum):
 
 class OwnershipType(str, enum.Enum):
     """Vehicle ownership"""
+
     OWNED = "owned"
     LEASED = "leased"
     RENTED = "rented"
@@ -44,7 +52,9 @@ class Vehicle(TenantMixin, BaseModel):
     __tablename__ = "vehicles"
 
     # Basic Information
-    plate_number = Column(String(20), unique=True, nullable=False, index=True, comment="License plate number")
+    plate_number = Column(
+        String(20), unique=True, nullable=False, index=True, comment="License plate number"
+    )
     vehicle_type = Column(SQLEnum(VehicleType), nullable=False, index=True)
     make = Column(String(100), nullable=False)  # Toyota, Honda, etc.
     model = Column(String(100), nullable=False)  # Corolla, Civic, etc.
@@ -52,7 +62,9 @@ class Vehicle(TenantMixin, BaseModel):
     color = Column(String(50))
 
     # Status
-    status = Column(SQLEnum(VehicleStatus), default=VehicleStatus.ACTIVE, nullable=False, index=True)
+    status = Column(
+        SQLEnum(VehicleStatus), default=VehicleStatus.ACTIVE, nullable=False, index=True
+    )
     ownership_type = Column(SQLEnum(OwnershipType), default=OwnershipType.OWNED)
 
     # Registration & Documentation
@@ -109,12 +121,22 @@ class Vehicle(TenantMixin, BaseModel):
     avg_fuel_consumption = Column(Numeric(5, 2))  # km per liter
 
     # Relationships
-    assigned_couriers = relationship("Courier", foreign_keys="Courier.current_vehicle_id", back_populates="current_vehicle")
-    assignment_history = relationship("CourierVehicleAssignment", back_populates="vehicle", cascade="all, delete-orphan")
-    vehicle_logs = relationship("VehicleLog", back_populates="vehicle", cascade="all, delete-orphan")
-    maintenance_records = relationship("VehicleMaintenance", back_populates="vehicle", cascade="all, delete-orphan")
+    assigned_couriers = relationship(
+        "Courier", foreign_keys="Courier.current_vehicle_id", back_populates="current_vehicle"
+    )
+    assignment_history = relationship(
+        "CourierVehicleAssignment", back_populates="vehicle", cascade="all, delete-orphan"
+    )
+    vehicle_logs = relationship(
+        "VehicleLog", back_populates="vehicle", cascade="all, delete-orphan"
+    )
+    maintenance_records = relationship(
+        "VehicleMaintenance", back_populates="vehicle", cascade="all, delete-orphan"
+    )
     inspections = relationship("Inspection", back_populates="vehicle", cascade="all, delete-orphan")
-    accident_logs = relationship("AccidentLog", back_populates="vehicle", cascade="all, delete-orphan")
+    accident_logs = relationship(
+        "AccidentLog", back_populates="vehicle", cascade="all, delete-orphan"
+    )
     fuel_logs = relationship("FuelLog", back_populates="vehicle", cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -129,6 +151,7 @@ class Vehicle(TenantMixin, BaseModel):
     def is_service_due(self) -> bool:
         """Check if vehicle is due for service"""
         from datetime import date
+
         today = date.today()
 
         if self.next_service_due_date and self.next_service_due_date <= today:
@@ -142,6 +165,7 @@ class Vehicle(TenantMixin, BaseModel):
     def is_document_expired(self) -> bool:
         """Check if any vehicle document is expired"""
         from datetime import date
+
         today = date.today()
 
         if self.registration_expiry_date and self.registration_expiry_date < today:
@@ -155,4 +179,5 @@ class Vehicle(TenantMixin, BaseModel):
     def age_years(self) -> int:
         """Calculate vehicle age in years"""
         from datetime import date
+
         return date.today().year - self.year

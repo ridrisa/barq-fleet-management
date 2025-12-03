@@ -1,15 +1,23 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
-from app.crud.operations import dispatch_assignment as crud_dispatch
-from app.schemas.operations.dispatch import (
-    DispatchAssignmentCreate, DispatchAssignmentUpdate, DispatchAssignmentResponse,
-    DispatchReassignment, DispatchAcceptance, CourierAvailability,
-    DispatchRecommendation, DispatchMetrics
-)
-from app.core.database import get_db
-from app.core.dependencies import get_current_user
 from decimal import Decimal
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.dependencies import get_current_organization, get_current_user
+from app.crud.operations import dispatch_assignment as crud_dispatch
+from app.models.tenant.organization import Organization
+from app.schemas.operations.dispatch import (
+    CourierAvailability,
+    DispatchAcceptance,
+    DispatchAssignmentCreate,
+    DispatchAssignmentResponse,
+    DispatchAssignmentUpdate,
+    DispatchMetrics,
+    DispatchReassignment,
+    DispatchRecommendation,
+)
 
 router = APIRouter()
 
@@ -22,15 +30,22 @@ def list_dispatch_assignments(
     zone_id: int = Query(None, description="Filter by zone"),
     status: str = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """List all dispatch assignments with optional filters"""
     if courier_id:
-        assignments = crud_dispatch.get_by_courier(db, courier_id=courier_id, skip=skip, limit=limit)
+        assignments = crud_dispatch.get_by_courier(
+            db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
+        )
     elif zone_id:
-        assignments = crud_dispatch.get_by_zone(db, zone_id=zone_id, skip=skip, limit=limit)
+        assignments = crud_dispatch.get_by_zone(
+            db, zone_id=zone_id, skip=skip, limit=limit, organization_id=current_org.id
+        )
     else:
-        assignments = crud_dispatch.get_multi(db, skip=skip, limit=limit)
+        assignments = crud_dispatch.get_multi(
+            db, skip=skip, limit=limit, organization_id=current_org.id
+        )
     return assignments
 
 
@@ -39,7 +54,8 @@ def list_pending_assignments(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """List all pending dispatch assignments ordered by priority
 
@@ -48,7 +64,9 @@ def list_pending_assignments(
     - Sorted by priority (URGENT first) then creation time
     - Used by dispatch dashboard
     """
-    assignments = crud_dispatch.get_pending(db, skip=skip, limit=limit)
+    assignments = crud_dispatch.get_pending(
+        db, skip=skip, limit=limit, organization_id=current_org.id
+    )
     return assignments
 
 
@@ -56,14 +74,14 @@ def list_pending_assignments(
 def get_dispatch_assignment(
     assignment_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific dispatch assignment by ID"""
     assignment = crud_dispatch.get(db, id=assignment_id)
-    if not assignment:
+    if not assignment or assignment.organization_id != current_org.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dispatch assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch assignment not found"
         )
     return assignment
 
@@ -72,7 +90,8 @@ def get_dispatch_assignment(
 def create_dispatch_assignment(
     assignment_in: DispatchAssignmentCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Create a new dispatch assignment
 
@@ -90,17 +109,18 @@ def create_dispatch_assignment(
     # TODO: Calculate distance from courier to pickup
     # TODO: Get courier current load
 
-    assignment = crud_dispatch.create_with_number(db, obj_in=assignment_in)
+    assignment = crud_dispatch.create_with_number(
+        db, obj_in=assignment_in, organization_id=current_org.id
+    )
 
     # If courier assigned, update status
     if assignment_in.courier_id:
-        # TODO: Get current user ID
-        assigned_by_id = 1  # Placeholder
+        assigned_by_id = current_user.id if hasattr(current_user, "id") else 1
         assignment = crud_dispatch.assign_to_courier(
             db,
             assignment_id=assignment.id,
             courier_id=assignment_in.courier_id,
-            assigned_by_id=assigned_by_id
+            assigned_by_id=assigned_by_id,
         )
 
     return assignment
@@ -111,14 +131,14 @@ def update_dispatch_assignment(
     assignment_id: int,
     assignment_in: DispatchAssignmentUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Update a dispatch assignment"""
     assignment = crud_dispatch.get(db, id=assignment_id)
-    if not assignment:
+    if not assignment or assignment.organization_id != current_org.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dispatch assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch assignment not found"
         )
     assignment = crud_dispatch.update(db, db_obj=assignment, obj_in=assignment_in)
     return assignment
@@ -129,7 +149,8 @@ def assign_to_courier(
     assignment_id: int,
     courier_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Assign delivery to a specific courier
 
@@ -142,16 +163,15 @@ def assign_to_courier(
     - Sends notification to courier
     """
     assignment = crud_dispatch.get(db, id=assignment_id)
-    if not assignment:
+    if not assignment or assignment.organization_id != current_org.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dispatch assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch assignment not found"
         )
 
     if assignment.status != "pending":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only pending assignments can be assigned"
+            detail="Only pending assignments can be assigned",
         )
 
     # TODO: Validate courier availability
@@ -159,14 +179,10 @@ def assign_to_courier(
     # TODO: Calculate distance and time
     # TODO: Send notification
 
-    # Get current user ID
-    assigned_by_id = 1  # Placeholder
+    assigned_by_id = current_user.id if hasattr(current_user, "id") else 1
 
     assignment = crud_dispatch.assign_to_courier(
-        db,
-        assignment_id=assignment_id,
-        courier_id=courier_id,
-        assigned_by_id=assigned_by_id
+        db, assignment_id=assignment_id, courier_id=courier_id, assigned_by_id=assigned_by_id
     )
 
     return assignment
@@ -177,7 +193,8 @@ def accept_assignment(
     assignment_id: int,
     acceptance: DispatchAcceptance,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Courier accepts or rejects assignment
 
@@ -188,16 +205,15 @@ def accept_assignment(
     - Increments rejection count
     """
     assignment = crud_dispatch.get(db, id=assignment_id)
-    if not assignment:
+    if not assignment or assignment.organization_id != current_org.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dispatch assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch assignment not found"
         )
 
     if assignment.status != "assigned":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only assigned deliveries can be accepted/rejected"
+            detail="Only assigned deliveries can be accepted/rejected",
         )
 
     if acceptance.accepted:
@@ -205,13 +221,10 @@ def accept_assignment(
     else:
         if not acceptance.rejection_reason:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Rejection reason is required"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Rejection reason is required"
             )
         assignment = crud_dispatch.reject(
-            db,
-            assignment_id=assignment_id,
-            rejection_reason=acceptance.rejection_reason
+            db, assignment_id=assignment_id, rejection_reason=acceptance.rejection_reason
         )
 
     return assignment
@@ -221,7 +234,8 @@ def accept_assignment(
 def start_delivery(
     assignment_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Start delivery execution
 
@@ -231,16 +245,15 @@ def start_delivery(
     - Begins real-time tracking
     """
     assignment = crud_dispatch.get(db, id=assignment_id)
-    if not assignment:
+    if not assignment or assignment.organization_id != current_org.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dispatch assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch assignment not found"
         )
 
     if assignment.status != "accepted":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only accepted assignments can be started"
+            detail="Only accepted assignments can be started",
         )
 
     assignment = crud_dispatch.start(db, assignment_id=assignment_id)
@@ -251,7 +264,8 @@ def start_delivery(
 def complete_delivery(
     assignment_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Complete delivery assignment
 
@@ -264,16 +278,15 @@ def complete_delivery(
     - Frees courier capacity
     """
     assignment = crud_dispatch.get(db, id=assignment_id)
-    if not assignment:
+    if not assignment or assignment.organization_id != current_org.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dispatch assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch assignment not found"
         )
 
     if assignment.status != "in_progress":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only in-progress assignments can be completed"
+            detail="Only in-progress assignments can be completed",
         )
 
     assignment = crud_dispatch.complete(db, assignment_id=assignment_id)
@@ -289,7 +302,8 @@ def reassign_delivery(
     assignment_id: int,
     reassignment: DispatchReassignment,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Reassign delivery to different courier
 
@@ -302,10 +316,9 @@ def reassign_delivery(
     - Updates load for both couriers
     """
     assignment = crud_dispatch.get(db, id=assignment_id)
-    if not assignment:
+    if not assignment or assignment.organization_id != current_org.id:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Dispatch assignment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch assignment not found"
         )
 
     # TODO: Validate new courier availability
@@ -315,7 +328,7 @@ def reassign_delivery(
         db,
         assignment_id=assignment_id,
         new_courier_id=reassignment.new_courier_id,
-        reason=reassignment.reassignment_reason
+        reason=reassignment.reassignment_reason,
     )
 
     return assignment
@@ -326,7 +339,8 @@ def get_available_couriers(
     zone_id: int = Query(None, description="Filter by zone"),
     delivery_id: int = Query(None, description="Check for specific delivery"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get list of available couriers for dispatch
 
@@ -339,7 +353,7 @@ def get_available_couriers(
     - Includes current load and rating
     - Sorted by availability and proximity
     """
-    # TODO: Implement courier availability logic
+    # TODO: Implement courier availability logic with organization_id filter
     # For now, return placeholder
     return []
 
@@ -348,7 +362,8 @@ def get_available_couriers(
 def get_dispatch_recommendation(
     delivery_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get AI-powered dispatch recommendation
 
@@ -363,11 +378,11 @@ def get_dispatch_recommendation(
     - Returns recommended courier with confidence score
     - Provides alternative couriers
     """
-    # TODO: Implement AI recommendation algorithm
+    # TODO: Implement AI recommendation algorithm with organization_id filter
     # For now, return placeholder
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Dispatch recommendation algorithm to be implemented"
+        detail="Dispatch recommendation algorithm to be implemented",
     )
 
 
@@ -375,7 +390,8 @@ def get_dispatch_recommendation(
 def get_dispatch_metrics(
     period: str = Query("today", regex="^(today|week|month)$"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get dispatch performance metrics
 
@@ -388,7 +404,7 @@ def get_dispatch_metrics(
     - Average courier load
     - Zone coverage rate
     """
-    # TODO: Implement metrics calculation
+    # TODO: Implement metrics calculation with organization_id filter
     return DispatchMetrics(
         period=period,
         total_assignments=0,
@@ -398,5 +414,5 @@ def get_dispatch_metrics(
         avg_acceptance_time_seconds=0.0,
         reassignment_rate=0.0,
         avg_courier_load=0.0,
-        zone_coverage_rate=0.0
+        zone_coverage_rate=0.0,
     )

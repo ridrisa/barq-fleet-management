@@ -3,14 +3,16 @@ FMS Sync Service
 Synchronizes FMS asset data with BARQ couriers and vehicles.
 Matches by barq_id (FMS PlateNumber) or iqama_number (FMS IDNumber).
 """
+
 import logging
-from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
 from sqlalchemy.orm import Session
 
-from app.services.fms.client import get_fms_client
 from app.models.fleet.courier import Courier
 from app.models.fleet.vehicle import Vehicle
+from app.services.fms.client import get_fms_client
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +70,9 @@ class FMSSyncService:
         if vehicle:
             return vehicle
         # Try partial match (plate might have different format)
-        return self.db.query(Vehicle).filter(
-            Vehicle.plate_number.ilike(f"%{plate_number}%")
-        ).first()
+        return (
+            self.db.query(Vehicle).filter(Vehicle.plate_number.ilike(f"%{plate_number}%")).first()
+        )
 
     def sync_single_asset(self, asset: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -161,11 +163,13 @@ class FMSSyncService:
                 stats["vehicles_matched"] += 1
 
             if not result["courier_matched"] and not result["vehicle_matched"]:
-                stats["unmatched_assets"].append({
-                    "fms_asset_id": result["fms_asset_id"],
-                    "asset_name": result["asset_name"],
-                    "barq_id": result["plate_number"],
-                })
+                stats["unmatched_assets"].append(
+                    {
+                        "fms_asset_id": result["fms_asset_id"],
+                        "asset_name": result["asset_name"],
+                        "barq_id": result["plate_number"],
+                    }
+                )
 
         # Commit all changes
         self.db.commit()
@@ -214,15 +218,13 @@ class FMSSyncService:
                 "name": driver.get("DriverName"),
                 "mobile": driver.get("MobileNumber"),
                 "badge": driver.get("BadgeNumber"),
-            }
+            },
         }
 
     def get_all_couriers_live_locations(self) -> List[Dict[str, Any]]:
         """Get real-time locations for all couriers with FMS links."""
         # Get all couriers with FMS asset IDs
-        couriers = self.db.query(Courier).filter(
-            Courier.fms_asset_id.isnot(None)
-        ).all()
+        couriers = self.db.query(Courier).filter(Courier.fms_asset_id.isnot(None)).all()
 
         if not couriers:
             # If no couriers linked, fetch all FMS assets and return their locations
@@ -239,19 +241,23 @@ class FMSSyncService:
                 if not lat or not lon:
                     continue
 
-                locations.append({
-                    "fms_asset_id": asset.get("Id"),
-                    "barq_id": asset.get("PlateNumber"),
-                    "asset_name": asset.get("AssetName"),
-                    "driver_name": driver.get("DriverName"),
-                    "position": {
-                        "latitude": float(lat),
-                        "longitude": float(lon),
-                    },
-                    "speed_kmh": float(device_log.get("Speed", 0) or 0),
-                    "gps_timestamp": device_log.get("GPSDate"),
-                    "status": "active" if float(device_log.get("Speed", 0) or 0) > 0 else "idle",
-                })
+                locations.append(
+                    {
+                        "fms_asset_id": asset.get("Id"),
+                        "barq_id": asset.get("PlateNumber"),
+                        "asset_name": asset.get("AssetName"),
+                        "driver_name": driver.get("DriverName"),
+                        "position": {
+                            "latitude": float(lat),
+                            "longitude": float(lon),
+                        },
+                        "speed_kmh": float(device_log.get("Speed", 0) or 0),
+                        "gps_timestamp": device_log.get("GPSDate"),
+                        "status": (
+                            "active" if float(device_log.get("Speed", 0) or 0) > 0 else "idle"
+                        ),
+                    }
+                )
 
             return locations
 

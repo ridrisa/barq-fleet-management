@@ -1,15 +1,14 @@
 """Building Management API Routes"""
+
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
-from app.schemas.accommodation import (
-    BuildingCreate, BuildingUpdate, BuildingResponse
-)
+from app.schemas.accommodation import BuildingCreate, BuildingResponse, BuildingUpdate
 from app.services.accommodation import building_service, room_service
-
 
 router = APIRouter()
 
@@ -29,9 +28,7 @@ def get_buildings(
     - search: Search term for name or address
     """
     if search:
-        return building_service.search_buildings(
-            db, search_term=search, skip=skip, limit=limit
-        )
+        return building_service.search_buildings(db, search_term=search, skip=skip, limit=limit)
 
     return building_service.get_multi(db, skip=skip, limit=limit)
 
@@ -47,8 +44,7 @@ def create_building(
     existing = building_service.get_by_name(db, name=building_in.name)
     if existing:
         raise HTTPException(
-            status_code=400,
-            detail=f"Building with name '{building_in.name}' already exists"
+            status_code=400, detail=f"Building with name '{building_in.name}' already exists"
         )
 
     return building_service.create(db, obj_in=building_in)
@@ -84,8 +80,7 @@ def update_building(
         existing = building_service.get_by_name(db, name=building_in.name)
         if existing:
             raise HTTPException(
-                status_code=400,
-                detail=f"Building with name '{building_in.name}' already exists"
+                status_code=400, detail=f"Building with name '{building_in.name}' already exists"
             )
 
     return building_service.update(db, db_obj=building, obj_in=building_in)
@@ -107,7 +102,7 @@ def delete_building(
     if rooms:
         raise HTTPException(
             status_code=400,
-            detail="Cannot delete building with existing rooms. Delete rooms first."
+            detail="Cannot delete building with existing rooms. Delete rooms first.",
         )
 
     building_service.delete(db, id=building_id)

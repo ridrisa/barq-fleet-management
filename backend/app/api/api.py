@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, health, dashboard  # users module temporarily disabled
+from app.api import accommodation, analytics, finance, fleet, fms, hr, operations, tenant, workflow
+from app.api.v1 import auth, dashboard, health  # users module temporarily disabled
 from app.api.v1.admin import router as admin_router
-from app.api.v1.support import support_router
 from app.api.v1.performance import router as performance_router
-from app.api import fleet, hr, operations, accommodation, finance, workflow, fms, analytics, tenant
+from app.api.v1.support import support_router
 
 api_router = APIRouter()
 

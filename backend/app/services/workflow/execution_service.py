@@ -2,15 +2,17 @@
 Workflow Execution Service
 Handles workflow instance execution, state transitions, and step progression
 """
-from typing import Optional, Dict, Any
+
 from datetime import datetime
+from typing import Any, Dict, Optional
+
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import AppException
+from app.crud.workflow import workflow_instance, workflow_template
 from app.models.workflow.instance import WorkflowInstance, WorkflowStatus
 from app.models.workflow.template import WorkflowTemplate
-from app.crud.workflow import workflow_instance, workflow_template
 from app.services.workflow.state_machine import WorkflowExecutionEngine
-from app.core.exceptions import AppException
 
 
 class WorkflowExecutionService:
@@ -199,13 +201,13 @@ class WorkflowExecutionService:
             )
 
         # Validate transition
-        is_valid, error = self.engine.state_machine.validate_transition(
-            instance.status, new_status
-        )
+        is_valid, error = self.engine.state_machine.validate_transition(instance.status, new_status)
 
         if not is_valid:
             raise AppException(
-                status_code=400, detail=error or "Invalid status transition", code="INVALID_TRANSITION"
+                status_code=400,
+                detail=error or "Invalid status transition",
+                code="INVALID_TRANSITION",
             )
 
         # Update instance
@@ -225,9 +227,7 @@ class WorkflowExecutionService:
 
         return instance
 
-    def cancel_workflow(
-        self, instance_id: int, reason: Optional[str] = None
-    ) -> WorkflowInstance:
+    def cancel_workflow(self, instance_id: int, reason: Optional[str] = None) -> WorkflowInstance:
         """
         Cancel a workflow instance
 
@@ -288,7 +288,6 @@ class WorkflowExecutionService:
             "completed_at": instance.completed_at,
             "is_terminal": self.engine.state_machine.is_terminal(instance.status),
             "valid_transitions": [
-                s.value
-                for s in self.engine.state_machine.get_valid_transitions(instance.status)
+                s.value for s in self.engine.state_machine.get_valid_transitions(instance.status)
             ],
         }

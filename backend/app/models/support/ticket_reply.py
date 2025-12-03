@@ -1,6 +1,8 @@
 """Ticket Reply Model - for ticket threading/conversations"""
-from sqlalchemy import Column, String, Integer, ForeignKey, Text
+
+from sqlalchemy import Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 
@@ -19,26 +21,20 @@ class TicketReply(TenantMixin, BaseModel):
         ForeignKey("tickets.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Parent ticket ID"
+        comment="Parent ticket ID",
     )
     user_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=False,
         index=True,
-        comment="User who created this reply"
+        comment="User who created this reply",
     )
 
     # Content
-    message = Column(
-        Text,
-        nullable=False,
-        comment="Reply message content"
-    )
+    message = Column(Text, nullable=False, comment="Reply message content")
     is_internal = Column(
-        Integer,
-        default=0,
-        comment="Whether this is an internal note (1) or customer-facing (0)"
+        Integer, default=0, comment="Whether this is an internal note (1) or customer-facing (0)"
     )
 
     # Relationships

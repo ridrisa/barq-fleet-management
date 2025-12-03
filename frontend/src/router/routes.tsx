@@ -130,6 +130,7 @@ const GeneralSettings = lazyWithRetry(() => import('@/pages/settings/GeneralSett
 const NotificationSettings = lazyWithRetry(() => import('@/pages/settings/NotificationSettings'))
 const Preferences = lazyWithRetry(() => import('@/pages/settings/Preferences'))
 const Profile = lazyWithRetry(() => import('@/pages/settings/Profile'))
+const OrganizationSettings = lazyWithRetry(() => import('@/pages/settings/OrganizationSettings'))
 
 export const routes: RouteObject[] = [
   {
@@ -268,6 +269,7 @@ export const routes: RouteObject[] = [
       { path: 'settings/notifications', element: <NotificationSettings /> },
       { path: 'settings/preferences', element: <Preferences /> },
       { path: 'settings/profile', element: <Profile /> },
+      { path: 'settings/organization', element: <OrganizationSettings /> },
     ],
   },
 ]

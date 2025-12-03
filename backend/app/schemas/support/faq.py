@@ -1,11 +1,14 @@
 """FAQ Schemas"""
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+
 from datetime import datetime
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 
 class FAQBase(BaseModel):
     """Base FAQ schema"""
+
     question: str = Field(..., min_length=5, max_length=500, description="FAQ question")
     answer: str = Field(..., min_length=5, description="FAQ answer (Markdown supported)")
     category: str = Field(..., min_length=1, max_length=100, description="FAQ category")
@@ -14,11 +17,13 @@ class FAQBase(BaseModel):
 
 class FAQCreate(FAQBase):
     """Schema for creating a new FAQ"""
+
     is_active: bool = Field(default=True, description="Whether FAQ is active")
 
 
 class FAQUpdate(BaseModel):
     """Schema for updating a FAQ"""
+
     question: Optional[str] = Field(None, min_length=5, max_length=500)
     answer: Optional[str] = Field(None, min_length=5)
     category: Optional[str] = Field(None, min_length=1, max_length=100)
@@ -28,6 +33,7 @@ class FAQUpdate(BaseModel):
 
 class FAQResponse(FAQBase):
     """Schema for FAQ response"""
+
     id: int
     is_active: bool
     view_count: int
@@ -40,6 +46,7 @@ class FAQResponse(FAQBase):
 
 class FAQList(BaseModel):
     """Minimal FAQ schema for list views"""
+
     id: int
     question: str
     category: str
@@ -52,10 +59,12 @@ class FAQList(BaseModel):
 
 class FAQByCategory(BaseModel):
     """FAQs grouped by category"""
+
     category: str
     faqs: List[FAQResponse]
 
 
 class FAQCategoryList(BaseModel):
     """List of FAQ categories with counts"""
+
     categories: Dict[str, int]

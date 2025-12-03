@@ -8,32 +8,28 @@ Automated payroll processing system that:
 - Generates salary records
 - Provides payroll reports
 """
-from decimal import Decimal
+
 from datetime import date, datetime
-from typing import List, Dict, Optional
-from sqlalchemy.orm import Session
+from decimal import Decimal
+from typing import Dict, List, Optional
+
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from app.models.fleet.courier import Courier, CourierStatus
 from app.models.hr.attendance import Attendance, AttendanceStatus
 from app.models.hr.loan import Loan, LoanStatus
 from app.models.hr.salary import Salary
-from app.services.hr.gosi_calculator_service import gosi_calculator_service
-from app.services.hr.salary_service import salary_service
 from app.services.hr.attendance_service import attendance_service
+from app.services.hr.gosi_calculator_service import gosi_calculator_service
 from app.services.hr.loan_service import loan_service
+from app.services.hr.salary_service import salary_service
 
 
 class PayrollResult:
     """Result of payroll processing for a single employee"""
 
-    def __init__(
-        self,
-        courier_id: int,
-        courier_name: str,
-        month: int,
-        year: int
-    ):
+    def __init__(self, courier_id: int, courier_name: str, month: int, year: int):
         self.courier_id = courier_id
         self.courier_name = courier_name
         self.month = month
@@ -73,7 +69,7 @@ class PayrollResult:
             "net_salary": float(self.net_salary),
             "errors": self.errors,
             "warnings": self.warnings,
-            "success": self.success
+            "success": self.success,
         }
 
 
@@ -97,7 +93,7 @@ class PayrollEngineService:
         month: int,
         year: int,
         courier_ids: Optional[List[int]] = None,
-        dry_run: bool = False
+        dry_run: bool = False,
     ) -> Dict:
         """
         Process monthly payroll for all active couriers
@@ -133,11 +129,7 @@ class PayrollEngineService:
         for courier in couriers:
             try:
                 result = self._process_courier_payroll(
-                    db=db,
-                    courier=courier,
-                    month=month,
-                    year=year,
-                    dry_run=dry_run
+                    db=db, courier=courier, month=month, year=year, dry_run=dry_run
                 )
                 results.append(result)
 
@@ -150,10 +142,7 @@ class PayrollEngineService:
             except Exception as e:
                 failed += 1
                 error_result = PayrollResult(
-                    courier_id=courier.id,
-                    courier_name=courier.name,
-                    month=month,
-                    year=year
+                    courier_id=courier.id, courier_name=courier.name, month=month, year=year
                 )
                 error_result.errors.append(f"Unexpected error: {str(e)}")
                 results.append(error_result)
@@ -166,16 +155,11 @@ class PayrollEngineService:
             "failed": failed,
             "total_payroll_amount": float(total_payroll),
             "dry_run": dry_run,
-            "results": [r.to_dict() for r in results]
+            "results": [r.to_dict() for r in results],
         }
 
     def _process_courier_payroll(
-        self,
-        db: Session,
-        courier: Courier,
-        month: int,
-        year: int,
-        dry_run: bool = False
+        self, db: Session, courier: Courier, month: int, year: int, dry_run: bool = False
     ) -> PayrollResult:
         """
         Process payroll for a single courier
@@ -191,24 +175,19 @@ class PayrollEngineService:
             PayrollResult object
         """
         result = PayrollResult(
-            courier_id=courier.id,
-            courier_name=courier.name,
-            month=month,
-            year=year
+            courier_id=courier.id, courier_name=courier.name, month=month, year=year
         )
 
         # Get base salary (assuming courier has a base_salary field or from contract)
         # For now, using a default - in production, fetch from courier contract/record
-        result.base_salary = getattr(courier, 'base_salary', Decimal("5000"))
+        result.base_salary = getattr(courier, "base_salary", Decimal("5000"))
 
         if result.base_salary <= 0:
             result.errors.append("Base salary not configured or invalid")
             return result
 
         # Calculate attendance bonuses and deductions
-        attendance_data = self._calculate_attendance_adjustments(
-            db, courier.id, month, year
-        )
+        attendance_data = self._calculate_attendance_adjustments(db, courier.id, month, year)
         result.attendance_bonus = attendance_data["bonus"]
         result.attendance_deduction = attendance_data["deduction"]
         if attendance_data["warnings"]:
@@ -226,17 +205,13 @@ class PayrollEngineService:
         result.gosi_employer = gosi_result.employer_contribution
 
         # Calculate gross and net salary
-        result.gross_salary = (
-            result.base_salary +
-            result.attendance_bonus +
-            result.other_allowances
-        )
+        result.gross_salary = result.base_salary + result.attendance_bonus + result.other_allowances
 
         result.total_deductions = (
-            result.attendance_deduction +
-            result.loan_deduction +
-            result.gosi_employee +
-            result.other_deductions
+            result.attendance_deduction
+            + result.loan_deduction
+            + result.gosi_employee
+            + result.other_deductions
         )
 
         result.net_salary = result.gross_salary - result.total_deductions
@@ -253,7 +228,7 @@ class PayrollEngineService:
                     allowances=result.attendance_bonus + result.other_allowances,
                     deductions=result.attendance_deduction + result.other_deductions,
                     loan_deduction=result.loan_deduction,
-                    gosi_employee=result.gosi_employee
+                    gosi_employee=result.gosi_employee,
                 )
                 result.success = True
             except Exception as e:
@@ -264,11 +239,7 @@ class PayrollEngineService:
         return result
 
     def _calculate_attendance_adjustments(
-        self,
-        db: Session,
-        courier_id: int,
-        month: int,
-        year: int
+        self, db: Session, courier_id: int, month: int, year: int
     ) -> Dict:
         """
         Calculate attendance-based bonuses and deductions
@@ -318,19 +289,11 @@ class PayrollEngineService:
             "bonus": bonus,
             "deduction": deduction,
             "warnings": warnings,
-            "stats": {
-                "present": present_count,
-                "absent": absent_count,
-                "late": late_count
-            }
+            "stats": {"present": present_count, "absent": absent_count, "late": late_count},
         }
 
     def _calculate_loan_deduction(
-        self,
-        db: Session,
-        courier_id: int,
-        month: int,
-        year: int
+        self, db: Session, courier_id: int, month: int, year: int
     ) -> Dict:
         """
         Calculate loan deduction for the month
@@ -358,20 +321,13 @@ class PayrollEngineService:
             deduction += loan.monthly_deduction
 
         if len(active_loans) > 1:
-            warnings.append(f"Multiple active loans ({len(active_loans)}) - total deduction: {float(deduction)}")
+            warnings.append(
+                f"Multiple active loans ({len(active_loans)}) - total deduction: {float(deduction)}"
+            )
 
-        return {
-            "deduction": deduction,
-            "warnings": warnings,
-            "loans_count": len(active_loans)
-        }
+        return {"deduction": deduction, "warnings": warnings, "loans_count": len(active_loans)}
 
-    def get_payroll_report(
-        self,
-        db: Session,
-        month: int,
-        year: int
-    ) -> Dict:
+    def get_payroll_report(self, db: Session, month: int, year: int) -> Dict:
         """
         Get comprehensive payroll report for a month
 
@@ -390,8 +346,7 @@ class PayrollEngineService:
         total_net = sum(s.net_salary for s in salaries)
         total_gosi_employee = sum(s.gosi_employee for s in salaries)
         total_gosi_employer = sum(
-            self.gosi_calculator.calculate(s.base_salary).employer_contribution
-            for s in salaries
+            self.gosi_calculator.calculate(s.base_salary).employer_contribution for s in salaries
         )
         total_deductions = sum(s.deductions + s.loan_deduction + s.gosi_employee for s in salaries)
 

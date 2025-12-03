@@ -1,12 +1,14 @@
 """Leave Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
-from datetime import date
 
-from app.services.base import CRUDBase
+from datetime import date
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import Session
+
 from app.models.hr.leave import Leave, LeaveStatus
 from app.schemas.hr.leave import LeaveCreate, LeaveUpdate
+from app.services.base import CRUDBase
 
 
 class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
@@ -32,38 +34,27 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         return (
             db.query(self.model)
             .filter(self.model.status == status)
-            .order_by(self.model.requested_at.desc() if hasattr(self.model, 'requested_at') else self.model.start_date.desc())
+            .order_by(
+                self.model.requested_at.desc()
+                if hasattr(self.model, "requested_at")
+                else self.model.start_date.desc()
+            )
             .offset(skip)
             .limit(limit)
             .all()
         )
 
     def get_by_date_range(
-        self,
-        db: Session,
-        *,
-        start_date: date,
-        end_date: date,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, start_date: date, end_date: date, skip: int = 0, limit: int = 100
     ) -> List[Leave]:
         """Get leave requests within a date range"""
         return (
             db.query(self.model)
             .filter(
                 or_(
-                    and_(
-                        self.model.start_date >= start_date,
-                        self.model.start_date <= end_date
-                    ),
-                    and_(
-                        self.model.end_date >= start_date,
-                        self.model.end_date <= end_date
-                    ),
-                    and_(
-                        self.model.start_date <= start_date,
-                        self.model.end_date >= end_date
-                    )
+                    and_(self.model.start_date >= start_date, self.model.start_date <= end_date),
+                    and_(self.model.end_date >= start_date, self.model.end_date <= end_date),
+                    and_(self.model.start_date <= start_date, self.model.end_date >= end_date),
                 )
             )
             .order_by(self.model.start_date)
@@ -83,7 +74,7 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         leave.status = LeaveStatus.APPROVED
         leave.approved_by = approved_by
         leave.approved_at = date.today()
-        if notes and hasattr(leave, 'notes'):
+        if notes and hasattr(leave, "notes"):
             leave.notes = notes
 
         db.commit()
@@ -101,16 +92,14 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         leave.status = LeaveStatus.REJECTED
         leave.approved_by = approved_by
         leave.approved_at = date.today()
-        if reason and hasattr(leave, 'notes'):
+        if reason and hasattr(leave, "notes"):
             leave.notes = reason
 
         db.commit()
         db.refresh(leave)
         return leave
 
-    def cancel_leave(
-        self, db: Session, *, leave_id: int
-    ) -> Optional[Leave]:
+    def cancel_leave(self, db: Session, *, leave_id: int) -> Optional[Leave]:
         """Cancel a leave request"""
         leave = db.query(self.model).filter(self.model.id == leave_id).first()
         if not leave:
@@ -121,9 +110,7 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         db.refresh(leave)
         return leave
 
-    def get_leave_balance(
-        self, db: Session, *, courier_id: int, year: int
-    ) -> Dict[str, float]:
+    def get_leave_balance(self, db: Session, *, courier_id: int, year: int) -> Dict[str, float]:
         """Calculate leave balance for a courier for a given year"""
         # Get approved leaves for the year
         leaves = (
@@ -132,7 +119,7 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
                 and_(
                     self.model.courier_id == courier_id,
                     self.model.status == LeaveStatus.APPROVED,
-                    func.extract('year', self.model.start_date) == year
+                    func.extract("year", self.model.start_date) == year,
                 )
             )
             .all()
@@ -147,30 +134,36 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         return {
             "annual_entitlement": annual_entitlement,
             "days_taken": total_days_taken,
-            "days_remaining": remaining
+            "days_remaining": remaining,
         }
 
     def get_statistics(self, db: Session) -> Dict:
         """Get leave statistics"""
         total = db.query(func.count(self.model.id)).scalar()
 
-        pending = db.query(func.count(self.model.id)).filter(
-            self.model.status == LeaveStatus.PENDING
-        ).scalar()
+        pending = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == LeaveStatus.PENDING)
+            .scalar()
+        )
 
-        approved = db.query(func.count(self.model.id)).filter(
-            self.model.status == LeaveStatus.APPROVED
-        ).scalar()
+        approved = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == LeaveStatus.APPROVED)
+            .scalar()
+        )
 
-        rejected = db.query(func.count(self.model.id)).filter(
-            self.model.status == LeaveStatus.REJECTED
-        ).scalar()
+        rejected = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == LeaveStatus.REJECTED)
+            .scalar()
+        )
 
         return {
             "total": total or 0,
             "pending": pending or 0,
             "approved": approved or 0,
-            "rejected": rejected or 0
+            "rejected": rejected or 0,
         }
 
 

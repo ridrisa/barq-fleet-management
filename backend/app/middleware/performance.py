@@ -2,14 +2,16 @@
 Performance Monitoring Middleware
 Tracks request timing, adds performance headers, and logs slow requests
 """
-import time
+
 import logging
+import time
 from typing import Callable
+
+from fastapi import FastAPI
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.middleware.gzip import GZipMiddleware
-from fastapi import FastAPI
 
 from app.core.performance_config import performance_config
 
@@ -186,7 +188,8 @@ class RequestDeduplicationMiddleware(BaseHTTPMiddleware):
     def _cleanup_cache(self, current_time: float):
         """Remove expired cache entries"""
         expired_keys = [
-            key for key, (cached_time, _) in self._request_cache.items()
+            key
+            for key, (cached_time, _) in self._request_cache.items()
             if current_time - cached_time >= self.window_seconds
         ]
 
@@ -208,7 +211,7 @@ class CompressionMiddleware:
             app.add_middleware(
                 GZipMiddleware,
                 minimum_size=performance_config.api.min_compression_size,
-                compresslevel=performance_config.api.compression_level
+                compresslevel=performance_config.api.compression_level,
             )
             logger.info(
                 f"Compression enabled: level={performance_config.api.compression_level}, "
@@ -237,7 +240,7 @@ def setup_performance_middleware(app: FastAPI):
     if performance_config.api.enable_deduplication:
         app.add_middleware(
             RequestDeduplicationMiddleware,
-            window_seconds=performance_config.api.deduplication_window
+            window_seconds=performance_config.api.deduplication_window,
         )
         logger.info(
             f"Request deduplication enabled: window={performance_config.api.deduplication_window}s"
@@ -245,8 +248,7 @@ def setup_performance_middleware(app: FastAPI):
 
     # 4. Performance monitoring (should be last to measure total time)
     app.add_middleware(
-        PerformanceMiddleware,
-        enable_profiling=performance_config.monitoring.enable_profiling
+        PerformanceMiddleware, enable_profiling=performance_config.monitoring.enable_profiling
     )
     logger.info(
         f"Performance monitoring enabled: profiling={performance_config.monitoring.enable_profiling}"
@@ -279,14 +281,10 @@ class PerformanceMetrics:
     def get_metrics(self) -> dict:
         """Get current metrics"""
         avg_response_time = (
-            self._total_response_time / self._request_count
-            if self._request_count > 0 else 0
+            self._total_response_time / self._request_count if self._request_count > 0 else 0
         )
 
-        error_rate = (
-            self._error_count / self._request_count
-            if self._request_count > 0 else 0
-        )
+        error_rate = self._error_count / self._request_count if self._request_count > 0 else 0
 
         return {
             "total_requests": self._request_count,

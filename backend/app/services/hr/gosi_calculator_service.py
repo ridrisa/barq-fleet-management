@@ -7,18 +7,22 @@ GOSI Contribution Rates:
 - Employee: 9% of basic salary
 - Employer: 12% of basic salary
 """
+
 from decimal import Decimal
 from typing import Dict
+
 from pydantic import BaseModel, Field
 
 
 class GOSICalculationInput(BaseModel):
     """Input schema for GOSI calculation"""
+
     basic_salary: Decimal = Field(..., gt=0, description="Basic monthly salary")
 
 
 class GOSICalculationResult(BaseModel):
     """Result schema for GOSI calculation"""
+
     basic_salary: Decimal
     employee_contribution: Decimal
     employer_contribution: Decimal
@@ -58,14 +62,10 @@ class GOSICalculatorService:
             raise ValueError("Basic salary must be greater than zero")
 
         # Calculate employee contribution (9%)
-        employee_contribution = (basic_salary * self.EMPLOYEE_RATE).quantize(
-            Decimal("0.01")
-        )
+        employee_contribution = (basic_salary * self.EMPLOYEE_RATE).quantize(Decimal("0.01"))
 
         # Calculate employer contribution (12%)
-        employer_contribution = (basic_salary * self.EMPLOYER_RATE).quantize(
-            Decimal("0.01")
-        )
+        employer_contribution = (basic_salary * self.EMPLOYER_RATE).quantize(Decimal("0.01"))
 
         # Calculate total contribution
         total_contribution = employee_contribution + employer_contribution
@@ -76,7 +76,7 @@ class GOSICalculatorService:
             employer_contribution=employer_contribution,
             total_contribution=total_contribution,
             employee_rate=self.EMPLOYEE_RATE,
-            employer_rate=self.EMPLOYER_RATE
+            employer_rate=self.EMPLOYER_RATE,
         )
 
     def calculate_annual(self, basic_salary: Decimal, months: int = 12) -> Dict:
@@ -105,10 +105,7 @@ class GOSICalculatorService:
         }
 
     def validate_contribution(
-        self,
-        basic_salary: Decimal,
-        employee_contribution: Decimal,
-        employer_contribution: Decimal
+        self, basic_salary: Decimal, employee_contribution: Decimal, employer_contribution: Decimal
     ) -> Dict:
         """
         Validate if provided contributions match the calculated amounts
@@ -123,12 +120,8 @@ class GOSICalculatorService:
         """
         calculated = self.calculate(basic_salary)
 
-        employee_match = (
-            employee_contribution == calculated.employee_contribution
-        )
-        employer_match = (
-            employer_contribution == calculated.employer_contribution
-        )
+        employee_match = employee_contribution == calculated.employee_contribution
+        employer_match = employer_contribution == calculated.employer_contribution
 
         return {
             "is_valid": employee_match and employer_match,

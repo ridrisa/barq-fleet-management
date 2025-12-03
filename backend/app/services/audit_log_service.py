@@ -3,14 +3,16 @@
 Service for creating and querying audit logs.
 Provides comprehensive audit trail for compliance and security.
 """
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func, desc
-from datetime import datetime, timedelta
 
-from app.services.base import CRUDBase
-from app.models.audit_log import AuditLog, AuditAction
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import and_, desc, func, or_
+from sqlalchemy.orm import Session
+
+from app.models.audit_log import AuditAction, AuditLog
 from app.schemas.audit_log import AuditLogCreate, AuditLogFilter
+from app.services.base import CRUDBase
 
 
 class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
@@ -40,7 +42,7 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
         endpoint: Optional[str] = None,
         http_method: Optional[str] = None,
         metadata: Optional[Dict] = None,
-        description: Optional[str] = None
+        description: Optional[str] = None,
     ) -> AuditLog:
         """
         Create a new audit log entry
@@ -77,18 +79,13 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
             endpoint=endpoint,
             http_method=http_method,
             metadata=metadata,
-            description=description
+            description=description,
         )
 
         return self.create(db, obj_in=log_data)
 
     def get_by_filter(
-        self,
-        db: Session,
-        *,
-        filter_params: AuditLogFilter,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, filter_params: AuditLogFilter, skip: int = 0, limit: int = 100
     ) -> List[AuditLog]:
         """
         Get audit logs with filtering
@@ -132,25 +129,14 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
                 or_(
                     self.model.username.ilike(search_term),
                     self.model.resource_type.ilike(search_term),
-                    self.model.description.ilike(search_term)
+                    self.model.description.ilike(search_term),
                 )
             )
 
-        return (
-            query.order_by(desc(self.model.created_at))
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(desc(self.model.created_at)).offset(skip).limit(limit).all()
 
     def get_user_activity(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        days: int = 30,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, user_id: int, days: int = 30, skip: int = 0, limit: int = 100
     ) -> List[AuditLog]:
         """
         Get activity logs for a specific user
@@ -169,12 +155,7 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
 
         return (
             db.query(self.model)
-            .filter(
-                and_(
-                    self.model.user_id == user_id,
-                    self.model.created_at >= start_date
-                )
-            )
+            .filter(and_(self.model.user_id == user_id, self.model.created_at >= start_date))
             .order_by(desc(self.model.created_at))
             .offset(skip)
             .limit(limit)
@@ -182,13 +163,7 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
         )
 
     def get_resource_history(
-        self,
-        db: Session,
-        *,
-        resource_type: str,
-        resource_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, resource_type: str, resource_id: int, skip: int = 0, limit: int = 100
     ) -> List[AuditLog]:
         """
         Get complete history for a specific resource
@@ -207,8 +182,7 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
             db.query(self.model)
             .filter(
                 and_(
-                    self.model.resource_type == resource_type,
-                    self.model.resource_id == resource_id
+                    self.model.resource_type == resource_type, self.model.resource_id == resource_id
                 )
             )
             .order_by(desc(self.model.created_at))
@@ -217,12 +191,7 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
             .all()
         )
 
-    def get_summary(
-        self,
-        db: Session,
-        *,
-        days: int = 30
-    ) -> Dict[str, Any]:
+    def get_summary(self, db: Session, *, days: int = 30) -> Dict[str, Any]:
         """
         Get audit log summary statistics
 
@@ -236,17 +205,14 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
         start_date = datetime.utcnow() - timedelta(days=days)
 
         # Total logs
-        total = db.query(func.count(self.model.id)).filter(
-            self.model.created_at >= start_date
-        ).scalar()
+        total = (
+            db.query(func.count(self.model.id)).filter(self.model.created_at >= start_date).scalar()
+        )
 
         # Actions breakdown
         actions_breakdown = {}
         action_stats = (
-            db.query(
-                self.model.action,
-                func.count(self.model.id)
-            )
+            db.query(self.model.action, func.count(self.model.id))
             .filter(self.model.created_at >= start_date)
             .group_by(self.model.action)
             .all()
@@ -257,10 +223,7 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
         # Resources breakdown
         resources_breakdown = {}
         resource_stats = (
-            db.query(
-                self.model.resource_type,
-                func.count(self.model.id)
-            )
+            db.query(self.model.resource_type, func.count(self.model.id))
             .filter(self.model.created_at >= start_date)
             .group_by(self.model.resource_type)
             .all()
@@ -273,14 +236,9 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
             db.query(
                 self.model.user_id,
                 self.model.username,
-                func.count(self.model.id).label("activity_count")
+                func.count(self.model.id).label("activity_count"),
             )
-            .filter(
-                and_(
-                    self.model.created_at >= start_date,
-                    self.model.user_id.isnot(None)
-                )
-            )
+            .filter(and_(self.model.created_at >= start_date, self.model.user_id.isnot(None)))
             .group_by(self.model.user_id, self.model.username)
             .order_by(desc("activity_count"))
             .limit(10)
@@ -288,11 +246,7 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
         )
 
         top_users_list = [
-            {
-                "user_id": user_id,
-                "username": username,
-                "activity_count": count
-            }
+            {"user_id": user_id, "username": username, "activity_count": count}
             for user_id, username, count in top_users
         ]
 
@@ -311,15 +265,10 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
             "actions_breakdown": actions_breakdown,
             "resources_breakdown": resources_breakdown,
             "top_users": top_users_list,
-            "recent_activities": recent
+            "recent_activities": recent,
         }
 
-    def clean_old_logs(
-        self,
-        db: Session,
-        *,
-        days_to_keep: int = 365
-    ) -> int:
+    def clean_old_logs(self, db: Session, *, days_to_keep: int = 365) -> int:
         """
         Clean up old audit logs (for maintenance)
 
@@ -332,11 +281,7 @@ class AuditLogService(CRUDBase[AuditLog, AuditLogCreate, AuditLogCreate]):
         """
         cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
 
-        deleted_count = (
-            db.query(self.model)
-            .filter(self.model.created_at < cutoff_date)
-            .delete()
-        )
+        deleted_count = db.query(self.model).filter(self.model.created_at < cutoff_date).delete()
 
         db.commit()
         return deleted_count

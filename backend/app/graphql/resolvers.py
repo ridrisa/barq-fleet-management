@@ -4,31 +4,50 @@ Handles database queries and mutations
 """
 
 from typing import List, Optional
+
 from sqlalchemy.orm import Session
 
-from app.models.hr.loan import Loan
-from app.models.hr.leave import Leave
-from app.models.hr.salary import Salary
-from app.models.hr.bonus import Bonus
-from app.models.fleet.vehicle import Vehicle
-from app.models.fleet.courier import Courier
-from app.models.fleet.assignment import CourierVehicleAssignment
+from app.graphql.types import (
+    AssignmentStatus,
+    AssignmentType,
+    BonusType,
+    BuildingType,
+    CourierDashboard,
+    CourierStatus,
+    CourierType,
+    FuelType,
+    LeaveStatus,
+)
+from app.graphql.types import LeaveType as LeaveTypeEnum
+from app.graphql.types import (
+    LeaveTypeGQL,
+    LoanStatus,
+    LoanType,
+    OwnershipType,
+    RoomStatus,
+    RoomType,
+    SalaryType,
+    VehicleAssignmentType,
+    VehicleStatus,
+)
+from app.graphql.types import VehicleType as VehicleTypeEnum
+from app.graphql.types import (
+    VehicleTypeGQL,
+)
 from app.models.accommodation.building import Building
 from app.models.accommodation.room import Room
-
-from app.graphql.types import (
-    LoanType, LeaveTypeGQL, SalaryType, BonusType,
-    VehicleTypeGQL, VehicleAssignmentType, CourierType,
-    BuildingType, RoomType, CourierDashboard,
-    LoanStatus, LeaveStatus, LeaveType as LeaveTypeEnum,
-    VehicleStatus, VehicleType as VehicleTypeEnum, FuelType, OwnershipType,
-    AssignmentType, AssignmentStatus, CourierStatus, RoomStatus,
-)
-
+from app.models.fleet.assignment import CourierVehicleAssignment
+from app.models.fleet.courier import Courier
+from app.models.fleet.vehicle import Vehicle
+from app.models.hr.bonus import Bonus
+from app.models.hr.leave import Leave
+from app.models.hr.loan import Loan
+from app.models.hr.salary import Salary
 
 # ============================================
 # CONVERTER FUNCTIONS
 # ============================================
+
 
 def convert_loan(loan: Loan) -> LoanType:
     """Convert SQLAlchemy Loan to GraphQL LoanType"""
@@ -99,7 +118,11 @@ def convert_vehicle(vehicle: Vehicle) -> VehicleTypeGQL:
         year=vehicle.year,
         color=vehicle.color,
         status=VehicleStatus(vehicle.status.value),
-        ownership_type=OwnershipType(vehicle.ownership_type.value) if vehicle.ownership_type else OwnershipType.OWNED,
+        ownership_type=(
+            OwnershipType(vehicle.ownership_type.value)
+            if vehicle.ownership_type
+            else OwnershipType.OWNED
+        ),
         registration_number=vehicle.registration_number,
         registration_expiry_date=vehicle.registration_expiry_date,
         insurance_company=vehicle.insurance_company,
@@ -212,6 +235,7 @@ def convert_room(room: Room) -> RoomType:
 # QUERY RESOLVERS
 # ============================================
 
+
 class QueryResolvers:
     """Query resolvers for GraphQL"""
 
@@ -234,10 +258,12 @@ class QueryResolvers:
     @staticmethod
     def get_courier_active_loans(db: Session, courier_id: int) -> List[LoanType]:
         from app.models.hr.loan import LoanStatus as DBLoanStatus
-        loans = db.query(Loan).filter(
-            Loan.courier_id == courier_id,
-            Loan.status == DBLoanStatus.ACTIVE
-        ).all()
+
+        loans = (
+            db.query(Loan)
+            .filter(Loan.courier_id == courier_id, Loan.status == DBLoanStatus.ACTIVE)
+            .all()
+        )
         return [convert_loan(loan) for loan in loans]
 
     @staticmethod
@@ -248,17 +274,23 @@ class QueryResolvers:
     @staticmethod
     def get_courier_pending_leaves(db: Session, courier_id: int) -> List[LeaveTypeGQL]:
         from app.models.hr.leave import LeaveStatus as DBLeaveStatus
-        leaves = db.query(Leave).filter(
-            Leave.courier_id == courier_id,
-            Leave.status == DBLeaveStatus.PENDING
-        ).all()
+
+        leaves = (
+            db.query(Leave)
+            .filter(Leave.courier_id == courier_id, Leave.status == DBLeaveStatus.PENDING)
+            .all()
+        )
         return [convert_leave(leave) for leave in leaves]
 
     @staticmethod
     def get_courier_salaries(db: Session, courier_id: int, limit: int = 12) -> List[SalaryType]:
-        salaries = db.query(Salary).filter(
-            Salary.courier_id == courier_id
-        ).order_by(Salary.year.desc(), Salary.month.desc()).limit(limit).all()
+        salaries = (
+            db.query(Salary)
+            .filter(Salary.courier_id == courier_id)
+            .order_by(Salary.year.desc(), Salary.month.desc())
+            .limit(limit)
+            .all()
+        )
         return [convert_salary(salary) for salary in salaries]
 
     # Fleet Queries
@@ -276,18 +308,28 @@ class QueryResolvers:
 
     @staticmethod
     def get_courier_assignments(db: Session, courier_id: int) -> List[VehicleAssignmentType]:
-        assignments = db.query(CourierVehicleAssignment).filter(
-            CourierVehicleAssignment.courier_id == courier_id
-        ).order_by(CourierVehicleAssignment.start_date.desc()).all()
+        assignments = (
+            db.query(CourierVehicleAssignment)
+            .filter(CourierVehicleAssignment.courier_id == courier_id)
+            .order_by(CourierVehicleAssignment.start_date.desc())
+            .all()
+        )
         return [convert_assignment(assignment) for assignment in assignments]
 
     @staticmethod
-    def get_courier_active_assignment(db: Session, courier_id: int) -> Optional[VehicleAssignmentType]:
+    def get_courier_active_assignment(
+        db: Session, courier_id: int
+    ) -> Optional[VehicleAssignmentType]:
         from app.models.fleet.assignment import AssignmentStatus as DBAssignmentStatus
-        assignment = db.query(CourierVehicleAssignment).filter(
-            CourierVehicleAssignment.courier_id == courier_id,
-            CourierVehicleAssignment.status == DBAssignmentStatus.ACTIVE
-        ).first()
+
+        assignment = (
+            db.query(CourierVehicleAssignment)
+            .filter(
+                CourierVehicleAssignment.courier_id == courier_id,
+                CourierVehicleAssignment.status == DBAssignmentStatus.ACTIVE,
+            )
+            .first()
+        )
         return convert_assignment(assignment) if assignment else None
 
     # Accommodation Queries
@@ -328,7 +370,9 @@ class QueryResolvers:
 
         return CourierDashboard(
             courier=convert_courier(courier),
-            current_vehicle=convert_vehicle(courier.current_vehicle) if courier.current_vehicle else None,
+            current_vehicle=(
+                convert_vehicle(courier.current_vehicle) if courier.current_vehicle else None
+            ),
             active_loans=QueryResolvers.get_courier_active_loans(db, courier_id),
             pending_leaves=QueryResolvers.get_courier_pending_leaves(db, courier_id),
             recent_salaries=QueryResolvers.get_courier_salaries(db, courier_id, limit=3),

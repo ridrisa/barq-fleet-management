@@ -6,21 +6,22 @@ Requires appropriate roles for modifications.
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import (
-    get_db,
     get_current_active_user,
     get_current_organization,
+    get_db,
 )
-from app.models.user import User
 from app.models.tenant.organization import Organization
 from app.models.tenant.organization_user import OrganizationRole
+from app.models.user import User
 from app.schemas.tenant.organization import (
     OrganizationCreate,
-    OrganizationUpdate,
     OrganizationResponse,
+    OrganizationUpdate,
     OrganizationWithStats,
     SubscriptionUpgrade,
 )
@@ -49,7 +50,7 @@ def create_organization(
         if existing_orgs:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only administrators can create additional organizations"
+                detail="Only administrators can create additional organizations",
             )
 
     # Create organization
@@ -57,6 +58,7 @@ def create_organization(
 
     # Add current user as owner
     from app.schemas.tenant.organization_user import OrganizationUserCreate
+
     org_user_in = OrganizationUserCreate(
         user_id=current_user.id,
         role=OrganizationRole.OWNER,
@@ -135,17 +137,13 @@ def get_organization(
     """
     org = organization_service.get(db, organization_id)
     if not org:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Organization not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
 
     # Check access
     if not current_user.is_superuser:
         if not organization_user_service.is_member(db, organization_id, current_user.id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not a member of this organization"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization"
             )
 
     stats = organization_service.get_statistics(db, organization_id)
@@ -185,10 +183,7 @@ def update_organization(
     """
     org = organization_service.get(db, organization_id)
     if not org:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Organization not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
 
     # Check access
     if not current_user.is_superuser:
@@ -196,7 +191,7 @@ def update_organization(
         if role not in [OrganizationRole.OWNER, OrganizationRole.ADMIN]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners and admins can update organization"
+                detail="Only owners and admins can update organization",
             )
 
     return organization_service.update(db, db_obj=org, obj_in=org_in)
@@ -217,18 +212,14 @@ def delete_organization(
     """
     org = organization_service.get(db, organization_id)
     if not org:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Organization not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
 
     # Check access - only owners or superusers
     if not current_user.is_superuser:
         role = organization_user_service.get_user_role(db, organization_id, current_user.id)
         if role != OrganizationRole.OWNER:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners can delete organization"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can delete organization"
             )
 
     organization_service.remove(db, id=organization_id)
@@ -250,7 +241,7 @@ def activate_organization(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only superusers can activate organizations"
+            detail="Only superusers can activate organizations",
         )
 
     return organization_service.activate_organization(db, organization_id)
@@ -271,7 +262,7 @@ def suspend_organization(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only superusers can suspend organizations"
+            detail="Only superusers can suspend organizations",
         )
 
     return organization_service.suspend_organization(db, organization_id)
@@ -295,8 +286,7 @@ def upgrade_subscription(
         role = organization_user_service.get_user_role(db, organization_id, current_user.id)
         if role != OrganizationRole.OWNER:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners can upgrade subscription"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can upgrade subscription"
             )
 
     return organization_service.upgrade_plan(db, organization_id, upgrade_data)
@@ -317,8 +307,7 @@ def get_organization_statistics(
     if not current_user.is_superuser:
         if not organization_user_service.is_member(db, organization_id, current_user.id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not a member of this organization"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization"
             )
 
     return organization_service.get_statistics(db, organization_id)

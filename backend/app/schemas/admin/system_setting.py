@@ -1,11 +1,14 @@
 """System Setting Schemas"""
-from typing import Optional, Any, List
+
 from datetime import datetime
+from typing import Any, List, Optional
+
 from pydantic import BaseModel, Field
 
 
 class SystemSettingBase(BaseModel):
     """Base System Setting schema"""
+
     key: str = Field(..., min_length=1, max_length=100, description="Unique setting key")
     name: str = Field(..., min_length=1, max_length=200, description="Human-readable name")
     description: Optional[str] = Field(None, description="Setting description")
@@ -27,11 +30,13 @@ class SystemSettingBase(BaseModel):
 
 class SystemSettingCreate(SystemSettingBase):
     """Schema for creating a system setting"""
+
     pass
 
 
 class SystemSettingUpdate(BaseModel):
     """Schema for updating a system setting"""
+
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     value: Optional[str] = None
@@ -49,6 +54,7 @@ class SystemSettingUpdate(BaseModel):
 
 class SystemSettingResponse(BaseModel):
     """Schema for system setting response"""
+
     id: int
     key: str
     name: str
@@ -76,6 +82,7 @@ class SystemSettingResponse(BaseModel):
 
 class SystemSettingListResponse(BaseModel):
     """Schema for paginated system setting list"""
+
     items: List[SystemSettingResponse]
     total: int
     skip: int
@@ -84,4 +91,5 @@ class SystemSettingListResponse(BaseModel):
 
 class SystemSettingBulkUpdate(BaseModel):
     """Schema for bulk updating system settings"""
+
     settings: List[dict] = Field(..., description="List of {key: value} pairs")

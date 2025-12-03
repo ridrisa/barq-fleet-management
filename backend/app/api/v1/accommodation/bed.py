@@ -1,15 +1,14 @@
 """Bed Management API Routes"""
+
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
-from app.schemas.accommodation import (
-    BedCreate, BedUpdate, BedResponse, BedStatus
-)
+from app.schemas.accommodation import BedCreate, BedResponse, BedStatus, BedUpdate
 from app.services.accommodation import bed_service, room_service
-
 
 router = APIRouter()
 
@@ -33,19 +32,13 @@ def get_beds(
     - available_only: Show only available beds
     """
     if available_only:
-        return bed_service.get_available(
-            db, room_id=room_id, skip=skip, limit=limit
-        )
+        return bed_service.get_available(db, room_id=room_id, skip=skip, limit=limit)
 
     if room_id:
-        return bed_service.get_by_room(
-            db, room_id=room_id, skip=skip, limit=limit
-        )
+        return bed_service.get_by_room(db, room_id=room_id, skip=skip, limit=limit)
 
     if status:
-        return bed_service.get_by_status(
-            db, status=status, skip=skip, limit=limit
-        )
+        return bed_service.get_by_status(db, status=status, skip=skip, limit=limit)
 
     return bed_service.get_multi(db, skip=skip, limit=limit)
 
@@ -68,8 +61,7 @@ def create_bed(
     )
     if existing:
         raise HTTPException(
-            status_code=400,
-            detail=f"Bed number {bed_in.bed_number} already exists in this room"
+            status_code=400, detail=f"Bed number {bed_in.bed_number} already exists in this room"
         )
 
     bed = bed_service.create(db, obj_in=bed_in)
@@ -114,13 +106,11 @@ def update_bed(
     # Check if bed number conflicts
     if bed_in.bed_number and bed_in.bed_number != bed.bed_number:
         room_id = bed_in.room_id or bed.room_id
-        existing = bed_service.get_by_bed_number(
-            db, room_id=room_id, bed_number=bed_in.bed_number
-        )
+        existing = bed_service.get_by_bed_number(db, room_id=room_id, bed_number=bed_in.bed_number)
         if existing:
             raise HTTPException(
                 status_code=400,
-                detail=f"Bed number {bed_in.bed_number} already exists in this room"
+                detail=f"Bed number {bed_in.bed_number} already exists in this room",
             )
 
     old_room_id = bed.room_id
@@ -148,8 +138,7 @@ def delete_bed(
     # Check if bed is currently allocated
     if bed.status == BedStatus.OCCUPIED:
         raise HTTPException(
-            status_code=400,
-            detail="Cannot delete occupied bed. Release allocation first."
+            status_code=400, detail="Cannot delete occupied bed. Release allocation first."
         )
 
     room_id = bed.room_id
@@ -175,8 +164,7 @@ def reserve_bed(
     bed = bed_service.reserve_bed(db, bed_id=bed_id)
     if not bed:
         raise HTTPException(
-            status_code=400,
-            detail="Bed not found or not available for reservation"
+            status_code=400, detail="Bed not found or not available for reservation"
         )
 
     return bed

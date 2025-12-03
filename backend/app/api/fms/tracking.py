@@ -2,10 +2,13 @@
 FMS Tracking API Routes
 Provides endpoints for real-time tracking and streaming from machinettalk.
 """
+
+import asyncio
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-import httpx
-import asyncio
+
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.fms import get_fms_client
@@ -28,14 +31,10 @@ async def get_fms_status(
         return {
             "status": "disconnected",
             "message": result.get("message", "FMS unavailable"),
-            "fms_url": client.base_url
+            "fms_url": client.base_url,
         }
 
-    return {
-        "status": "connected",
-        "fms_status": result,
-        "fms_url": client.base_url
-    }
+    return {"status": "connected", "fms_status": result, "fms_url": client.base_url}
 
 
 @router.get("/health")
@@ -49,15 +48,9 @@ async def get_fms_health(
     result = client.get_health()
 
     if result.get("error"):
-        return {
-            "healthy": False,
-            "message": result.get("message", "FMS unavailable")
-        }
+        return {"healthy": False, "message": result.get("message", "FMS unavailable")}
 
-    return {
-        "healthy": True,
-        "details": result
-    }
+    return {"healthy": True, "details": result}
 
 
 @router.get("/stream-url")
@@ -72,7 +65,7 @@ async def get_stream_url(
     return {
         "stream_url": client.get_stream_url(),
         "type": "server-sent-events",
-        "description": "Real-time vehicle position updates"
+        "description": "Real-time vehicle position updates",
     }
 
 
@@ -95,7 +88,7 @@ async def stream_live_data(
                         if line:
                             yield f"{line}\n"
             except Exception as e:
-                yield f"data: {{\"error\": \"{str(e)}\"}}\n\n"
+                yield f'data: {{"error": "{str(e)}"}}\n\n'
 
     return StreamingResponse(
         event_generator(),
@@ -103,8 +96,8 @@ async def stream_live_data(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -121,8 +114,7 @@ async def get_fleet_summary(
 
     if result.get("error"):
         raise HTTPException(
-            status_code=502,
-            detail=result.get("message", "FMS service unavailable")
+            status_code=502, detail=result.get("message", "FMS service unavailable")
         )
 
     # Handle null/empty result
@@ -138,7 +130,7 @@ async def get_fleet_summary(
         "offline": 0,
         "moving": 0,
         "stationary": 0,
-        "unknown": 0
+        "unknown": 0,
     }
 
     speed_threshold = 5  # km/h - consider vehicle moving if speed > this
@@ -183,7 +175,9 @@ async def get_fleet_summary(
         if speed > speed_threshold:
             moving_speeds.append(speed)
 
-    summary["avg_speed_kmh"] = round(sum(moving_speeds) / len(moving_speeds), 1) if moving_speeds else 0
+    summary["avg_speed_kmh"] = (
+        round(sum(moving_speeds) / len(moving_speeds), 1) if moving_speeds else 0
+    )
 
     return summary
 
@@ -201,10 +195,7 @@ async def get_vehicle_current_position(
     result = client.get_asset_by_id(vehicle_id)
 
     if result.get("error"):
-        raise HTTPException(
-            status_code=404,
-            detail="Vehicle not found or FMS unavailable"
-        )
+        raise HTTPException(status_code=404, detail="Vehicle not found or FMS unavailable")
 
     # Extract relevant tracking data
     tracking = result.get("Trackingunit", {})
@@ -222,18 +213,19 @@ async def get_vehicle_current_position(
             "longitude": device_log.get("Longitude"),
             "altitude": device_log.get("Altitude"),
             "direction": device_log.get("Direction"),
-            "timestamp": device_log.get("GPSDate")
+            "timestamp": device_log.get("GPSDate"),
         },
-        "speed": {
-            "current_kmh": device_log.get("Speed"),
-            "mileage_km": device_log.get("Mileage")
-        },
+        "speed": {"current_kmh": device_log.get("Speed"), "mileage_km": device_log.get("Mileage")},
         "signal_strength": device_log.get("SignalStrength"),
-        "driver": {
-            "id": driver.get("DriverId"),
-            "name": driver.get("DriverName"),
-            "badge": driver.get("BadgeNumber"),
-            "license": driver.get("LicenseNumber"),
-            "contact": driver.get("ContactNumber")
-        } if driver else None
+        "driver": (
+            {
+                "id": driver.get("DriverId"),
+                "name": driver.get("DriverName"),
+                "badge": driver.get("BadgeNumber"),
+                "license": driver.get("LicenseNumber"),
+                "contact": driver.get("ContactNumber"),
+            }
+            if driver
+            else None
+        ),
     }

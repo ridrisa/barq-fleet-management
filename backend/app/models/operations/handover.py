@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric
+import enum
+
+from sqlalchemy import Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class HandoverStatus(str, enum.Enum):
     """Handover transaction status"""
+
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
@@ -16,6 +21,7 @@ class HandoverStatus(str, enum.Enum):
 
 class HandoverType(str, enum.Enum):
     """Type of handover"""
+
     SHIFT_START = "shift_start"
     SHIFT_END = "shift_end"
     VEHICLE_SWAP = "vehicle_swap"
@@ -29,13 +35,21 @@ class Handover(TenantMixin, BaseModel):
     __tablename__ = "handovers"
 
     # Handover Details
-    handover_number = Column(String(50), unique=True, nullable=False, index=True, comment="Unique handover ID")
+    handover_number = Column(
+        String(50), unique=True, nullable=False, index=True, comment="Unique handover ID"
+    )
     handover_type = Column(SQLEnum(HandoverType), nullable=False, index=True)
-    status = Column(SQLEnum(HandoverStatus), default=HandoverStatus.PENDING, nullable=False, index=True)
+    status = Column(
+        SQLEnum(HandoverStatus), default=HandoverStatus.PENDING, nullable=False, index=True
+    )
 
     # Couriers Involved
-    from_courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="RESTRICT"), nullable=False, index=True)
-    to_courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="RESTRICT"), nullable=False, index=True)
+    from_courier_id = Column(
+        Integer, ForeignKey("couriers.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    to_courier_id = Column(
+        Integer, ForeignKey("couriers.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
 
     # Vehicle Information
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="RESTRICT"), index=True)
@@ -55,7 +69,9 @@ class Handover(TenantMixin, BaseModel):
     # Verification
     from_courier_signature = Column(String(500), comment="Digital signature or URL")
     to_courier_signature = Column(String(500), comment="Digital signature or URL")
-    witness_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), comment="Supervisor/witness")
+    witness_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), comment="Supervisor/witness"
+    )
 
     # Approval
     approved_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
@@ -69,7 +85,9 @@ class Handover(TenantMixin, BaseModel):
 
     # Discrepancy Tracking
     discrepancies_reported = Column(Text, comment="Issues found during handover")
-    discrepancy_resolved = Column(String(20), default="pending", comment="pending, resolved, escalated")
+    discrepancy_resolved = Column(
+        String(20), default="pending", comment="pending, resolved, escalated"
+    )
 
     # Relationships
     from_courier = relationship("Courier", foreign_keys=[from_courier_id])

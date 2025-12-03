@@ -1,13 +1,17 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum
+import enum
+
+from sqlalchemy import Column, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
+
 
 class RoomStatus(str, enum.Enum):
     AVAILABLE = "available"
     OCCUPIED = "occupied"
     MAINTENANCE = "maintenance"
+
 
 class Room(TenantMixin, BaseModel):
     __tablename__ = "rooms"

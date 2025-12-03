@@ -1,25 +1,22 @@
 """COD Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
+
 from datetime import date
 from decimal import Decimal
+from typing import Dict, List, Optional
 
-from app.services.base import CRUDBase
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
 from app.models.operations.cod import COD, CODStatus
 from app.schemas.operations.cod import CODCreate, CODUpdate
+from app.services.base import CRUDBase
 
 
 class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
     """Service for COD (Cash On Delivery) management operations"""
 
     def get_by_courier(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
     ) -> List[COD]:
         """
         Get COD transactions for a specific courier
@@ -43,12 +40,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         )
 
     def get_by_status(
-        self,
-        db: Session,
-        *,
-        status: CODStatus,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, status: CODStatus, skip: int = 0, limit: int = 100
     ) -> List[COD]:
         """
         Get COD transactions by status
@@ -72,12 +64,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         )
 
     def get_pending(
-        self,
-        db: Session,
-        *,
-        courier_id: Optional[int] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> List[COD]:
         """
         Get pending COD transactions
@@ -91,19 +78,12 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         Returns:
             List of pending COD records
         """
-        query = db.query(self.model).filter(
-            self.model.status == CODStatus.PENDING
-        )
+        query = db.query(self.model).filter(self.model.status == CODStatus.PENDING)
 
         if courier_id:
             query = query.filter(self.model.courier_id == courier_id)
 
-        return (
-            query.order_by(self.model.collection_date.asc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.collection_date.asc()).offset(skip).limit(limit).all()
 
     def get_by_date_range(
         self,
@@ -113,7 +93,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         end_date: date,
         courier_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[COD]:
         """
         Get COD transactions within a date range
@@ -130,21 +110,13 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
             List of COD records
         """
         query = db.query(self.model).filter(
-            and_(
-                self.model.collection_date >= start_date,
-                self.model.collection_date <= end_date
-            )
+            and_(self.model.collection_date >= start_date, self.model.collection_date <= end_date)
         )
 
         if courier_id:
             query = query.filter(self.model.courier_id == courier_id)
 
-        return (
-            query.order_by(self.model.collection_date.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.collection_date.desc()).offset(skip).limit(limit).all()
 
     def mark_as_collected(
         self,
@@ -152,7 +124,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         *,
         cod_id: int,
         reference_number: Optional[str] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> Optional[COD]:
         """
         Mark COD as collected
@@ -170,9 +142,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         if not cod:
             return None
 
-        update_data = {
-            "status": CODStatus.COLLECTED
-        }
+        update_data = {"status": CODStatus.COLLECTED}
 
         if reference_number:
             update_data["reference_number"] = reference_number
@@ -188,7 +158,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         cod_id: int,
         deposit_date: Optional[date] = None,
         reference_number: Optional[str] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> Optional[COD]:
         """
         Mark COD as deposited
@@ -207,10 +177,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         if not cod:
             return None
 
-        update_data = {
-            "status": CODStatus.DEPOSITED,
-            "deposit_date": deposit_date or date.today()
-        }
+        update_data = {"status": CODStatus.DEPOSITED, "deposit_date": deposit_date or date.today()}
 
         if reference_number:
             update_data["reference_number"] = reference_number
@@ -220,11 +187,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         return self.update(db, db_obj=cod, obj_in=update_data)
 
     def mark_as_reconciled(
-        self,
-        db: Session,
-        *,
-        cod_id: int,
-        notes: Optional[str] = None
+        self, db: Session, *, cod_id: int, notes: Optional[str] = None
     ) -> Optional[COD]:
         """
         Mark COD as reconciled
@@ -241,9 +204,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         if not cod:
             return None
 
-        update_data = {
-            "status": CODStatus.RECONCILED
-        }
+        update_data = {"status": CODStatus.RECONCILED}
 
         if notes:
             update_data["notes"] = notes
@@ -256,7 +217,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         *,
         cod_ids: List[int],
         deposit_date: Optional[date] = None,
-        reference_number: Optional[str] = None
+        reference_number: Optional[str] = None,
     ) -> int:
         """
         Mark multiple COD transactions as deposited
@@ -270,10 +231,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         Returns:
             Number of records updated
         """
-        update_data = {
-            "status": CODStatus.DEPOSITED,
-            "deposit_date": deposit_date or date.today()
-        }
+        update_data = {"status": CODStatus.DEPOSITED, "deposit_date": deposit_date or date.today()}
 
         if reference_number:
             update_data["reference_number"] = reference_number
@@ -286,7 +244,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         *,
         courier_id: Optional[int] = None,
         start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        end_date: Optional[date] = None,
     ) -> Dict:
         """
         Get COD statistics
@@ -318,18 +276,10 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         reconciled = sum(1 for c in cods if c.status == CODStatus.RECONCILED)
 
         total_amount = sum(c.amount for c in cods)
-        pending_amount = sum(
-            c.amount for c in cods if c.status == CODStatus.PENDING
-        )
-        collected_amount = sum(
-            c.amount for c in cods if c.status == CODStatus.COLLECTED
-        )
-        deposited_amount = sum(
-            c.amount for c in cods if c.status == CODStatus.DEPOSITED
-        )
-        reconciled_amount = sum(
-            c.amount for c in cods if c.status == CODStatus.RECONCILED
-        )
+        pending_amount = sum(c.amount for c in cods if c.status == CODStatus.PENDING)
+        collected_amount = sum(c.amount for c in cods if c.status == CODStatus.COLLECTED)
+        deposited_amount = sum(c.amount for c in cods if c.status == CODStatus.DEPOSITED)
+        reconciled_amount = sum(c.amount for c in cods if c.status == CODStatus.RECONCILED)
 
         return {
             "total_transactions": total_transactions,
@@ -342,15 +292,12 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
             "collected_amount": float(collected_amount),
             "deposited_amount": float(deposited_amount),
             "reconciled_amount": float(reconciled_amount),
-            "average_transaction_amount": float(total_amount / total_transactions) if total_transactions > 0 else 0
+            "average_transaction_amount": (
+                float(total_amount / total_transactions) if total_transactions > 0 else 0
+            ),
         }
 
-    def get_courier_balance(
-        self,
-        db: Session,
-        *,
-        courier_id: int
-    ) -> Dict:
+    def get_courier_balance(self, db: Session, *, courier_id: int) -> Dict:
         """
         Get courier's COD balance (pending + collected amounts)
 
@@ -361,20 +308,20 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         Returns:
             Dictionary with balance information
         """
-        pending_cods = db.query(self.model).filter(
-            and_(
-                self.model.courier_id == courier_id,
-                self.model.status.in_([CODStatus.PENDING, CODStatus.COLLECTED])
+        pending_cods = (
+            db.query(self.model)
+            .filter(
+                and_(
+                    self.model.courier_id == courier_id,
+                    self.model.status.in_([CODStatus.PENDING, CODStatus.COLLECTED]),
+                )
             )
-        ).all()
-
-        pending_amount = sum(
-            cod.amount for cod in pending_cods
-            if cod.status == CODStatus.PENDING
+            .all()
         )
+
+        pending_amount = sum(cod.amount for cod in pending_cods if cod.status == CODStatus.PENDING)
         collected_amount = sum(
-            cod.amount for cod in pending_cods
-            if cod.status == CODStatus.COLLECTED
+            cod.amount for cod in pending_cods if cod.status == CODStatus.COLLECTED
         )
 
         total_balance = pending_amount + collected_amount
@@ -384,7 +331,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
             "pending_amount": float(pending_amount),
             "collected_amount": float(collected_amount),
             "total_balance": float(total_balance),
-            "transaction_count": len(pending_cods)
+            "transaction_count": len(pending_cods),
         }
 
     def settle_courier_cod(
@@ -393,7 +340,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
         *,
         courier_id: int,
         deposit_date: Optional[date] = None,
-        reference_number: Optional[str] = None
+        reference_number: Optional[str] = None,
     ) -> Dict:
         """
         Settle all pending and collected COD for a courier
@@ -408,19 +355,23 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
             Dictionary with settlement information
         """
         # Get all pending and collected COD for courier
-        cods = db.query(self.model).filter(
-            and_(
-                self.model.courier_id == courier_id,
-                self.model.status.in_([CODStatus.PENDING, CODStatus.COLLECTED])
+        cods = (
+            db.query(self.model)
+            .filter(
+                and_(
+                    self.model.courier_id == courier_id,
+                    self.model.status.in_([CODStatus.PENDING, CODStatus.COLLECTED]),
+                )
             )
-        ).all()
+            .all()
+        )
 
         if not cods:
             return {
                 "courier_id": courier_id,
                 "transactions_settled": 0,
                 "total_amount": 0.0,
-                "message": "No pending or collected COD transactions found"
+                "message": "No pending or collected COD transactions found",
             }
 
         cod_ids = [cod.id for cod in cods]
@@ -428,10 +379,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
 
         # Mark all as deposited
         updated_count = self.bulk_deposit(
-            db,
-            cod_ids=cod_ids,
-            deposit_date=deposit_date,
-            reference_number=reference_number
+            db, cod_ids=cod_ids, deposit_date=deposit_date, reference_number=reference_number
         )
 
         return {
@@ -439,7 +387,7 @@ class CODService(CRUDBase[COD, CODCreate, CODUpdate]):
             "transactions_settled": updated_count,
             "total_amount": float(total_amount),
             "deposit_date": (deposit_date or date.today()).isoformat(),
-            "reference_number": reference_number
+            "reference_number": reference_number,
         }
 
 

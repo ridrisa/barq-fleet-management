@@ -2,11 +2,12 @@
 
 Helper functions for exporting data to various formats (CSV, Excel, PDF).
 """
+
 import csv
 import io
-from typing import List, Dict, Any, Optional
 from datetime import datetime
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
 
 
 def prepare_export_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -40,9 +41,7 @@ def prepare_export_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 
 def export_to_csv(
-    data: List[Dict[str, Any]],
-    columns: Optional[List[str]] = None,
-    filename: Optional[str] = None
+    data: List[Dict[str, Any]], columns: Optional[List[str]] = None, filename: Optional[str] = None
 ) -> str:
     """
     Export data to CSV format
@@ -67,7 +66,7 @@ def export_to_csv(
 
     # Create CSV in memory
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=columns, extrasaction='ignore')
+    writer = csv.DictWriter(output, fieldnames=columns, extrasaction="ignore")
 
     writer.writeheader()
     for row in cleaned_data:
@@ -77,9 +76,7 @@ def export_to_csv(
 
 
 def export_to_excel_dict(
-    data: List[Dict[str, Any]],
-    columns: Optional[List[str]] = None,
-    sheet_name: str = "Data"
+    data: List[Dict[str, Any]], columns: Optional[List[str]] = None, sheet_name: str = "Data"
 ) -> Dict[str, Any]:
     """
     Prepare data for Excel export (returns dict for openpyxl)
@@ -93,11 +90,7 @@ def export_to_excel_dict(
         Dictionary with sheet configuration
     """
     if not data:
-        return {
-            "sheet_name": sheet_name,
-            "headers": [],
-            "rows": []
-        }
+        return {"sheet_name": sheet_name, "headers": [], "rows": []}
 
     # Prepare data
     cleaned_data = prepare_export_data(data)
@@ -111,11 +104,7 @@ def export_to_excel_dict(
     for row in cleaned_data:
         rows.append([row.get(col, "") for col in columns])
 
-    return {
-        "sheet_name": sheet_name,
-        "headers": columns,
-        "rows": rows
-    }
+    return {"sheet_name": sheet_name, "headers": columns, "rows": rows}
 
 
 def export_to_json(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -145,8 +134,7 @@ def format_column_name(column: str) -> str:
 
 
 def apply_column_formatting(
-    data: List[Dict[str, Any]],
-    format_config: Dict[str, str]
+    data: List[Dict[str, Any]], format_config: Dict[str, str]
 ) -> List[Dict[str, Any]]:
     """
     Apply formatting to specific columns
@@ -186,8 +174,7 @@ def apply_column_formatting(
 
 
 def chunk_data_for_export(
-    data: List[Dict[str, Any]],
-    chunk_size: int = 1000
+    data: List[Dict[str, Any]], chunk_size: int = 1000
 ) -> List[List[Dict[str, Any]]]:
     """
     Split large datasets into chunks for streaming export
@@ -201,15 +188,11 @@ def chunk_data_for_export(
     """
     chunks = []
     for i in range(0, len(data), chunk_size):
-        chunks.append(data[i:i + chunk_size])
+        chunks.append(data[i : i + chunk_size])
     return chunks
 
 
-def generate_export_filename(
-    base_name: str,
-    extension: str,
-    include_timestamp: bool = True
-) -> str:
+def generate_export_filename(base_name: str, extension: str, include_timestamp: bool = True) -> str:
     """
     Generate filename for export
 
@@ -228,9 +211,7 @@ def generate_export_filename(
 
 
 def create_summary_row(
-    data: List[Dict[str, Any]],
-    numeric_columns: List[str],
-    summary_type: str = "sum"
+    data: List[Dict[str, Any]], numeric_columns: List[str], summary_type: str = "sum"
 ) -> Dict[str, Any]:
     """
     Create a summary row for numeric columns
@@ -267,8 +248,7 @@ def create_summary_row(
 
 
 def validate_export_data(
-    data: List[Dict[str, Any]],
-    max_rows: int = 100000
+    data: List[Dict[str, Any]], max_rows: int = 100000
 ) -> tuple[bool, Optional[str]]:
     """
     Validate data before export
@@ -292,7 +272,7 @@ def validate_export_data(
 def filter_columns(
     data: List[Dict[str, Any]],
     include_columns: Optional[List[str]] = None,
-    exclude_columns: Optional[List[str]] = None
+    exclude_columns: Optional[List[str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Filter columns from data
@@ -324,9 +304,7 @@ def filter_columns(
 
 
 def sort_data(
-    data: List[Dict[str, Any]],
-    sort_by: str,
-    descending: bool = False
+    data: List[Dict[str, Any]], sort_by: str, descending: bool = False
 ) -> List[Dict[str, Any]]:
     """
     Sort data by a specific column
@@ -340,19 +318,12 @@ def sort_data(
         Sorted data
     """
     try:
-        return sorted(
-            data,
-            key=lambda x: x.get(sort_by, 0),
-            reverse=descending
-        )
+        return sorted(data, key=lambda x: x.get(sort_by, 0), reverse=descending)
     except (TypeError, KeyError):
         return data
 
 
-def add_row_numbers(
-    data: List[Dict[str, Any]],
-    start: int = 1
-) -> List[Dict[str, Any]]:
+def add_row_numbers(data: List[Dict[str, Any]], start: int = 1) -> List[Dict[str, Any]]:
     """
     Add row numbers to data
 
@@ -407,12 +378,7 @@ def calculate_export_size(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     import sys
 
     if not data:
-        return {
-            "rows": 0,
-            "columns": 0,
-            "estimated_bytes": 0,
-            "estimated_mb": 0.0
-        }
+        return {"rows": 0, "columns": 0, "estimated_bytes": 0, "estimated_mb": 0.0}
 
     # Calculate approximate size
     sample_size = sys.getsizeof(str(data[0])) if data else 0
@@ -422,5 +388,5 @@ def calculate_export_size(data: List[Dict[str, Any]]) -> Dict[str, Any]:
         "rows": len(data),
         "columns": len(data[0].keys()) if data else 0,
         "estimated_bytes": total_size,
-        "estimated_mb": round(total_size / (1024 * 1024), 2)
+        "estimated_mb": round(total_size / (1024 * 1024), 2),
     }

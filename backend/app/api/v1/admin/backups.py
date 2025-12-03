@@ -1,21 +1,23 @@
 """Admin Backup Management API"""
-from typing import List, Optional
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, func
 
-from app.core.dependencies import get_db, get_current_superuser
-from app.models.user import User
+from datetime import datetime, timedelta
+from typing import List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_superuser, get_db
 from app.models.admin.backup import Backup, BackupStatus, BackupType
+from app.models.user import User
 from app.schemas.admin.backup import (
     BackupCreate,
-    BackupUpdate,
-    BackupResponse,
     BackupListResponse,
-    BackupStatsResponse,
+    BackupResponse,
     BackupRestoreRequest,
     BackupRestoreResponse,
+    BackupStatsResponse,
+    BackupUpdate,
 )
 
 router = APIRouter()
@@ -52,8 +54,7 @@ def list_backups(
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
-            (Backup.name.ilike(search_pattern)) |
-            (Backup.description.ilike(search_pattern))
+            (Backup.name.ilike(search_pattern)) | (Backup.description.ilike(search_pattern))
         )
 
     # Get total count
@@ -62,12 +63,7 @@ def list_backups(
     # Get paginated results
     backups = query.order_by(desc(Backup.created_at)).offset(skip).limit(limit).all()
 
-    return BackupListResponse(
-        items=backups,
-        total=total,
-        skip=skip,
-        limit=limit
-    )
+    return BackupListResponse(items=backups, total=total, skip=skip, limit=limit)
 
 
 @router.get("/stats", response_model=BackupStatsResponse)
@@ -87,9 +83,11 @@ def get_backup_stats(
     total_compressed_size = db.query(func.sum(Backup.compressed_size_bytes)).scalar() or 0
 
     # Count by status
-    successful = db.query(Backup).filter(
-        Backup.status.in_([BackupStatus.COMPLETED.value, BackupStatus.VERIFIED.value])
-    ).count()
+    successful = (
+        db.query(Backup)
+        .filter(Backup.status.in_([BackupStatus.COMPLETED.value, BackupStatus.VERIFIED.value]))
+        .count()
+    )
     failed = db.query(Backup).filter(Backup.status == BackupStatus.FAILED.value).count()
 
     # Get oldest and newest
@@ -162,8 +160,7 @@ def get_backup(
     backup = db.query(Backup).filter(Backup.id == backup_id).first()
     if not backup:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup with id {backup_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Backup with id {backup_id} not found"
         )
     return backup
 
@@ -185,8 +182,7 @@ def update_backup(
     backup = db.query(Backup).filter(Backup.id == backup_id).first()
     if not backup:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup with id {backup_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Backup with id {backup_id} not found"
         )
 
     update_data = backup_in.dict(exclude_unset=True)
@@ -214,14 +210,12 @@ def delete_backup(
     backup = db.query(Backup).filter(Backup.id == backup_id).first()
     if not backup:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup with id {backup_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Backup with id {backup_id} not found"
         )
 
     if backup.is_pinned:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete pinned backup"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete pinned backup"
         )
 
     db.delete(backup)
@@ -245,8 +239,7 @@ def verify_backup(
     backup = db.query(Backup).filter(Backup.id == backup_id).first()
     if not backup:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup with id {backup_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Backup with id {backup_id} not found"
         )
 
     # Placeholder for actual verification logic
@@ -277,20 +270,18 @@ def restore_backup(
     if not restore_request.confirm:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Confirmation required. Set 'confirm' to true."
+            detail="Confirmation required. Set 'confirm' to true.",
         )
 
     backup = db.query(Backup).filter(Backup.id == backup_id).first()
     if not backup:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Backup with id {backup_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Backup with id {backup_id} not found"
         )
 
     if backup.status != BackupStatus.VERIFIED.value:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only verified backups can be restored"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only verified backups can be restored"
         )
 
     # Schedule background task to perform restore
@@ -326,11 +317,15 @@ def cleanup_expired_backups(
     Removes backups that have passed their expiration date.
     Pinned backups are never deleted.
     """
-    expired_backups = db.query(Backup).filter(
-        Backup.is_pinned == False,
-        Backup.expires_at.isnot(None),
-        Backup.expires_at < datetime.utcnow()
-    ).all()
+    expired_backups = (
+        db.query(Backup)
+        .filter(
+            Backup.is_pinned == False,
+            Backup.expires_at.isnot(None),
+            Backup.expires_at < datetime.utcnow(),
+        )
+        .all()
+    )
 
     deleted_count = len(expired_backups)
     for backup in expired_backups:
@@ -338,7 +333,4 @@ def cleanup_expired_backups(
 
     db.commit()
 
-    return {
-        "message": f"Deleted {deleted_count} expired backup(s)",
-        "deleted_count": deleted_count
-    }
+    return {"message": f"Deleted {deleted_count} expired backup(s)", "deleted_count": deleted_count}

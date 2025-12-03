@@ -18,16 +18,17 @@ import os
 import secrets
 from typing import Any, Optional, Union
 
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
 
 from app.core.security_config import security_config
 
 
 class EncryptionError(Exception):
     """Raised when encryption/decryption operations fail"""
+
     pass
 
 
@@ -78,14 +79,14 @@ class FieldEncryptor:
         if salt is None:
             # Use fixed salt for deterministic key derivation
             # In production, consider using per-organization salts stored securely
-            salt = b'barq_encryption_salt_v1_do_not_change'
+            salt = b"barq_encryption_salt_v1_do_not_change"
 
         kdf = PBKDF2(
             algorithm=hashes.SHA256(),
             length=self.KEY_SIZE,
             salt=salt,
             iterations=100000,
-            backend=default_backend()
+            backend=default_backend(),
         )
 
         return kdf.derive(password)
@@ -115,16 +116,14 @@ class FieldEncryptor:
 
             # Encrypt (returns ciphertext + authentication tag)
             ciphertext = cipher.encrypt(
-                nonce,
-                plaintext.encode('utf-8'),
-                None  # No additional authenticated data
+                nonce, plaintext.encode("utf-8"), None  # No additional authenticated data
             )
 
             # Combine nonce + ciphertext for storage
             encrypted_data = nonce + ciphertext
 
             # Encode as base64 for storage
-            return base64.b64encode(encrypted_data).decode('utf-8')
+            return base64.b64encode(encrypted_data).decode("utf-8")
 
         except Exception as e:
             raise EncryptionError(f"Encryption failed: {str(e)}")
@@ -150,8 +149,8 @@ class FieldEncryptor:
             encrypted_bytes = base64.b64decode(encrypted_data)
 
             # Extract nonce and ciphertext
-            nonce = encrypted_bytes[:self.NONCE_SIZE]
-            ciphertext = encrypted_bytes[self.NONCE_SIZE:]
+            nonce = encrypted_bytes[: self.NONCE_SIZE]
+            ciphertext = encrypted_bytes[self.NONCE_SIZE :]
 
             # Create cipher
             cipher = AESGCM(self._master_key)
@@ -159,7 +158,7 @@ class FieldEncryptor:
             # Decrypt (automatically verifies authentication tag)
             plaintext_bytes = cipher.decrypt(nonce, ciphertext, None)
 
-            return plaintext_bytes.decode('utf-8')
+            return plaintext_bytes.decode("utf-8")
 
         except Exception as e:
             raise EncryptionError(f"Decryption failed: {str(e)}")
@@ -221,17 +220,17 @@ class DataMasker:
 
         Example: john.doe@example.com -> j***@example.com
         """
-        if not email or '@' not in email:
+        if not email or "@" not in email:
             return email
 
-        local, domain = email.split('@', 1)
+        local, domain = email.split("@", 1)
 
         if len(local) <= 1:
-            masked_local = '*'
+            masked_local = "*"
         elif len(local) <= 3:
-            masked_local = local[0] + '*' * (len(local) - 1)
+            masked_local = local[0] + "*" * (len(local) - 1)
         else:
-            masked_local = local[0] + '*' * (len(local) - 2) + local[-1]
+            masked_local = local[0] + "*" * (len(local) - 2) + local[-1]
 
         return f"{masked_local}@{domain}"
 
@@ -246,9 +245,14 @@ class DataMasker:
             return phone
 
         if len(phone) <= visible_digits:
-            return '*' * len(phone)
+            return "*" * len(phone)
 
-        return phone[:-visible_digits].replace(phone[:-visible_digits], '*' * len(phone[:-visible_digits])) + phone[-visible_digits:]
+        return (
+            phone[:-visible_digits].replace(
+                phone[:-visible_digits], "*" * len(phone[:-visible_digits])
+            )
+            + phone[-visible_digits:]
+        )
 
     @staticmethod
     def mask_national_id(national_id: str) -> str:
@@ -261,9 +265,9 @@ class DataMasker:
             return national_id
 
         if len(national_id) <= 5:
-            return '*' * len(national_id)
+            return "*" * len(national_id)
 
-        return national_id[0] + '*' * (len(national_id) - 5) + national_id[-4:]
+        return national_id[0] + "*" * (len(national_id) - 5) + national_id[-4:]
 
     @staticmethod
     def mask_iban(iban: str) -> str:
@@ -276,9 +280,9 @@ class DataMasker:
             return iban
 
         if len(iban) <= 6:
-            return iban[:2] + '*' * (len(iban) - 2)
+            return iban[:2] + "*" * (len(iban) - 2)
 
-        return iban[:2] + '*' * (len(iban) - 6) + iban[-4:]
+        return iban[:2] + "*" * (len(iban) - 6) + iban[-4:]
 
     @staticmethod
     def mask_card_number(card_number: str) -> str:
@@ -291,12 +295,12 @@ class DataMasker:
             return card_number
 
         # Remove spaces and dashes
-        card_number = card_number.replace(' ', '').replace('-', '')
+        card_number = card_number.replace(" ", "").replace("-", "")
 
         if len(card_number) <= 8:
-            return '*' * len(card_number)
+            return "*" * len(card_number)
 
-        return card_number[:4] + '*' * (len(card_number) - 8) + card_number[-4:]
+        return card_number[:4] + "*" * (len(card_number) - 8) + card_number[-4:]
 
     @staticmethod
     def mask_string(value: str, visible_start: int = 2, visible_end: int = 2) -> str:
@@ -315,10 +319,10 @@ class DataMasker:
             return value
 
         if len(value) <= (visible_start + visible_end):
-            return '*' * len(value)
+            return "*" * len(value)
 
         masked_length = len(value) - visible_start - visible_end
-        return value[:visible_start] + '*' * masked_length + value[-visible_end:]
+        return value[:visible_start] + "*" * masked_length + value[-visible_end:]
 
 
 class HashUtility:
@@ -340,7 +344,7 @@ class HashUtility:
             Hex-encoded hash string
         """
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode("utf-8")
 
         return hashlib.sha256(data).hexdigest()
 
@@ -348,7 +352,7 @@ class HashUtility:
     def sha512(data: Union[str, bytes]) -> str:
         """Generate SHA-512 hash"""
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode("utf-8")
 
         return hashlib.sha512(data).hexdigest()
 
@@ -367,9 +371,9 @@ class HashUtility:
         import hmac
 
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode("utf-8")
         if isinstance(key, str):
-            key = key.encode('utf-8')
+            key = key.encode("utf-8")
 
         return hmac.new(key, data, hashlib.sha256).hexdigest()
 
@@ -446,7 +450,7 @@ class SecureTokenGenerator:
             Numeric token string
         """
         # Generate random number with specified digits
-        return ''.join([str(secrets.randbelow(10)) for _ in range(length)])
+        return "".join([str(secrets.randbelow(10)) for _ in range(length)])
 
 
 # Global encryptor instance
@@ -492,13 +496,13 @@ def mask_sensitive_data(data: dict) -> dict:
     masker = DataMasker()
 
     sensitive_fields = {
-        'email': masker.mask_email,
-        'phone': masker.mask_phone,
-        'mobile': masker.mask_phone,
-        'national_id': masker.mask_national_id,
-        'iban': masker.mask_iban,
-        'bank_account': masker.mask_iban,
-        'card_number': masker.mask_card_number,
+        "email": masker.mask_email,
+        "phone": masker.mask_phone,
+        "mobile": masker.mask_phone,
+        "national_id": masker.mask_national_id,
+        "iban": masker.mask_iban,
+        "bank_account": masker.mask_iban,
+        "card_number": masker.mask_card_number,
     }
 
     for field, mask_func in sensitive_fields.items():
@@ -507,7 +511,7 @@ def mask_sensitive_data(data: dict) -> dict:
                 masked_data[field] = mask_func(str(masked_data[field]))
             except:
                 # If masking fails, replace with generic mask
-                masked_data[field] = '***'
+                masked_data[field] = "***"
 
     return masked_data
 

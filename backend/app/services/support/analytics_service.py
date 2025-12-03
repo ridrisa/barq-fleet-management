@@ -1,12 +1,19 @@
 """Support Analytics Service"""
+
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List
+
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
-from datetime import datetime, date, timedelta, timezone
 
 from app.models.support import (
-    Ticket, TicketStatus, TicketPriority, EscalationLevel,
-    Feedback, KBArticle, ChatSession
+    ChatSession,
+    EscalationLevel,
+    Feedback,
+    KBArticle,
+    Ticket,
+    TicketPriority,
+    TicketStatus,
 )
 
 
@@ -14,21 +21,14 @@ class SupportAnalyticsService:
     """Service for support analytics and reporting"""
 
     def get_ticket_metrics(
-        self,
-        db: Session,
-        *,
-        start_date: date = None,
-        end_date: date = None
+        self, db: Session, *, start_date: date = None, end_date: date = None
     ) -> Dict:
         """Get ticket volume and status metrics"""
         query = db.query(Ticket)
 
         if start_date and end_date:
             query = query.filter(
-                and_(
-                    Ticket.created_at >= start_date,
-                    Ticket.created_at <= end_date
-                )
+                and_(Ticket.created_at >= start_date, Ticket.created_at <= end_date)
             )
 
         total_tickets = query.count()
@@ -63,9 +63,7 @@ class SupportAnalyticsService:
             .all()
         )
 
-        escalated_count = query.filter(
-            Ticket.escalation_level != EscalationLevel.NONE
-        ).count()
+        escalated_count = query.filter(Ticket.escalation_level != EscalationLevel.NONE).count()
 
         merged_count = query.filter(Ticket.is_merged == True).count()
 
@@ -84,21 +82,14 @@ class SupportAnalyticsService:
         }
 
     def get_response_time_metrics(
-        self,
-        db: Session,
-        *,
-        start_date: date = None,
-        end_date: date = None
+        self, db: Session, *, start_date: date = None, end_date: date = None
     ) -> Dict:
         """Get response and resolution time metrics"""
         query = db.query(Ticket).filter(Ticket.resolved_at.isnot(None))
 
         if start_date and end_date:
             query = query.filter(
-                and_(
-                    Ticket.created_at >= start_date,
-                    Ticket.created_at <= end_date
-                )
+                and_(Ticket.created_at >= start_date, Ticket.created_at <= end_date)
             )
 
         # Calculate resolution times
@@ -125,21 +116,14 @@ class SupportAnalyticsService:
         }
 
     def get_agent_performance(
-        self,
-        db: Session,
-        *,
-        start_date: date = None,
-        end_date: date = None
+        self, db: Session, *, start_date: date = None, end_date: date = None
     ) -> List[Dict]:
         """Get agent performance metrics"""
         query = db.query(Ticket)
 
         if start_date and end_date:
             query = query.filter(
-                and_(
-                    Ticket.created_at >= start_date,
-                    Ticket.created_at <= end_date
-                )
+                and_(Ticket.created_at >= start_date, Ticket.created_at <= end_date)
             )
 
         # Group by assignee
@@ -148,12 +132,9 @@ class SupportAnalyticsService:
             .with_entities(
                 Ticket.assigned_to,
                 func.count(Ticket.id).label("total"),
-                func.sum(
-                    func.case(
-                        (Ticket.status == TicketStatus.RESOLVED, 1),
-                        else_=0
-                    )
-                ).label("resolved")
+                func.sum(func.case((Ticket.status == TicketStatus.RESOLVED, 1), else_=0)).label(
+                    "resolved"
+                ),
             )
             .group_by(Ticket.assigned_to)
             .all()
@@ -161,33 +142,28 @@ class SupportAnalyticsService:
 
         results = []
         for agent_id, total, resolved in agent_stats:
-            results.append({
-                "agent_id": agent_id,
-                "agent_name": f"Agent {agent_id}",  # TODO: Get actual name
-                "tickets_assigned": total,
-                "tickets_resolved": resolved or 0,
-                "avg_resolution_time_hours": 0.0,  # TODO: Calculate
-                "customer_satisfaction_score": None,
-            })
+            results.append(
+                {
+                    "agent_id": agent_id,
+                    "agent_name": f"Agent {agent_id}",  # TODO: Get actual name
+                    "tickets_assigned": total,
+                    "tickets_resolved": resolved or 0,
+                    "avg_resolution_time_hours": 0.0,  # TODO: Calculate
+                    "customer_satisfaction_score": None,
+                }
+            )
 
         return results
 
     def get_customer_satisfaction(
-        self,
-        db: Session,
-        *,
-        start_date: date = None,
-        end_date: date = None
+        self, db: Session, *, start_date: date = None, end_date: date = None
     ) -> Dict:
         """Get customer satisfaction metrics"""
         query = db.query(Feedback).filter(Feedback.rating.isnot(None))
 
         if start_date and end_date:
             query = query.filter(
-                and_(
-                    Feedback.created_at >= start_date,
-                    Feedback.created_at <= end_date
-                )
+                and_(Feedback.created_at >= start_date, Feedback.created_at <= end_date)
             )
 
         total_feedbacks = query.count()
@@ -196,7 +172,9 @@ class SupportAnalyticsService:
         positive_count = query.filter(Feedback.rating >= 4).count()
         negative_count = query.filter(Feedback.rating <= 2).count()
 
-        satisfaction_percentage = (positive_count / total_feedbacks * 100) if total_feedbacks > 0 else 0.0
+        satisfaction_percentage = (
+            (positive_count / total_feedbacks * 100) if total_feedbacks > 0 else 0.0
+        )
 
         return {
             "total_feedbacks": total_feedbacks,
@@ -206,13 +184,7 @@ class SupportAnalyticsService:
             "satisfaction_percentage": round(satisfaction_percentage, 2),
         }
 
-    def get_trend_data(
-        self,
-        db: Session,
-        *,
-        start_date: date,
-        end_date: date
-    ) -> List[Dict]:
+    def get_trend_data(self, db: Session, *, start_date: date, end_date: date) -> List[Dict]:
         """Get daily trend data for tickets"""
         trends = []
         current_date = start_date
@@ -220,26 +192,26 @@ class SupportAnalyticsService:
         while current_date <= end_date:
             next_date = current_date + timedelta(days=1)
 
-            ticket_count = db.query(Ticket).filter(
-                and_(
-                    Ticket.created_at >= current_date,
-                    Ticket.created_at < next_date
-                )
-            ).count()
+            ticket_count = (
+                db.query(Ticket)
+                .filter(and_(Ticket.created_at >= current_date, Ticket.created_at < next_date))
+                .count()
+            )
 
-            resolved_count = db.query(Ticket).filter(
-                and_(
-                    Ticket.resolved_at >= current_date,
-                    Ticket.resolved_at < next_date
-                )
-            ).count()
+            resolved_count = (
+                db.query(Ticket)
+                .filter(and_(Ticket.resolved_at >= current_date, Ticket.resolved_at < next_date))
+                .count()
+            )
 
-            trends.append({
-                "date": current_date,
-                "ticket_count": ticket_count,
-                "resolved_count": resolved_count,
-                "avg_resolution_hours": 0.0,  # TODO: Calculate
-            })
+            trends.append(
+                {
+                    "date": current_date,
+                    "ticket_count": ticket_count,
+                    "resolved_count": resolved_count,
+                    "avg_resolution_hours": 0.0,  # TODO: Calculate
+                }
+            )
 
             current_date = next_date
 
@@ -250,16 +222,18 @@ class SupportAnalyticsService:
         from app.models.support import ArticleStatus
 
         total_articles = db.query(KBArticle).count()
-        published_articles = db.query(KBArticle).filter(
-            KBArticle.status == ArticleStatus.PUBLISHED
-        ).count()
+        published_articles = (
+            db.query(KBArticle).filter(KBArticle.status == ArticleStatus.PUBLISHED).count()
+        )
 
         total_views = db.query(func.sum(KBArticle.view_count)).scalar() or 0
 
         # Average helpfulness
-        articles_with_votes = db.query(KBArticle).filter(
-            (KBArticle.helpful_count + KBArticle.not_helpful_count) > 0
-        ).all()
+        articles_with_votes = (
+            db.query(KBArticle)
+            .filter((KBArticle.helpful_count + KBArticle.not_helpful_count) > 0)
+            .all()
+        )
 
         if articles_with_votes:
             avg_helpfulness = sum(
@@ -270,9 +244,13 @@ class SupportAnalyticsService:
             avg_helpfulness = 0.0
 
         # Top articles
-        top_articles = db.query(KBArticle).filter(
-            KBArticle.status == ArticleStatus.PUBLISHED
-        ).order_by(KBArticle.view_count.desc()).limit(10).all()
+        top_articles = (
+            db.query(KBArticle)
+            .filter(KBArticle.status == ArticleStatus.PUBLISHED)
+            .order_by(KBArticle.view_count.desc())
+            .limit(10)
+            .all()
+        )
 
         # By category
         articles_by_category = dict(
@@ -288,30 +266,22 @@ class SupportAnalyticsService:
             "total_views": total_views,
             "avg_helpfulness_score": round(avg_helpfulness, 2),
             "top_articles": [
-                {"id": a.id, "title": a.title, "views": a.view_count}
-                for a in top_articles
+                {"id": a.id, "title": a.title, "views": a.view_count} for a in top_articles
             ],
             "articles_by_category": articles_by_category,
         }
 
     def get_chat_analytics(
-        self,
-        db: Session,
-        *,
-        start_date: date = None,
-        end_date: date = None
+        self, db: Session, *, start_date: date = None, end_date: date = None
     ) -> Dict:
         """Get live chat analytics"""
-        from app.models.support import ChatStatus, ChatMessage
+        from app.models.support import ChatMessage, ChatStatus
 
         query = db.query(ChatSession)
 
         if start_date and end_date:
             query = query.filter(
-                and_(
-                    ChatSession.created_at >= start_date,
-                    ChatSession.created_at <= end_date
-                )
+                and_(ChatSession.created_at >= start_date, ChatSession.created_at <= end_date)
             )
 
         total_sessions = query.count()
@@ -319,10 +289,7 @@ class SupportAnalyticsService:
 
         # Calculate wait times
         waiting_sessions = query.filter(
-            and_(
-                ChatSession.started_at.isnot(None),
-                ChatSession.created_at.isnot(None)
-            )
+            and_(ChatSession.started_at.isnot(None), ChatSession.created_at.isnot(None))
         ).all()
 
         wait_times = [
@@ -334,10 +301,7 @@ class SupportAnalyticsService:
 
         # Calculate chat durations
         ended_sessions = query.filter(
-            and_(
-                ChatSession.ended_at.isnot(None),
-                ChatSession.started_at.isnot(None)
-            )
+            and_(ChatSession.ended_at.isnot(None), ChatSession.started_at.isnot(None))
         ).all()
 
         durations = [
@@ -367,23 +331,15 @@ class SupportAnalyticsService:
             "sessions_by_agent": {str(k): v for k, v in sessions_by_agent.items()},
         }
 
-
     def get_sla_metrics(
-        self,
-        db: Session,
-        *,
-        start_date: date = None,
-        end_date: date = None
+        self, db: Session, *, start_date: date = None, end_date: date = None
     ) -> Dict:
         """Get SLA compliance metrics"""
         query = db.query(Ticket).filter(Ticket.sla_due_at.isnot(None))
 
         if start_date and end_date:
             query = query.filter(
-                and_(
-                    Ticket.created_at >= start_date,
-                    Ticket.created_at <= end_date
-                )
+                and_(Ticket.created_at >= start_date, Ticket.created_at <= end_date)
             )
 
         total_with_sla = query.count()
@@ -399,11 +355,9 @@ class SupportAnalyticsService:
             and_(
                 Ticket.sla_breached == False,
                 Ticket.sla_due_at <= now + hours_threshold,
-                Ticket.status.in_([
-                    TicketStatus.OPEN,
-                    TicketStatus.IN_PROGRESS,
-                    TicketStatus.WAITING
-                ])
+                Ticket.status.in_(
+                    [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING]
+                ),
             )
         ).count()
 
@@ -418,9 +372,13 @@ class SupportAnalyticsService:
                 "breached": priority_breached,
                 "met": priority_total - priority_breached,
                 "compliance_rate": round(
-                    ((priority_total - priority_breached) / priority_total * 100)
-                    if priority_total > 0 else 0.0, 2
-                )
+                    (
+                        ((priority_total - priority_breached) / priority_total * 100)
+                        if priority_total > 0
+                        else 0.0
+                    ),
+                    2,
+                ),
             }
 
         return {
@@ -434,23 +392,14 @@ class SupportAnalyticsService:
         }
 
     def get_escalation_analytics(
-        self,
-        db: Session,
-        *,
-        start_date: date = None,
-        end_date: date = None
+        self, db: Session, *, start_date: date = None, end_date: date = None
     ) -> Dict:
         """Get escalation analytics"""
-        query = db.query(Ticket).filter(
-            Ticket.escalation_level != EscalationLevel.NONE
-        )
+        query = db.query(Ticket).filter(Ticket.escalation_level != EscalationLevel.NONE)
 
         if start_date and end_date:
             query = query.filter(
-                and_(
-                    Ticket.created_at >= start_date,
-                    Ticket.created_at <= end_date
-                )
+                and_(Ticket.created_at >= start_date, Ticket.created_at <= end_date)
             )
 
         total_escalated = query.count()
@@ -466,10 +415,7 @@ class SupportAnalyticsService:
         total_tickets = db.query(Ticket)
         if start_date and end_date:
             total_tickets = total_tickets.filter(
-                and_(
-                    Ticket.created_at >= start_date,
-                    Ticket.created_at <= end_date
-                )
+                and_(Ticket.created_at >= start_date, Ticket.created_at <= end_date)
             )
         total_count = total_tickets.count()
 

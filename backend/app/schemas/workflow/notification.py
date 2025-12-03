@@ -1,19 +1,22 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
 from app.models.workflow.notification import (
-    NotificationType,
     NotificationChannel,
     NotificationStatus,
+    NotificationType,
 )
-
 
 # ============================================================================
 # Notification Template Schemas
 # ============================================================================
 
+
 class WorkflowNotificationTemplateBase(BaseModel):
     """Base schema for notification templates"""
+
     name: str = Field(..., min_length=3, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     notification_type: NotificationType
@@ -30,11 +33,13 @@ class WorkflowNotificationTemplateBase(BaseModel):
 
 class WorkflowNotificationTemplateCreate(WorkflowNotificationTemplateBase):
     """Schema for creating a notification template"""
+
     pass
 
 
 class WorkflowNotificationTemplateUpdate(BaseModel):
     """Schema for updating a notification template"""
+
     name: Optional[str] = Field(None, min_length=3, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     subject_template: Optional[str] = Field(None, max_length=200)
@@ -49,6 +54,7 @@ class WorkflowNotificationTemplateUpdate(BaseModel):
 
 class WorkflowNotificationTemplateResponse(WorkflowNotificationTemplateBase):
     """Schema for notification template response"""
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -60,8 +66,10 @@ class WorkflowNotificationTemplateResponse(WorkflowNotificationTemplateBase):
 # Notification Schemas
 # ============================================================================
 
+
 class WorkflowNotificationBase(BaseModel):
     """Base schema for notifications"""
+
     notification_type: NotificationType
     subject: Optional[str] = Field(None, max_length=200)
     body: str = Field(..., min_length=1)
@@ -74,6 +82,7 @@ class WorkflowNotificationBase(BaseModel):
 
 class WorkflowNotificationCreate(WorkflowNotificationBase):
     """Schema for creating a notification"""
+
     workflow_instance_id: Optional[int] = None
     template_id: Optional[int] = None
     recipient_id: int
@@ -84,6 +93,7 @@ class WorkflowNotificationCreate(WorkflowNotificationBase):
 
 class WorkflowNotificationUpdate(BaseModel):
     """Schema for updating a notification"""
+
     status: Optional[NotificationStatus] = None
     read_at: Optional[datetime] = None
     action_taken: Optional[str] = None
@@ -91,6 +101,7 @@ class WorkflowNotificationUpdate(BaseModel):
 
 class WorkflowNotificationResponse(WorkflowNotificationBase):
     """Schema for notification response"""
+
     id: int
     workflow_instance_id: Optional[int] = None
     template_id: Optional[int] = None
@@ -112,11 +123,13 @@ class WorkflowNotificationResponse(WorkflowNotificationBase):
 
 class WorkflowNotificationWithRecipient(WorkflowNotificationResponse):
     """Extended schema with recipient details"""
+
     recipient_name: Optional[str] = None
 
 
 class BulkNotificationRequest(BaseModel):
     """Schema for sending bulk notifications"""
+
     template_id: int
     recipient_ids: List[int]
     workflow_instance_id: Optional[int] = None
@@ -128,8 +141,10 @@ class BulkNotificationRequest(BaseModel):
 # Notification Preference Schemas
 # ============================================================================
 
+
 class NotificationPreferenceBase(BaseModel):
     """Base schema for notification preferences"""
+
     notification_type: NotificationType
     enable_email: bool = True
     enable_in_app: bool = True
@@ -145,11 +160,13 @@ class NotificationPreferenceBase(BaseModel):
 
 class NotificationPreferenceCreate(NotificationPreferenceBase):
     """Schema for creating notification preference"""
+
     user_id: int
 
 
 class NotificationPreferenceUpdate(BaseModel):
     """Schema for updating notification preference"""
+
     enable_email: Optional[bool] = None
     enable_in_app: Optional[bool] = None
     enable_sms: Optional[bool] = None
@@ -164,6 +181,7 @@ class NotificationPreferenceUpdate(BaseModel):
 
 class NotificationPreferenceResponse(NotificationPreferenceBase):
     """Schema for notification preference response"""
+
     id: int
     user_id: int
     created_at: datetime
@@ -176,8 +194,10 @@ class NotificationPreferenceResponse(NotificationPreferenceBase):
 # Notification Statistics
 # ============================================================================
 
+
 class NotificationStatistics(BaseModel):
     """Schema for notification statistics"""
+
     total_notifications: int
     sent_count: int
     delivered_count: int
@@ -192,6 +212,7 @@ class NotificationStatistics(BaseModel):
 
 class NotificationSendRequest(BaseModel):
     """Schema for sending a single notification"""
+
     template_id: int
     recipient_id: int
     workflow_instance_id: Optional[int] = None

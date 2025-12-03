@@ -1,17 +1,22 @@
 """Customer Feedback API Routes"""
+
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
-from app.models.user import User
+from app.core.dependencies import get_current_user, get_db
 from app.models.support import FeedbackCategory, FeedbackStatus
+from app.models.user import User
 from app.schemas.support import (
-    FeedbackCreate, FeedbackUpdate, FeedbackResponse,
-    FeedbackList, FeedbackRespond, FeedbackStatistics
+    FeedbackCreate,
+    FeedbackList,
+    FeedbackRespond,
+    FeedbackResponse,
+    FeedbackStatistics,
+    FeedbackUpdate,
 )
 from app.services.support import feedback_service
-
 
 router = APIRouter()
 
@@ -35,28 +40,13 @@ def get_feedbacks(
     - rating: Filter by rating (1-5)
     """
     if category:
-        return feedback_service.get_by_category(
-            db,
-            category=category,
-            skip=skip,
-            limit=limit
-        )
+        return feedback_service.get_by_category(db, category=category, skip=skip, limit=limit)
 
     if status_filter:
-        return feedback_service.get_by_status(
-            db,
-            status=status_filter,
-            skip=skip,
-            limit=limit
-        )
+        return feedback_service.get_by_status(db, status=status_filter, skip=skip, limit=limit)
 
     if rating:
-        return feedback_service.get_by_rating(
-            db,
-            rating=rating,
-            skip=skip,
-            limit=limit
-        )
+        return feedback_service.get_by_rating(db, rating=rating, skip=skip, limit=limit)
 
     return feedback_service.get_multi(db, skip=skip, limit=limit)
 
@@ -111,10 +101,7 @@ def get_feedback(
     """Get feedback by ID"""
     feedback = feedback_service.get(db, id=feedback_id)
     if not feedback:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Feedback not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
     return feedback
 
 
@@ -128,10 +115,7 @@ def update_feedback(
     """Update feedback"""
     feedback = feedback_service.get(db, id=feedback_id)
     if not feedback:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Feedback not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
     return feedback_service.update(db, db_obj=feedback, obj_in=feedback_in)
 
 
@@ -144,10 +128,7 @@ def delete_feedback(
     """Delete feedback"""
     feedback = feedback_service.get(db, id=feedback_id)
     if not feedback:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Feedback not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
     feedback_service.remove(db, id=feedback_id)
 
 
@@ -160,14 +141,8 @@ def respond_to_feedback(
 ):
     """Respond to customer feedback"""
     feedback = feedback_service.respond_to_feedback(
-        db,
-        feedback_id=feedback_id,
-        response=respond_data.response,
-        responded_by=current_user.id
+        db, feedback_id=feedback_id, response=respond_data.response, responded_by=current_user.id
     )
     if not feedback:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Feedback not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
     return feedback

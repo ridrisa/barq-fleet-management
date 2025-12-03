@@ -16,23 +16,27 @@ EOS Calculation Rules (Saudi Labor Law):
   * First 5 years: Half month salary per year
   * After 5 years: Full month salary per year
 """
-from decimal import Decimal
+
 from datetime import date, datetime
-from typing import Literal
+from decimal import Decimal
 from enum import Enum
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class TerminationType(str, Enum):
     """Type of employment termination"""
+
     RESIGNATION = "resignation"  # Employee voluntary resignation
     TERMINATION = "termination"  # Employer termination
-    RETIREMENT = "retirement"    # Retirement
+    RETIREMENT = "retirement"  # Retirement
     END_OF_CONTRACT = "end_of_contract"  # Fixed-term contract end
 
 
 class EOSCalculationInput(BaseModel):
     """Input schema for EOS calculation"""
+
     basic_salary: Decimal = Field(..., gt=0, description="Current monthly basic salary")
     hire_date: date = Field(..., description="Date of employment start")
     termination_date: date = Field(..., description="Date of termination")
@@ -41,6 +45,7 @@ class EOSCalculationInput(BaseModel):
 
 class EOSCalculationResult(BaseModel):
     """Result schema for EOS calculation"""
+
     basic_salary: Decimal
     hire_date: date
     termination_date: date
@@ -61,9 +66,7 @@ class EOSCalculatorService:
     """
 
     def calculate_service_duration(
-        self,
-        hire_date: date,
-        termination_date: date
+        self, hire_date: date, termination_date: date
     ) -> tuple[Decimal, int, int]:
         """
         Calculate the exact service duration
@@ -92,14 +95,20 @@ class EOSCalculatorService:
             months -= 1
             # Get days in previous month
             prev_month = termination_date.month - 1 if termination_date.month > 1 else 12
-            prev_year = termination_date.year if termination_date.month > 1 else termination_date.year - 1
+            prev_year = (
+                termination_date.year if termination_date.month > 1 else termination_date.year - 1
+            )
 
             if prev_month in [1, 3, 5, 7, 8, 10, 12]:
                 days_in_prev_month = 31
             elif prev_month in [4, 6, 9, 11]:
                 days_in_prev_month = 30
             else:  # February
-                days_in_prev_month = 29 if prev_year % 4 == 0 and (prev_year % 100 != 0 or prev_year % 400 == 0) else 28
+                days_in_prev_month = (
+                    29
+                    if prev_year % 4 == 0 and (prev_year % 100 != 0 or prev_year % 400 == 0)
+                    else 28
+                )
 
             days += days_in_prev_month
 
@@ -115,9 +124,7 @@ class EOSCalculatorService:
         return years_decimal, total_months, total_days
 
     def calculate_full_eos(
-        self,
-        basic_salary: Decimal,
-        years_of_service: Decimal
+        self, basic_salary: Decimal, years_of_service: Decimal
     ) -> tuple[Decimal, dict]:
         """
         Calculate full EOS amount before applying eligibility percentage
@@ -143,16 +150,12 @@ class EOSCalculatorService:
             breakdown["first_5_years"] = {
                 "years": float(years_of_service),
                 "rate": 0.5,
-                "amount": float(amount)
+                "amount": float(amount),
             }
         else:
             # First 5 years at half month
             first_5_amount = basic_salary * Decimal("0.5") * Decimal("5")
-            breakdown["first_5_years"] = {
-                "years": 5,
-                "rate": 0.5,
-                "amount": float(first_5_amount)
-            }
+            breakdown["first_5_years"] = {"years": 5, "rate": 0.5, "amount": float(first_5_amount)}
 
             # Remaining years at full month
             remaining_years = years_of_service - Decimal("5")
@@ -160,7 +163,7 @@ class EOSCalculatorService:
             breakdown["after_5_years"] = {
                 "years": float(remaining_years),
                 "rate": 1.0,
-                "amount": float(remaining_amount)
+                "amount": float(remaining_amount),
             }
 
             total_eos = first_5_amount + remaining_amount
@@ -170,9 +173,7 @@ class EOSCalculatorService:
         return total_eos.quantize(Decimal("0.01")), breakdown
 
     def calculate_eligibility_percentage(
-        self,
-        years_of_service: Decimal,
-        termination_type: TerminationType
+        self, years_of_service: Decimal, termination_type: TerminationType
     ) -> Decimal:
         """
         Calculate EOS eligibility percentage based on termination type and service duration
@@ -185,7 +186,11 @@ class EOSCalculatorService:
             Eligibility percentage (0.0 to 1.0)
         """
         # Full EOS for termination by employer or retirement
-        if termination_type in [TerminationType.TERMINATION, TerminationType.RETIREMENT, TerminationType.END_OF_CONTRACT]:
+        if termination_type in [
+            TerminationType.TERMINATION,
+            TerminationType.RETIREMENT,
+            TerminationType.END_OF_CONTRACT,
+        ]:
             return Decimal("1.0")  # 100%
 
         # For resignation (employee voluntary leave)
@@ -206,7 +211,7 @@ class EOSCalculatorService:
         basic_salary: Decimal,
         hire_date: date,
         termination_date: date,
-        termination_type: TerminationType
+        termination_type: TerminationType,
     ) -> EOSCalculationResult:
         """
         Calculate complete EOS benefit
@@ -246,9 +251,7 @@ class EOSCalculatorService:
         )
 
         # Calculate payable amount
-        payable_amount = (full_eos_amount * eligibility_percentage).quantize(
-            Decimal("0.01")
-        )
+        payable_amount = (full_eos_amount * eligibility_percentage).quantize(Decimal("0.01"))
 
         # Add eligibility info to breakdown
         calculation_breakdown["eligibility"] = {
@@ -256,7 +259,7 @@ class EOSCalculatorService:
             "years_of_service": float(years_decimal),
             "eligibility_percentage": float(eligibility_percentage),
             "full_eos_amount": float(full_eos_amount),
-            "payable_amount": float(payable_amount)
+            "payable_amount": float(payable_amount),
         }
 
         return EOSCalculationResult(
@@ -270,14 +273,11 @@ class EOSCalculatorService:
             eos_full_amount=full_eos_amount,
             eos_eligibility_percentage=eligibility_percentage,
             eos_payable_amount=payable_amount,
-            calculation_breakdown=calculation_breakdown
+            calculation_breakdown=calculation_breakdown,
         )
 
     def get_eos_summary(
-        self,
-        basic_salary: Decimal,
-        hire_date: date,
-        termination_date: date
+        self, basic_salary: Decimal, hire_date: date, termination_date: date
     ) -> dict:
         """
         Get EOS summary for all termination types
@@ -299,19 +299,19 @@ class EOSCalculatorService:
                 basic_salary=basic_salary,
                 hire_date=hire_date,
                 termination_date=termination_date,
-                termination_type=term_type
+                termination_type=term_type,
             )
 
             summary[term_type.value] = {
                 "eligibility_percentage": float(result.eos_eligibility_percentage),
-                "eos_amount": float(result.eos_payable_amount)
+                "eos_amount": float(result.eos_payable_amount),
             }
 
         return {
             "basic_salary": float(basic_salary),
             "years_of_service": float(result.years_of_service),
             "full_eos_amount": float(result.eos_full_amount),
-            "scenarios": summary
+            "scenarios": summary,
         }
 
 

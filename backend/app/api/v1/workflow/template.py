@@ -1,15 +1,18 @@
 """Workflow Template API Routes"""
+
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.workflow import (
-    WorkflowTemplateCreate, WorkflowTemplateUpdate, WorkflowTemplateResponse
+    WorkflowTemplateCreate,
+    WorkflowTemplateResponse,
+    WorkflowTemplateUpdate,
 )
 from app.services.workflow import template_service
-
 
 router = APIRouter()
 

@@ -1,23 +1,23 @@
 from app.crud.base import CRUDBase
 from app.models.workflow.analytics import (
     WorkflowMetrics,
-    WorkflowStepMetrics,
     WorkflowPerformanceSnapshot,
+    WorkflowStepMetrics,
     WorkflowUserMetrics,
 )
 from app.schemas.workflow.analytics import (
     WorkflowMetricsCreate,
     WorkflowMetricsUpdate,
+    WorkflowPerformanceSnapshotCreate,
     WorkflowStepMetricsCreate,
     WorkflowStepMetricsUpdate,
-    WorkflowPerformanceSnapshotCreate,
     WorkflowUserMetricsCreate,
     WorkflowUserMetricsUpdate,
 )
 
-workflow_metrics = CRUDBase[
-    WorkflowMetrics, WorkflowMetricsCreate, WorkflowMetricsUpdate
-](WorkflowMetrics)
+workflow_metrics = CRUDBase[WorkflowMetrics, WorkflowMetricsCreate, WorkflowMetricsUpdate](
+    WorkflowMetrics
+)
 workflow_step_metrics = CRUDBase[
     WorkflowStepMetrics, WorkflowStepMetricsCreate, WorkflowStepMetricsUpdate
 ](WorkflowStepMetrics)

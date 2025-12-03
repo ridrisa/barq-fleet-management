@@ -2,10 +2,12 @@
 
 Common analytics calculations and helper functions used across analytics endpoints.
 """
-from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, date, timedelta
+
+from datetime import date, datetime, timedelta
 from decimal import Decimal
-from sqlalchemy import func, case, and_, or_
+from typing import Any, Dict, List, Optional, Tuple
+
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
 
 
@@ -23,17 +25,15 @@ def calculate_growth_rate(values: List[float]) -> float:
 
     changes = []
     for i in range(1, len(values)):
-        if values[i-1] != 0:
-            change = ((values[i] - values[i-1]) / values[i-1]) * 100
+        if values[i - 1] != 0:
+            change = ((values[i] - values[i - 1]) / values[i - 1]) * 100
             changes.append(change)
 
     return round(sum(changes) / len(changes), 2) if changes else 0.0
 
 
 def get_date_range_comparison(
-    start_date: date,
-    end_date: date,
-    comparison_type: str = "previous_period"
+    start_date: date, end_date: date, comparison_type: str = "previous_period"
 ) -> Tuple[date, date]:
     """
     Get comparison date range based on comparison type
@@ -68,9 +68,9 @@ def calculate_moving_average(values: List[float], window: int = 7) -> List[float
     result = []
     for i in range(len(values)):
         if i < window - 1:
-            result.append(sum(values[:i+1]) / (i + 1))
+            result.append(sum(values[: i + 1]) / (i + 1))
         else:
-            result.append(sum(values[i-window+1:i+1]) / window)
+            result.append(sum(values[i - window + 1 : i + 1]) / window)
 
     return [round(v, 2) for v in result]
 
@@ -104,7 +104,7 @@ def calculate_variance(values: List[float]) -> float:
 def calculate_standard_deviation(values: List[float]) -> float:
     """Calculate standard deviation of values"""
     variance = calculate_variance(values)
-    return round(variance ** 0.5, 2)
+    return round(variance**0.5, 2)
 
 
 def categorize_performance(value: float, thresholds: Dict[str, float]) -> str:
@@ -129,9 +129,7 @@ def categorize_performance(value: float, thresholds: Dict[str, float]) -> str:
 
 
 def calculate_efficiency_score(
-    actual: float,
-    target: float,
-    higher_is_better: bool = True
+    actual: float, target: float, higher_is_better: bool = True
 ) -> float:
     """
     Calculate efficiency score as percentage of target achieved
@@ -157,10 +155,7 @@ def calculate_efficiency_score(
 
 
 def aggregate_by_period(
-    data: List[Dict[str, Any]],
-    date_field: str,
-    value_field: str,
-    period: str = "daily"
+    data: List[Dict[str, Any]], date_field: str, value_field: str, period: str = "daily"
 ) -> List[Dict[str, Any]]:
     """
     Aggregate data by time period
@@ -202,17 +197,10 @@ def aggregate_by_period(
 
         aggregated[key] += float(item.get(value_field, 0))
 
-    return [
-        {"period": key, "value": round(value, 2)}
-        for key, value in sorted(aggregated.items())
-    ]
+    return [{"period": key, "value": round(value, 2)} for key, value in sorted(aggregated.items())]
 
 
-def calculate_retention_rate(
-    total_start: int,
-    total_end: int,
-    new_count: int
-) -> float:
+def calculate_retention_rate(total_start: int, total_end: int, new_count: int) -> float:
     """Calculate retention rate"""
     if total_start == 0:
         return 0.0
@@ -221,10 +209,7 @@ def calculate_retention_rate(
     return round((retained / total_start) * 100, 2)
 
 
-def calculate_churn_rate(
-    total_start: int,
-    churned_count: int
-) -> float:
+def calculate_churn_rate(total_start: int, churned_count: int) -> float:
     """Calculate churn rate"""
     if total_start == 0:
         return 0.0
@@ -244,11 +229,7 @@ def calculate_cumulative_sum(values: List[float]) -> List[float]:
     return cumulative
 
 
-def calculate_run_rate(
-    value: float,
-    days_elapsed: int,
-    total_days: int = 365
-) -> float:
+def calculate_run_rate(value: float, days_elapsed: int, total_days: int = 365) -> float:
     """Calculate annual run rate based on current performance"""
     if days_elapsed == 0:
         return 0.0
@@ -257,10 +238,7 @@ def calculate_run_rate(
     return round(daily_average * total_days, 2)
 
 
-def detect_anomalies(
-    values: List[float],
-    threshold_std: float = 2.0
-) -> List[int]:
+def detect_anomalies(values: List[float], threshold_std: float = 2.0) -> List[int]:
     """
     Detect anomalies in data using standard deviation method
 
@@ -290,8 +268,7 @@ def detect_anomalies(
 
 
 def calculate_forecast_simple(
-    historical_values: List[float],
-    periods_ahead: int = 7
+    historical_values: List[float], periods_ahead: int = 7
 ) -> List[float]:
     """
     Simple forecasting using moving average and trend
@@ -357,10 +334,7 @@ def format_percentage(value: float) -> str:
     return f"{value:.2f}%"
 
 
-def calculate_distribution(
-    values: List[float],
-    bins: int = 10
-) -> List[Dict[str, Any]]:
+def calculate_distribution(values: List[float], bins: int = 10) -> List[Dict[str, Any]]:
     """Calculate distribution of values into bins"""
     if not values:
         return []
@@ -384,19 +358,18 @@ def calculate_distribution(
     for i in range(bins):
         range_start = min_val + i * bin_size
         range_end = range_start + bin_size
-        result.append({
-            "range": f"{range_start:.2f} - {range_end:.2f}",
-            "count": distribution[i],
-            "percentage": round((distribution[i] / total) * 100, 2)
-        })
+        result.append(
+            {
+                "range": f"{range_start:.2f} - {range_end:.2f}",
+                "count": distribution[i],
+                "percentage": round((distribution[i] / total) * 100, 2),
+            }
+        )
 
     return result
 
 
-def calculate_seasonal_index(
-    values: List[float],
-    season_length: int = 12
-) -> List[float]:
+def calculate_seasonal_index(values: List[float], season_length: int = 12) -> List[float]:
     """Calculate seasonal indices for time series data"""
     if len(values) < season_length * 2:
         return [1.0] * season_length

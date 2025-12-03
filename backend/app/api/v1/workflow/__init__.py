@@ -1,9 +1,10 @@
 """Workflow Management API routes"""
 
 from fastapi import APIRouter
+
 from app.api.v1.workflow import (
-    template,
     instance,
+    template,
 )
 
 # Create main workflow router

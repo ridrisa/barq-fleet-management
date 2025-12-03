@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
 from datetime import datetime
-from enum import Enum
 from decimal import Decimal
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DispatchStatus(str, Enum):
@@ -53,6 +54,7 @@ class DispatchAssignmentUpdate(BaseModel):
 
 class DispatchReassignment(BaseModel):
     """Schema for reassigning delivery to different courier"""
+
     new_courier_id: int
     reassignment_reason: str = Field(..., min_length=10)
     priority: Optional[DispatchPriority] = None
@@ -60,6 +62,7 @@ class DispatchReassignment(BaseModel):
 
 class DispatchAcceptance(BaseModel):
     """Schema for courier accepting/rejecting assignment"""
+
     accepted: bool
     rejection_reason: Optional[str] = None
     estimated_arrival_minutes: Optional[int] = Field(None, ge=0, le=300)
@@ -102,6 +105,7 @@ class DispatchAssignmentResponse(DispatchAssignmentBase):
 
 class CourierAvailability(BaseModel):
     """Courier availability for dispatch"""
+
     courier_id: int
     courier_name: str
     is_available: bool
@@ -117,6 +121,7 @@ class CourierAvailability(BaseModel):
 
 class DispatchRecommendation(BaseModel):
     """AI-powered dispatch recommendation"""
+
     recommended_courier_id: int
     courier_name: str
     confidence_score: float = Field(..., ge=0, le=1)
@@ -130,6 +135,7 @@ class DispatchRecommendation(BaseModel):
 
 class DispatchMetrics(BaseModel):
     """Dispatch performance metrics"""
+
     period: str
     total_assignments: int
     successful_assignments: int

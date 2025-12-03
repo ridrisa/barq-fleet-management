@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Integer, Boolean, JSON, Text
+from sqlalchemy import JSON, Boolean, Column, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 

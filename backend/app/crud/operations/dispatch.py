@@ -1,24 +1,30 @@
-from typing import List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
+from typing import List, Optional
+
 from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
 from app.crud.base import CRUDBase
-from app.models.operations.dispatch import DispatchAssignment, DispatchStatus, DispatchPriority
+from app.models.operations.dispatch import DispatchAssignment, DispatchPriority, DispatchStatus
 from app.schemas.operations.dispatch import DispatchAssignmentCreate, DispatchAssignmentUpdate
 
 
-class CRUDDispatchAssignment(CRUDBase[DispatchAssignment, DispatchAssignmentCreate, DispatchAssignmentUpdate]):
-    def create_with_number(self, db: Session, *, obj_in: DispatchAssignmentCreate) -> DispatchAssignment:
+class CRUDDispatchAssignment(
+    CRUDBase[DispatchAssignment, DispatchAssignmentCreate, DispatchAssignmentUpdate]
+):
+    def create_with_number(
+        self, db: Session, *, obj_in: DispatchAssignmentCreate
+    ) -> DispatchAssignment:
         """Create dispatch assignment with auto-generated number"""
-        last_assignment = db.query(DispatchAssignment).order_by(DispatchAssignment.id.desc()).first()
+        last_assignment = (
+            db.query(DispatchAssignment).order_by(DispatchAssignment.id.desc()).first()
+        )
         next_number = 1 if not last_assignment else last_assignment.id + 1
         assignment_number = f"DISP-{datetime.now().strftime('%Y%m%d')}-{next_number:04d}"
 
         obj_in_data = obj_in.model_dump()
         db_obj = DispatchAssignment(
-            **obj_in_data,
-            assignment_number=assignment_number,
-            created_at_time=datetime.utcnow()
+            **obj_in_data, assignment_number=assignment_number, created_at_time=datetime.utcnow()
         )
         db.add(db_obj)
         db.commit()
@@ -27,9 +33,11 @@ class CRUDDispatchAssignment(CRUDBase[DispatchAssignment, DispatchAssignmentCrea
 
     def get_by_number(self, db: Session, *, assignment_number: str) -> Optional[DispatchAssignment]:
         """Get dispatch by assignment number"""
-        return db.query(DispatchAssignment).filter(
-            DispatchAssignment.assignment_number == assignment_number
-        ).first()
+        return (
+            db.query(DispatchAssignment)
+            .filter(DispatchAssignment.assignment_number == assignment_number)
+            .first()
+        )
 
     def get_by_delivery(self, db: Session, *, delivery_id: int) -> Optional[DispatchAssignment]:
         """Get active dispatch assignment for delivery"""
@@ -37,12 +45,14 @@ class CRUDDispatchAssignment(CRUDBase[DispatchAssignment, DispatchAssignmentCrea
             db.query(DispatchAssignment)
             .filter(
                 DispatchAssignment.delivery_id == delivery_id,
-                DispatchAssignment.status.in_([
-                    DispatchStatus.PENDING,
-                    DispatchStatus.ASSIGNED,
-                    DispatchStatus.ACCEPTED,
-                    DispatchStatus.IN_PROGRESS
-                ])
+                DispatchAssignment.status.in_(
+                    [
+                        DispatchStatus.PENDING,
+                        DispatchStatus.ASSIGNED,
+                        DispatchStatus.ACCEPTED,
+                        DispatchStatus.IN_PROGRESS,
+                    ]
+                ),
             )
             .first()
         )
@@ -60,7 +70,9 @@ class CRUDDispatchAssignment(CRUDBase[DispatchAssignment, DispatchAssignmentCrea
             .all()
         )
 
-    def get_pending(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[DispatchAssignment]:
+    def get_pending(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[DispatchAssignment]:
         """Get all pending assignments"""
         return (
             db.query(DispatchAssignment)
@@ -77,11 +89,9 @@ class CRUDDispatchAssignment(CRUDBase[DispatchAssignment, DispatchAssignmentCrea
             db.query(DispatchAssignment)
             .filter(
                 DispatchAssignment.courier_id == courier_id,
-                DispatchAssignment.status.in_([
-                    DispatchStatus.ASSIGNED,
-                    DispatchStatus.ACCEPTED,
-                    DispatchStatus.IN_PROGRESS
-                ])
+                DispatchAssignment.status.in_(
+                    [DispatchStatus.ASSIGNED, DispatchStatus.ACCEPTED, DispatchStatus.IN_PROGRESS]
+                ),
             )
             .all()
         )
@@ -162,7 +172,10 @@ class CRUDDispatchAssignment(CRUDBase[DispatchAssignment, DispatchAssignmentCrea
                 duration = (assignment.completed_at - assignment.started_at).total_seconds() / 60
                 assignment.actual_completion_time_minutes = int(duration)
                 if assignment.estimated_time_minutes:
-                    assignment.performance_variance = assignment.actual_completion_time_minutes - assignment.estimated_time_minutes
+                    assignment.performance_variance = (
+                        assignment.actual_completion_time_minutes
+                        - assignment.estimated_time_minutes
+                    )
             db.add(assignment)
             db.commit()
             db.refresh(assignment)

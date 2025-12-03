@@ -7,18 +7,18 @@ Celery tasks for:
 - Data integrity checks
 - Automated reports
 """
+
+import logging
+from datetime import date, datetime, timedelta
+
 from celery import Celery
 from celery.schedules import crontab
-from datetime import date, datetime, timedelta
-import logging
 
 from app.config.settings import settings
 
 # Initialize Celery
 celery_app = Celery(
-    "barq_fleet",
-    broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND
+    "barq_fleet", broker=settings.CELERY_BROKER_URL, backend=settings.CELERY_RESULT_BACKEND
 )
 
 # Celery configuration
@@ -93,21 +93,20 @@ def process_monthly_payroll():
 
         # Process payroll for all couriers
         result = payroll_engine_service.process_monthly_payroll(
-            db=db,
-            month=month,
-            year=year,
-            dry_run=False
+            db=db, month=month, year=year, dry_run=False
         )
 
-        logger.info(f"Payroll processed: {result['successful']} successful, {result['failed']} failed")
+        logger.info(
+            f"Payroll processed: {result['successful']} successful, {result['failed']} failed"
+        )
 
         db.close()
         return {
             "status": "success",
             "month": month,
             "year": year,
-            "successful": result['successful'],
-            "failed": result['failed']
+            "successful": result["successful"],
+            "failed": result["failed"],
         }
 
     except Exception as e:
@@ -122,10 +121,11 @@ def check_document_expiry():
     Sends notifications for documents expiring soon
     Runs daily at 9 AM
     """
+    from datetime import date, timedelta
+
     from app.core.database import SessionLocal
     from app.models.fleet.courier import Courier
     from app.services import email_notification_service, sms_notification_service
-    from datetime import date, timedelta
 
     logger.info("Checking document expiry")
 
@@ -152,7 +152,7 @@ def check_document_expiry():
                         document_type="Driving License",
                         document_number=courier.license_number or "N/A",
                         expiry_date=str(courier.license_expiry),
-                        days_until_expiry=days_remaining
+                        days_until_expiry=days_remaining,
                     )
                     notifications_sent += 1
 
@@ -163,7 +163,7 @@ def check_document_expiry():
                         courier_name=courier.name,
                         document_type="رخصة القيادة",
                         expiry_date=str(courier.license_expiry),
-                        days_remaining=days_remaining
+                        days_remaining=days_remaining,
                     )
 
             # Check iqama expiry
@@ -177,7 +177,7 @@ def check_document_expiry():
                         document_type="Iqama",
                         document_number=courier.iqama_number or "N/A",
                         expiry_date=str(courier.iqama_expiry),
-                        days_until_expiry=days_remaining
+                        days_until_expiry=days_remaining,
                     )
                     notifications_sent += 1
 
@@ -187,16 +187,13 @@ def check_document_expiry():
                         courier_name=courier.name,
                         document_type="الإقامة",
                         expiry_date=str(courier.iqama_expiry),
-                        days_remaining=days_remaining
+                        days_remaining=days_remaining,
                     )
 
         logger.info(f"Sent {notifications_sent} document expiry notifications")
 
         db.close()
-        return {
-            "status": "success",
-            "notifications_sent": notifications_sent
-        }
+        return {"status": "success", "notifications_sent": notifications_sent}
 
     except Exception as e:
         logger.error(f"Failed to check document expiry: {str(e)}")
@@ -218,18 +215,12 @@ def clean_old_audit_logs():
     try:
         db = SessionLocal()
 
-        deleted_count = audit_log_service.clean_old_logs(
-            db=db,
-            days_to_keep=365
-        )
+        deleted_count = audit_log_service.clean_old_logs(db=db, days_to_keep=365)
 
         logger.info(f"Deleted {deleted_count} old audit logs")
 
         db.close()
-        return {
-            "status": "success",
-            "deleted_count": deleted_count
-        }
+        return {"status": "success", "deleted_count": deleted_count}
 
     except Exception as e:
         logger.error(f"Failed to clean audit logs: {str(e)}")
@@ -271,11 +262,7 @@ def generate_monthly_reports():
         logger.info("Monthly reports generated successfully")
 
         db.close()
-        return {
-            "status": "success",
-            "month": last_month_end.month,
-            "year": last_month_end.year
-        }
+        return {"status": "success", "month": last_month_end.month, "year": last_month_end.year}
 
     except Exception as e:
         logger.error(f"Failed to generate monthly reports: {str(e)}")
@@ -289,37 +276,31 @@ def setup_periodic_tasks(sender, **kwargs):
 
     # Daily attendance at midnight
     sender.add_periodic_task(
-        crontab(hour=0, minute=0),
-        process_daily_attendance.s(),
-        name="daily-attendance"
+        crontab(hour=0, minute=0), process_daily_attendance.s(), name="daily-attendance"
     )
 
     # Monthly payroll on 28th at 2 AM
     sender.add_periodic_task(
         crontab(day_of_month=28, hour=2, minute=0),
         process_monthly_payroll.s(),
-        name="monthly-payroll"
+        name="monthly-payroll",
     )
 
     # Document expiry check daily at 9 AM
     sender.add_periodic_task(
-        crontab(hour=9, minute=0),
-        check_document_expiry.s(),
-        name="document-expiry-check"
+        crontab(hour=9, minute=0), check_document_expiry.s(), name="document-expiry-check"
     )
 
     # Clean audit logs on 1st of month at 2 AM
     sender.add_periodic_task(
-        crontab(day_of_month=1, hour=2, minute=0),
-        clean_old_audit_logs.s(),
-        name="clean-audit-logs"
+        crontab(day_of_month=1, hour=2, minute=0), clean_old_audit_logs.s(), name="clean-audit-logs"
     )
 
     # Generate monthly reports on 1st at 8 AM
     sender.add_periodic_task(
         crontab(day_of_month=1, hour=8, minute=0),
         generate_monthly_reports.s(),
-        name="monthly-reports"
+        name="monthly-reports",
     )
 
 

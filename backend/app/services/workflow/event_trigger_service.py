@@ -2,16 +2,21 @@
 
 Handles automatic workflow creation when specific events occur (e.g., loan/leave creation).
 """
-from typing import Optional, Dict, Any, List
-from sqlalchemy.orm import Session
-from datetime import datetime, date
+
 import logging
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy.orm import Session
 
 from app.models.workflow.instance import WorkflowInstance, WorkflowStatus
-from app.models.workflow.trigger import (
-    WorkflowTrigger, TriggerExecution, TriggerType, TriggerEventType
-)
 from app.models.workflow.template import WorkflowTemplate
+from app.models.workflow.trigger import (
+    TriggerEventType,
+    TriggerExecution,
+    TriggerType,
+    WorkflowTrigger,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +48,7 @@ class EventTriggerService:
             Created workflow instance if a matching trigger exists
         """
         # Find matching active trigger
-        trigger = self._find_matching_trigger(
-            db, entity_type=entity_type, event_type=event_type
-        )
+        trigger = self._find_matching_trigger(db, entity_type=entity_type, event_type=event_type)
 
         if not trigger:
             logger.info(f"No workflow trigger found for {entity_type} {event_type}")
@@ -90,18 +93,18 @@ class EventTriggerService:
                 WorkflowTrigger.is_active == True,
                 WorkflowTrigger.entity_type == entity_type,
                 WorkflowTrigger.event_type == event_type,
-                WorkflowTrigger.trigger_type.in_([
-                    TriggerType.AUTOMATIC,
-                    TriggerType.EVENT_BASED,
-                ]),
+                WorkflowTrigger.trigger_type.in_(
+                    [
+                        TriggerType.AUTOMATIC,
+                        TriggerType.EVENT_BASED,
+                    ]
+                ),
             )
             .order_by(WorkflowTrigger.priority.desc())
             .first()
         )
 
-    def _evaluate_conditions(
-        self, trigger: WorkflowTrigger, entity_data: Dict[str, Any]
-    ) -> bool:
+    def _evaluate_conditions(self, trigger: WorkflowTrigger, entity_data: Dict[str, Any]) -> bool:
         """Evaluate trigger conditions against entity data"""
         if not trigger.conditions:
             return True
@@ -171,9 +174,7 @@ class EventTriggerService:
         trigger.last_triggered_at = datetime.utcnow()
         db.commit()
 
-        logger.info(
-            f"Created workflow instance {instance.id} for {entity_type} {entity_id}"
-        )
+        logger.info(f"Created workflow instance {instance.id} for {entity_type} {entity_id}")
         return instance
 
     def _log_trigger_execution(
@@ -213,9 +214,7 @@ class EventTriggerService:
         Returns dict with entity_type, entity_id, and new_status to update.
         """
         instance = (
-            db.query(WorkflowInstance)
-            .filter(WorkflowInstance.id == workflow_instance_id)
-            .first()
+            db.query(WorkflowInstance).filter(WorkflowInstance.id == workflow_instance_id).first()
         )
 
         if not instance or not instance.data:
@@ -249,9 +248,7 @@ class EventTriggerService:
         )
 
         if entity_type:
-            query = query.filter(
-                WorkflowInstance.data["entity_type"].astext == entity_type
-            )
+            query = query.filter(WorkflowInstance.data["entity_type"].astext == entity_type)
 
         return query.order_by(WorkflowInstance.created_at.desc()).offset(skip).limit(limit).all()
 

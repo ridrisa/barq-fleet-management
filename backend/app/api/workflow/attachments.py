@@ -1,16 +1,17 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Body
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
+from typing import List, Optional
+
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
+from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.crud.workflow import workflow_attachment
 from app.schemas.workflow import (
-    WorkflowAttachmentCreate,
-    WorkflowAttachmentUpdate,
-    WorkflowAttachmentResponse,
-    AttachmentUploadRequest,
     AttachmentDownloadResponse,
+    AttachmentUploadRequest,
+    WorkflowAttachmentCreate,
+    WorkflowAttachmentResponse,
+    WorkflowAttachmentUpdate,
 )
 
 router = APIRouter()
@@ -25,9 +26,13 @@ def list_attachments(
 ):
     """List workflow attachments with optional filtering by workflow instance"""
     if workflow_instance_id:
-        attachments = db.query(workflow_attachment.model).filter(
-            workflow_attachment.model.workflow_instance_id == workflow_instance_id
-        ).offset(skip).limit(limit).all()
+        attachments = (
+            db.query(workflow_attachment.model)
+            .filter(workflow_attachment.model.workflow_instance_id == workflow_instance_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
     else:
         attachments = workflow_attachment.get_multi(db, skip=skip, limit=limit)
     return attachments

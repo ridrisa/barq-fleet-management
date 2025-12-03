@@ -3,51 +3,59 @@
 This file contains additional user management endpoints that were requested.
 These can be merged into users.py or kept separate.
 """
-from typing import List
-from datetime import datetime, timedelta
-import secrets
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
 
-from app.core.dependencies import get_db, get_current_superuser
-from app.models.user import User
-from app.models.role import Role
-from app.schemas.user import User as UserSchema
+import secrets
+from datetime import datetime, timedelta
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_superuser, get_db
 from app.core.security import get_password_hash
+from app.models.role import Role
+from app.models.user import User
+from app.schemas.user import User as UserSchema
 
 router = APIRouter()
 
 
 class BulkUserActivate(BaseModel):
     """Schema for bulk user activation"""
+
     user_ids: List[int]
 
 
 class BulkUserDeactivate(BaseModel):
     """Schema for bulk user deactivation"""
+
     user_ids: List[int]
 
 
 class BulkRoleAssignment(BaseModel):
     """Schema for bulk role assignment"""
+
     user_ids: List[int]
     role_ids: List[int]
 
 
 class PasswordResetRequest(BaseModel):
     """Schema for password reset request"""
+
     email: EmailStr
 
 
 class PasswordResetConfirm(BaseModel):
     """Schema for password reset confirmation"""
+
     token: str
     new_password: str
 
 
 class PasswordResetResponse(BaseModel):
     """Schema for password reset response"""
+
     message: str
     reset_token: Optional[str] = None
     expires_at: Optional[datetime] = None
@@ -70,15 +78,13 @@ def bulk_activate_users(
 
     if len(users) != len(data.user_ids):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more user IDs are invalid"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="One or more user IDs are invalid"
         )
 
     # Check if current user is in the list (prevent self-modification in bulk)
     if current_user.id in data.user_ids:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot bulk modify your own account"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot bulk modify your own account"
         )
 
     activated_count = 0
@@ -92,7 +98,7 @@ def bulk_activate_users(
     return {
         "message": f"Successfully activated {activated_count} user(s)",
         "total_processed": len(users),
-        "activated_count": activated_count
+        "activated_count": activated_count,
     }
 
 
@@ -113,32 +119,32 @@ def bulk_deactivate_users(
     # Check if current user is in the list
     if current_user.id in data.user_ids:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot deactivate your own account"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account"
         )
 
     users = db.query(User).filter(User.id.in_(data.user_ids)).all()
 
     if len(users) != len(data.user_ids):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more user IDs are invalid"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="One or more user IDs are invalid"
         )
 
     # Check if any are superusers
     superuser_ids = [u.id for u in users if u.is_superuser]
     if superuser_ids:
         # Check remaining active superusers
-        active_superusers_count = db.query(User).filter(
-            User.is_superuser == True,
-            User.is_active == True,
-            User.id.notin_(data.user_ids)
-        ).count()
+        active_superusers_count = (
+            db.query(User)
+            .filter(
+                User.is_superuser == True, User.is_active == True, User.id.notin_(data.user_ids)
+            )
+            .count()
+        )
 
         if active_superusers_count < 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot deactivate all superusers. At least one must remain active."
+                detail="Cannot deactivate all superusers. At least one must remain active.",
             )
 
     deactivated_count = 0
@@ -152,7 +158,7 @@ def bulk_deactivate_users(
     return {
         "message": f"Successfully deactivated {deactivated_count} user(s)",
         "total_processed": len(users),
-        "deactivated_count": deactivated_count
+        "deactivated_count": deactivated_count,
     }
 
 
@@ -174,19 +180,15 @@ def bulk_assign_roles(
     users = db.query(User).filter(User.id.in_(data.user_ids)).all()
     if len(users) != len(data.user_ids):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more user IDs are invalid"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="One or more user IDs are invalid"
         )
 
     # Validate roles
-    roles = db.query(Role).filter(
-        Role.id.in_(data.role_ids),
-        Role.is_active == True
-    ).all()
+    roles = db.query(Role).filter(Role.id.in_(data.role_ids), Role.is_active == True).all()
     if len(roles) != len(data.role_ids):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more role IDs are invalid or inactive"
+            detail="One or more role IDs are invalid or inactive",
         )
 
     # Assign roles to all users
@@ -198,7 +200,7 @@ def bulk_assign_roles(
     return {
         "message": f"Successfully assigned {len(roles)} role(s) to {len(users)} user(s)",
         "users_processed": len(users),
-        "roles_assigned": len(roles)
+        "roles_assigned": len(roles),
     }
 
 
@@ -237,7 +239,7 @@ def request_password_reset(
     return PasswordResetResponse(
         message="Password reset link has been sent to your email",
         reset_token=reset_token,  # Only for development/testing
-        expires_at=expires_at
+        expires_at=expires_at,
     )
 
 
@@ -257,8 +259,7 @@ def admin_reset_user_password(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
     # Generate temporary password
@@ -274,7 +275,7 @@ def admin_reset_user_password(
         "message": "Password has been reset",
         "temporary_password": temp_password,  # In production, send via secure channel
         "user_id": user.id,
-        "email": user.email
+        "email": user.email,
     }
 
 
@@ -295,16 +296,14 @@ def bulk_delete_users(
     # Check if current user is in the list
     if current_user.id in user_ids:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete your own account"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account"
         )
 
     users = db.query(User).filter(User.id.in_(user_ids)).all()
 
     if len(users) != len(user_ids):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more user IDs are invalid"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="One or more user IDs are invalid"
         )
 
     # Prevent deleting superusers
@@ -312,7 +311,7 @@ def bulk_delete_users(
     if superuser_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete superuser accounts. Deactivate them instead."
+            detail="Cannot delete superuser accounts. Deactivate them instead.",
         )
 
     deleted_count = len(users)
@@ -323,5 +322,5 @@ def bulk_delete_users(
 
     return {
         "message": f"Successfully deleted {deleted_count} user(s)",
-        "deleted_count": deleted_count
+        "deleted_count": deleted_count,
     }

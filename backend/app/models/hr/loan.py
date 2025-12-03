@@ -1,13 +1,17 @@
-from sqlalchemy import Column, String, Integer, Numeric, Date, ForeignKey, Enum, Boolean
+import enum
+
+from sqlalchemy import Boolean, Column, Date, Enum, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
+
 
 class LoanStatus(str, enum.Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+
 
 class Loan(TenantMixin, BaseModel):
     __tablename__ = "loans"
@@ -18,7 +22,9 @@ class Loan(TenantMixin, BaseModel):
     monthly_deduction = Column(Numeric(10, 2), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=True)
-    status = Column(Enum(LoanStatus, values_callable=lambda x: [e.value for e in x]), default=LoanStatus.ACTIVE)
+    status = Column(
+        Enum(LoanStatus, values_callable=lambda x: [e.value for e in x]), default=LoanStatus.ACTIVE
+    )
     approved_by = Column(Integer, ForeignKey("users.id"))
     notes = Column(String)
 

@@ -1,10 +1,11 @@
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
 from datetime import date, timedelta
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import Session
 
 from app.models.fleet import Courier, CourierStatus
-from app.schemas.fleet import CourierCreate, CourierUpdate, CourierDocumentStatus
+from app.schemas.fleet import CourierCreate, CourierDocumentStatus, CourierUpdate
 from app.services.base import CRUDBase
 
 
@@ -29,10 +30,14 @@ class CourierService(CRUDBase[Courier, CourierCreate, CourierUpdate]):
         *,
         skip: int = 0,
         limit: int = 100,
-        city: Optional[str] = None
+        city: Optional[str] = None,
+        organization_id: Optional[int] = None,
     ) -> List[Courier]:
         """Get all active couriers, optionally filtered by city"""
         query = db.query(Courier).filter(Courier.status == CourierStatus.ACTIVE)
+
+        if organization_id:
+            query = query.filter(Courier.organization_id == organization_id)
 
         if city:
             query = query.filter(Courier.city == city)
@@ -45,33 +50,31 @@ class CourierService(CRUDBase[Courier, CourierCreate, CourierUpdate]):
         status: CourierStatus,
         *,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[Courier]:
         """Get couriers by status"""
-        return (
-            db.query(Courier)
-            .filter(Courier.status == status)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(Courier).filter(Courier.status == status)
+
+        if organization_id:
+            query = query.filter(Courier.organization_id == organization_id)
+
+        return query.offset(skip).limit(limit).all()
 
     def get_without_vehicle(
-        self,
-        db: Session,
-        *,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: Optional[int] = None
     ) -> List[Courier]:
         """Get couriers without assigned vehicle"""
-        return (
+        query = (
             db.query(Courier)
             .filter(Courier.current_vehicle_id == None)
             .filter(Courier.status == CourierStatus.ACTIVE)
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+
+        if organization_id:
+            query = query.filter(Courier.organization_id == organization_id)
+
+        return query.offset(skip).limit(limit).all()
 
     def get_by_city(
         self,
@@ -79,23 +82,18 @@ class CourierService(CRUDBase[Courier, CourierCreate, CourierUpdate]):
         city: str,
         *,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[Courier]:
         """Get couriers by city"""
-        return (
-            db.query(Courier)
-            .filter(Courier.city == city)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(Courier).filter(Courier.city == city)
 
-    def assign_vehicle(
-        self,
-        db: Session,
-        courier_id: int,
-        vehicle_id: int
-    ) -> Courier:
+        if organization_id:
+            query = query.filter(Courier.organization_id == organization_id)
+
+        return query.offset(skip).limit(limit).all()
+
+    def assign_vehicle(self, db: Session, courier_id: int, vehicle_id: int) -> Courier:
         """Assign a vehicle to courier"""
         courier = self.get(db, courier_id)
         if courier:
@@ -118,7 +116,7 @@ class CourierService(CRUDBase[Courier, CourierCreate, CourierUpdate]):
         db: Session,
         courier_id: int,
         status: CourierStatus,
-        last_working_day: Optional[date] = None
+        last_working_day: Optional[date] = None,
     ) -> Courier:
         """Update courier status"""
         courier = self.get(db, courier_id)
@@ -131,28 +129,32 @@ class CourierService(CRUDBase[Courier, CourierCreate, CourierUpdate]):
         return courier
 
     def get_expiring_documents(
-        self,
-        db: Session,
-        days_threshold: int = 30
+        self, db: Session, days_threshold: int = 30, organization_id: Optional[int] = None
     ) -> List[CourierDocumentStatus]:
         """
         Get couriers with documents expiring soon
         Args:
             days_threshold: Days until expiry to consider (default 30)
+            organization_id: Optional organization ID filter
         """
         today = date.today()
         threshold_date = today + timedelta(days=days_threshold)
 
-        couriers = db.query(Courier).filter(
+        query = db.query(Courier).filter(
             and_(
                 Courier.status.in_([CourierStatus.ACTIVE, CourierStatus.ON_LEAVE]),
                 or_(
                     Courier.iqama_expiry_date <= threshold_date,
                     Courier.passport_expiry_date <= threshold_date,
                     Courier.license_expiry_date <= threshold_date,
-                )
+                ),
             )
-        ).all()
+        )
+
+        if organization_id:
+            query = query.filter(Courier.organization_id == organization_id)
+
+        couriers = query.all()
 
         result = []
         for courier in couriers:
@@ -161,51 +163,74 @@ class CourierService(CRUDBase[Courier, CourierCreate, CourierUpdate]):
                 barq_id=courier.barq_id,
                 full_name=courier.full_name,
                 iqama_expiry_date=courier.iqama_expiry_date,
-                iqama_expired=courier.iqama_expiry_date < today if courier.iqama_expiry_date else False,
-                iqama_expires_soon=courier.iqama_expiry_date <= threshold_date if courier.iqama_expiry_date else False,
+                iqama_expired=(
+                    courier.iqama_expiry_date < today if courier.iqama_expiry_date else False
+                ),
+                iqama_expires_soon=(
+                    courier.iqama_expiry_date <= threshold_date
+                    if courier.iqama_expiry_date
+                    else False
+                ),
                 passport_expiry_date=courier.passport_expiry_date,
-                passport_expired=courier.passport_expiry_date < today if courier.passport_expiry_date else False,
-                passport_expires_soon=courier.passport_expiry_date <= threshold_date if courier.passport_expiry_date else False,
+                passport_expired=(
+                    courier.passport_expiry_date < today if courier.passport_expiry_date else False
+                ),
+                passport_expires_soon=(
+                    courier.passport_expiry_date <= threshold_date
+                    if courier.passport_expiry_date
+                    else False
+                ),
                 license_expiry_date=courier.license_expiry_date,
-                license_expired=courier.license_expiry_date < today if courier.license_expiry_date else False,
-                license_expires_soon=courier.license_expiry_date <= threshold_date if courier.license_expiry_date else False,
+                license_expired=(
+                    courier.license_expiry_date < today if courier.license_expiry_date else False
+                ),
+                license_expires_soon=(
+                    courier.license_expiry_date <= threshold_date
+                    if courier.license_expiry_date
+                    else False
+                ),
             )
 
             doc_status.any_expired = (
-                doc_status.iqama_expired or
-                doc_status.passport_expired or
-                doc_status.license_expired
+                doc_status.iqama_expired
+                or doc_status.passport_expired
+                or doc_status.license_expired
             )
             doc_status.any_expires_soon = (
-                doc_status.iqama_expires_soon or
-                doc_status.passport_expires_soon or
-                doc_status.license_expires_soon
+                doc_status.iqama_expires_soon
+                or doc_status.passport_expires_soon
+                or doc_status.license_expires_soon
             )
 
             result.append(doc_status)
 
         return result
 
-    def get_statistics(self, db: Session) -> Dict[str, Any]:
+    def get_statistics(self, db: Session, organization_id: Optional[int] = None) -> Dict[str, Any]:
         """Get overall courier statistics"""
-        total = db.query(func.count(Courier.id)).scalar()
+        base_query = db.query(Courier)
+
+        if organization_id:
+            base_query = base_query.filter(Courier.organization_id == organization_id)
+
+        total = base_query.with_entities(func.count(Courier.id)).scalar()
 
         status_counts = (
-            db.query(Courier.status, func.count(Courier.id))
+            base_query.with_entities(Courier.status, func.count(Courier.id))
             .group_by(Courier.status)
             .all()
         )
 
         with_vehicle = (
-            db.query(func.count(Courier.id))
-            .filter(Courier.current_vehicle_id != None)
+            base_query.filter(Courier.current_vehicle_id != None)
+            .with_entities(func.count(Courier.id))
             .scalar()
         )
 
         without_vehicle = (
-            db.query(func.count(Courier.id))
-            .filter(Courier.current_vehicle_id == None)
+            base_query.filter(Courier.current_vehicle_id == None)
             .filter(Courier.status == CourierStatus.ACTIVE)
+            .with_entities(func.count(Courier.id))
             .scalar()
         )
 
@@ -222,16 +247,26 @@ class CourierService(CRUDBase[Courier, CourierCreate, CourierUpdate]):
         *,
         search_term: str,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[Courier]:
         """Search couriers by name, BARQ ID, email, or phone"""
-        return self.search(
-            db,
-            search_term=search_term,
-            search_fields=["full_name", "barq_id", "email", "mobile_number", "employee_id"],
-            skip=skip,
-            limit=limit
-        )
+        query = db.query(Courier)
+
+        if organization_id:
+            query = query.filter(Courier.organization_id == organization_id)
+
+        if search_term:
+            search_filters = []
+            search_fields = ["full_name", "barq_id", "email", "mobile_number", "employee_id"]
+            for field in search_fields:
+                if hasattr(Courier, field):
+                    search_filters.append(getattr(Courier, field).ilike(f"%{search_term}%"))
+
+            if search_filters:
+                query = query.filter(or_(*search_filters))
+
+        return query.offset(skip).limit(limit).all()
 
 
 # Create instance

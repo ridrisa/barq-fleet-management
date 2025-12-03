@@ -1,6 +1,8 @@
 """Audit Log Schemas"""
+
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field
 
 from app.models.audit_log import AuditAction
@@ -8,6 +10,7 @@ from app.models.audit_log import AuditAction
 
 class AuditLogBase(BaseModel):
     """Base schema for audit log"""
+
     user_id: Optional[int] = None
     username: Optional[str] = None
     action: AuditAction
@@ -25,11 +28,13 @@ class AuditLogBase(BaseModel):
 
 class AuditLogCreate(AuditLogBase):
     """Schema for creating audit log"""
+
     pass
 
 
 class AuditLogResponse(AuditLogBase):
     """Schema for audit log response"""
+
     id: int
     created_at: datetime
     updated_at: datetime
@@ -39,6 +44,7 @@ class AuditLogResponse(AuditLogBase):
 
 class AuditLogFilter(BaseModel):
     """Schema for filtering audit logs"""
+
     user_id: Optional[int] = None
     action: Optional[AuditAction] = None
     resource_type: Optional[str] = None
@@ -51,6 +57,7 @@ class AuditLogFilter(BaseModel):
 
 class AuditLogSummary(BaseModel):
     """Summary statistics for audit logs"""
+
     total_logs: int
     actions_breakdown: Dict[str, int]
     resources_breakdown: Dict[str, int]

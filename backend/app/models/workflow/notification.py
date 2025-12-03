@@ -1,12 +1,15 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, JSON, DateTime, Boolean, Enum
+import enum
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class NotificationType(str, enum.Enum):
     """Types of workflow notifications"""
+
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_COMPLETED = "workflow_completed"
     WORKFLOW_FAILED = "workflow_failed"
@@ -26,6 +29,7 @@ class NotificationType(str, enum.Enum):
 
 class NotificationChannel(str, enum.Enum):
     """Channels for sending notifications"""
+
     IN_APP = "in_app"
     EMAIL = "email"
     SMS = "sms"
@@ -35,6 +39,7 @@ class NotificationChannel(str, enum.Enum):
 
 class NotificationStatus(str, enum.Enum):
     """Status of notification delivery"""
+
     PENDING = "pending"
     SENT = "sent"
     DELIVERED = "delivered"
@@ -45,11 +50,14 @@ class NotificationStatus(str, enum.Enum):
 
 class WorkflowNotificationTemplate(TenantMixin, BaseModel):
     """Templates for workflow notifications"""
+
     __tablename__ = "workflow_notification_templates"
 
     name = Column(String, nullable=False, unique=True)
     description = Column(Text)
-    notification_type = Column(Enum(NotificationType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    notification_type = Column(
+        Enum(NotificationType, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
 
     # Template content
     subject_template = Column(String)  # For email/push
@@ -74,11 +82,14 @@ class WorkflowNotificationTemplate(TenantMixin, BaseModel):
 
 class WorkflowNotification(TenantMixin, BaseModel):
     """Individual notification instances"""
+
     __tablename__ = "workflow_notifications"
 
     workflow_instance_id = Column(Integer, ForeignKey("workflow_instances.id"))
     template_id = Column(Integer, ForeignKey("workflow_notification_templates.id"))
-    notification_type = Column(Enum(NotificationType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    notification_type = Column(
+        Enum(NotificationType, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
 
     # Recipient
     recipient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -91,8 +102,13 @@ class WorkflowNotification(TenantMixin, BaseModel):
     sms_content = Column(String)
 
     # Channel and delivery
-    channel = Column(Enum(NotificationChannel, values_callable=lambda x: [e.value for e in x]), nullable=False)
-    status = Column(Enum(NotificationStatus, values_callable=lambda x: [e.value for e in x]), default=NotificationStatus.PENDING)
+    channel = Column(
+        Enum(NotificationChannel, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
+    status = Column(
+        Enum(NotificationStatus, values_callable=lambda x: [e.value for e in x]),
+        default=NotificationStatus.PENDING,
+    )
     priority = Column(String, default="normal")
 
     # Timing
@@ -122,10 +138,13 @@ class WorkflowNotification(TenantMixin, BaseModel):
 
 class NotificationPreference(TenantMixin, BaseModel):
     """User preferences for workflow notifications"""
+
     __tablename__ = "workflow_notification_preferences"
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    notification_type = Column(Enum(NotificationType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    notification_type = Column(
+        Enum(NotificationType, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
 
     # Channel preferences
     enable_email = Column(Boolean, default=True)

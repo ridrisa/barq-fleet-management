@@ -1,62 +1,31 @@
 """Support Module Schemas"""
 
 # Ticket schemas
-from app.schemas.support.ticket import (
-    TicketBase,
-    TicketCreate,
-    TicketCreateFromTemplate,
-    TicketUpdate,
-    TicketAssign,
-    TicketResolve,
-    TicketEscalate,
-    TicketMerge,
-    TicketBulkAction,
-    TicketSLAConfig,
-    TicketResponse,
-    TicketList,
-    TicketStatistics,
-    TicketWithRelations,
-    TicketAttachmentCreate,
-    TicketAttachmentResponse,
-    TicketTemplateCreate,
-    TicketTemplateUpdate,
-    TicketTemplateResponse,
-    CannedResponseCreate,
-    CannedResponseUpdate,
-    CannedResponseResponse,
+# Re-export enums for convenience
+from app.models.support import (
+    ArticleStatus,
+    ChatStatus,
+    EscalationLevel,
+    FeedbackCategory,
+    FeedbackStatus,
+    TicketCategory,
+    TicketPriority,
+    TicketStatus,
 )
 
-# Ticket reply schemas
-from app.schemas.support.ticket_reply import (
-    TicketReplyBase,
-    TicketReplyCreate,
-    TicketReplyUpdate,
-    TicketReplyResponse,
-    TicketReplyWithUser,
-)
-
-# Knowledge Base schemas
-from app.schemas.support.kb_article import (
-    KBArticleBase,
-    KBArticleCreate,
-    KBArticleUpdate,
-    KBArticlePublish,
-    KBArticleVote,
-    KBArticleResponse,
-    KBArticleList,
-    KBArticleWithAuthor,
-    KBArticleSearch,
-)
-
-# FAQ schemas
-from app.schemas.support.faq import (
-    FAQBase,
-    FAQCreate,
-    FAQUpdate,
-    FAQResponse,
-    FAQList,
-    FAQByCategory,
-    FAQCategoryList,
+# Analytics schemas
+from app.schemas.support.analytics import (
+    AgentPerformanceMetrics,
+    ChatAnalytics,
+    CustomerSatisfactionMetrics,
+    DateRangeFilter,
+    EscalationAnalytics,
+    KBAnalytics,
+    ResponseTimeMetrics,
+    SLAMetrics,
+    SupportAnalytics,
+    SupportTrendData,
+    TicketMetrics,
 )
 
 # Chat schemas
@@ -65,62 +34,92 @@ from app.schemas.support.chat import (
     ChatMessageCreate,
     ChatMessageResponse,
     ChatMessageWithSender,
+    ChatSessionAssign,
     ChatSessionBase,
     ChatSessionCreate,
-    ChatSessionUpdate,
-    ChatSessionAssign,
-    ChatSessionTransfer,
-    ChatSessionResponse,
-    ChatSessionWithMessages,
     ChatSessionList,
+    ChatSessionResponse,
+    ChatSessionTransfer,
+    ChatSessionUpdate,
+    ChatSessionWithMessages,
     ChatTranscript,
+)
+
+# Contact schemas
+from app.schemas.support.contact import (
+    ContactFormResponse,
+    ContactFormSubmit,
+    ContactPreferences,
+    DepartmentInfo,
+)
+
+# FAQ schemas
+from app.schemas.support.faq import (
+    FAQBase,
+    FAQByCategory,
+    FAQCategoryList,
+    FAQCreate,
+    FAQList,
+    FAQResponse,
+    FAQUpdate,
 )
 
 # Feedback schemas
 from app.schemas.support.feedback import (
     FeedbackBase,
     FeedbackCreate,
-    FeedbackUpdate,
+    FeedbackList,
     FeedbackRespond,
     FeedbackResponse,
-    FeedbackList,
-    FeedbackWithUser,
     FeedbackStatistics,
+    FeedbackUpdate,
+    FeedbackWithUser,
 )
 
-# Analytics schemas
-from app.schemas.support.analytics import (
-    TicketMetrics,
-    SLAMetrics,
-    ResponseTimeMetrics,
-    AgentPerformanceMetrics,
-    CustomerSatisfactionMetrics,
-    SupportTrendData,
-    SupportAnalytics,
-    EscalationAnalytics,
-    KBAnalytics,
-    ChatAnalytics,
-    DateRangeFilter,
+# Knowledge Base schemas
+from app.schemas.support.kb_article import (
+    KBArticleBase,
+    KBArticleCreate,
+    KBArticleList,
+    KBArticlePublish,
+    KBArticleResponse,
+    KBArticleSearch,
+    KBArticleUpdate,
+    KBArticleVote,
+    KBArticleWithAuthor,
+)
+from app.schemas.support.ticket import (
+    CannedResponseCreate,
+    CannedResponseResponse,
+    CannedResponseUpdate,
+    TicketAssign,
+    TicketAttachmentCreate,
+    TicketAttachmentResponse,
+    TicketBase,
+    TicketBulkAction,
+    TicketCreate,
+    TicketCreateFromTemplate,
+    TicketEscalate,
+    TicketList,
+    TicketMerge,
+    TicketResolve,
+    TicketResponse,
+    TicketSLAConfig,
+    TicketStatistics,
+    TicketTemplateCreate,
+    TicketTemplateResponse,
+    TicketTemplateUpdate,
+    TicketUpdate,
+    TicketWithRelations,
 )
 
-# Contact schemas
-from app.schemas.support.contact import (
-    ContactFormSubmit,
-    ContactFormResponse,
-    ContactPreferences,
-    DepartmentInfo,
-)
-
-# Re-export enums for convenience
-from app.models.support import (
-    TicketCategory,
-    TicketPriority,
-    TicketStatus,
-    EscalationLevel,
-    ArticleStatus,
-    ChatStatus,
-    FeedbackCategory,
-    FeedbackStatus,
+# Ticket reply schemas
+from app.schemas.support.ticket_reply import (
+    TicketReplyBase,
+    TicketReplyCreate,
+    TicketReplyResponse,
+    TicketReplyUpdate,
+    TicketReplyWithUser,
 )
 
 __all__ = [

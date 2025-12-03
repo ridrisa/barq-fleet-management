@@ -3,11 +3,13 @@
 Centralized utility for creating audit log entries throughout the application.
 Provides consistent audit logging for all admin actions.
 """
-from typing import Optional, Dict, Any
+
 from datetime import datetime
+from typing import Any, Dict, Optional
+
 from sqlalchemy.orm import Session
 
-from app.models.audit_log import AuditLog, AuditAction
+from app.models.audit_log import AuditAction, AuditLog
 from app.models.user import User
 
 
@@ -75,7 +77,7 @@ class AuditLogger:
         user: User,
         description: Optional[str] = None,
         new_values: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> AuditLog:
         """Log a CREATE action"""
         desc = description or f"Created {resource_type} with ID {resource_id}"
@@ -87,7 +89,7 @@ class AuditLogger:
             description=desc,
             user=user,
             new_values=new_values,
-            **kwargs
+            **kwargs,
         )
 
     @staticmethod
@@ -99,7 +101,7 @@ class AuditLogger:
         description: Optional[str] = None,
         old_values: Optional[Dict[str, Any]] = None,
         new_values: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> AuditLog:
         """Log an UPDATE action"""
         desc = description or f"Updated {resource_type} with ID {resource_id}"
@@ -112,7 +114,7 @@ class AuditLogger:
             user=user,
             old_values=old_values,
             new_values=new_values,
-            **kwargs
+            **kwargs,
         )
 
     @staticmethod
@@ -123,7 +125,7 @@ class AuditLogger:
         user: User,
         description: Optional[str] = None,
         old_values: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> AuditLog:
         """Log a DELETE action"""
         desc = description or f"Deleted {resource_type} with ID {resource_id}"
@@ -135,7 +137,7 @@ class AuditLogger:
             description=desc,
             user=user,
             old_values=old_values,
-            **kwargs
+            **kwargs,
         )
 
     @staticmethod
@@ -148,7 +150,11 @@ class AuditLogger:
     ) -> AuditLog:
         """Log a login attempt"""
         action = AuditAction.LOGIN if success else AuditAction.FAILED_LOGIN
-        description = f"User {user.email} logged in successfully" if success else f"Failed login attempt for {user.email}"
+        description = (
+            f"User {user.email} logged in successfully"
+            if success
+            else f"Failed login attempt for {user.email}"
+        )
         return AuditLogger.log(
             db=db,
             action=action,
@@ -184,7 +190,7 @@ class AuditLogger:
         resource_id: int,
         user: User,
         description: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> AuditLog:
         """Log an ACCESS/READ action"""
         desc = description or f"Accessed {resource_type} with ID {resource_id}"
@@ -195,7 +201,7 @@ class AuditLogger:
             resource_id=resource_id,
             description=desc,
             user=user,
-            **kwargs
+            **kwargs,
         )
 
     @staticmethod
@@ -205,7 +211,7 @@ class AuditLogger:
         target_user_id: int,
         old_permissions: list,
         new_permissions: list,
-        **kwargs
+        **kwargs,
     ) -> AuditLog:
         """Log a permission/role change"""
         return AuditLogger.log(
@@ -217,7 +223,7 @@ class AuditLogger:
             user=user,
             old_values={"permissions": old_permissions},
             new_values={"permissions": new_permissions},
-            **kwargs
+            **kwargs,
         )
 
     @staticmethod
@@ -227,7 +233,7 @@ class AuditLogger:
         description: str,
         user: Optional[User] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> AuditLog:
         """Log a system-level action (backup, integration test, etc.)"""
         return AuditLogger.log(
@@ -237,17 +243,13 @@ class AuditLogger:
             description=description,
             user=user,
             metadata={**(metadata or {}), "action_type": action_type},
-            **kwargs
+            **kwargs,
         )
 
 
 # Convenience function for quick audit logging
 def log_audit(
-    db: Session,
-    action: AuditAction,
-    resource_type: str,
-    user: User,
-    **kwargs
+    db: Session, action: AuditAction, resource_type: str, user: User, **kwargs
 ) -> AuditLog:
     """
     Quick audit log helper.
@@ -255,10 +257,4 @@ def log_audit(
     Usage:
         log_audit(db, AuditAction.CREATE, "backup", user, resource_id=backup.id)
     """
-    return AuditLogger.log(
-        db=db,
-        action=action,
-        resource_type=resource_type,
-        user=user,
-        **kwargs
-    )
+    return AuditLogger.log(db=db, action=action, resource_type=resource_type, user=user, **kwargs)

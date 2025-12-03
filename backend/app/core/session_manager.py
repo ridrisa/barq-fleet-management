@@ -13,11 +13,11 @@ Author: BARQ Security Team
 Last Updated: 2025-12-02
 """
 
-import json
 import hashlib
+import json
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, asdict
 
 import redis
 
@@ -28,6 +28,7 @@ from app.core.security_config import security_config
 @dataclass
 class Session:
     """Session data structure"""
+
     session_id: str
     user_id: int
     username: str
@@ -76,10 +77,7 @@ class SessionManager:
             redis_url = security_config.rate_limit.storage_uri or settings.REDIS_URL
             if redis_url:
                 self.redis = redis.from_url(
-                    redis_url,
-                    decode_responses=True,
-                    socket_connect_timeout=5,
-                    socket_timeout=5
+                    redis_url, decode_responses=True, socket_connect_timeout=5, socket_timeout=5
                 )
             else:
                 # Fall back to in-memory (development only)
@@ -93,7 +91,7 @@ class SessionManager:
         organization_id: Optional[int],
         ip_address: str,
         user_agent: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[Session]:
         """
         Create new session
@@ -136,7 +134,7 @@ class SessionManager:
             created_at=now.isoformat(),
             last_activity=now.isoformat(),
             expires_at=expires_at.isoformat(),
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         # Store session
@@ -179,10 +177,7 @@ class SessionManager:
         return session
 
     def validate_session(
-        self,
-        session_id: str,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None
+        self, session_id: str, ip_address: Optional[str] = None, user_agent: Optional[str] = None
     ) -> Optional[Session]:
         """
         Validate session and optionally check IP/user agent
@@ -382,6 +377,7 @@ class SessionManager:
     def _generate_session_id(self) -> str:
         """Generate cryptographically secure session ID"""
         import secrets
+
         return secrets.token_urlsafe(32)
 
     def _generate_fingerprint(self, ip_address: str, user_agent: str) -> str:
@@ -461,7 +457,9 @@ def get_session_manager() -> SessionManager:
 
 
 # Convenience functions
-def create_session(user_id: int, username: str, organization_id: int, ip: str, ua: str) -> Optional[Session]:
+def create_session(
+    user_id: int, username: str, organization_id: int, ip: str, ua: str
+) -> Optional[Session]:
     """Convenience function to create session"""
     return get_session_manager().create_session(user_id, username, organization_id, ip, ua)
 

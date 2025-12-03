@@ -1,13 +1,16 @@
 """Customer Feedback Schemas"""
-from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Dict
+
 from datetime import datetime
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field, validator
 
 from app.models.support import FeedbackCategory, FeedbackStatus
 
 
 class FeedbackBase(BaseModel):
     """Base feedback schema"""
+
     subject: str = Field(..., min_length=5, max_length=255, description="Feedback subject")
     message: str = Field(..., min_length=10, description="Feedback message")
     category: FeedbackCategory = Field(..., description="Feedback category")
@@ -23,11 +26,13 @@ class FeedbackBase(BaseModel):
 
 class FeedbackCreate(FeedbackBase):
     """Schema for creating feedback"""
+
     pass
 
 
 class FeedbackUpdate(BaseModel):
     """Schema for updating feedback"""
+
     subject: Optional[str] = Field(None, min_length=5, max_length=255)
     message: Optional[str] = Field(None, min_length=10)
     category: Optional[FeedbackCategory] = None
@@ -37,11 +42,13 @@ class FeedbackUpdate(BaseModel):
 
 class FeedbackRespond(BaseModel):
     """Schema for responding to feedback"""
+
     response: str = Field(..., min_length=10, description="Response message")
 
 
 class FeedbackResponse(FeedbackBase):
     """Schema for feedback response"""
+
     id: int
     user_id: Optional[int] = None
     status: FeedbackStatus
@@ -58,6 +65,7 @@ class FeedbackResponse(FeedbackBase):
 
 class FeedbackList(BaseModel):
     """Minimal feedback schema for list views"""
+
     id: int
     subject: str
     category: FeedbackCategory
@@ -72,6 +80,7 @@ class FeedbackList(BaseModel):
 
 class FeedbackWithUser(FeedbackResponse):
     """Extended feedback with user information"""
+
     user_name: Optional[str] = None
     responder_name: Optional[str] = None
 
@@ -81,6 +90,7 @@ class FeedbackWithUser(FeedbackResponse):
 
 class FeedbackStatistics(BaseModel):
     """Feedback statistics schema"""
+
     total: int = 0
     by_category: Dict[str, int] = Field(default_factory=dict)
     by_status: Dict[str, int] = Field(default_factory=dict)

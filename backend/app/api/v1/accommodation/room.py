@@ -1,15 +1,14 @@
 """Room Management API Routes"""
+
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
-from app.schemas.accommodation import (
-    RoomCreate, RoomUpdate, RoomResponse, RoomStatus
-)
-from app.services.accommodation import room_service, building_service, bed_service
-
+from app.schemas.accommodation import RoomCreate, RoomResponse, RoomStatus, RoomUpdate
+from app.services.accommodation import bed_service, building_service, room_service
 
 router = APIRouter()
 
@@ -33,19 +32,13 @@ def get_rooms(
     - available_only: Show only rooms with free beds
     """
     if available_only:
-        return room_service.get_available(
-            db, building_id=building_id, skip=skip, limit=limit
-        )
+        return room_service.get_available(db, building_id=building_id, skip=skip, limit=limit)
 
     if building_id:
-        return room_service.get_by_building(
-            db, building_id=building_id, skip=skip, limit=limit
-        )
+        return room_service.get_by_building(db, building_id=building_id, skip=skip, limit=limit)
 
     if status:
-        return room_service.get_by_status(
-            db, status=status, skip=skip, limit=limit
-        )
+        return room_service.get_by_status(db, status=status, skip=skip, limit=limit)
 
     return room_service.get_multi(db, skip=skip, limit=limit)
 
@@ -68,8 +61,7 @@ def create_room(
     )
     if existing:
         raise HTTPException(
-            status_code=400,
-            detail=f"Room '{room_in.room_number}' already exists in this building"
+            status_code=400, detail=f"Room '{room_in.room_number}' already exists in this building"
         )
 
     room = room_service.create(db, obj_in=room_in)
@@ -120,7 +112,7 @@ def update_room(
         if existing:
             raise HTTPException(
                 status_code=400,
-                detail=f"Room '{room_in.room_number}' already exists in this building"
+                detail=f"Room '{room_in.room_number}' already exists in this building",
             )
 
     old_building_id = room.building_id
@@ -149,8 +141,7 @@ def delete_room(
     beds = bed_service.get_by_room(db, room_id=room_id, limit=1)
     if beds:
         raise HTTPException(
-            status_code=400,
-            detail="Cannot delete room with existing beds. Delete beds first."
+            status_code=400, detail="Cannot delete room with existing beds. Delete beds first."
         )
 
     building_id = room.building_id

@@ -19,7 +19,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, Index
+from sqlalchemy import Column, DateTime, Index, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 
 from app.core.database import Base
@@ -28,6 +28,7 @@ from app.core.security_config import security_config
 
 class AuditEventType(str, Enum):
     """Types of audit events"""
+
     # Authentication events
     AUTH_LOGIN_SUCCESS = "auth.login.success"
     AUTH_LOGIN_FAILURE = "auth.login.failure"
@@ -85,6 +86,7 @@ class AuditEventType(str, Enum):
 
 class AuditSeverity(str, Enum):
     """Audit event severity levels"""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -143,10 +145,10 @@ class AuditLog(Base):
 
     # Indexes for common queries
     __table_args__ = (
-        Index('idx_audit_user_time', 'user_id', 'created_at'),
-        Index('idx_audit_org_time', 'organization_id', 'created_at'),
-        Index('idx_audit_event_time', 'event_type', 'created_at'),
-        Index('idx_audit_resource', 'resource', 'resource_id'),
+        Index("idx_audit_user_time", "user_id", "created_at"),
+        Index("idx_audit_org_time", "organization_id", "created_at"),
+        Index("idx_audit_event_time", "event_type", "created_at"),
+        Index("idx_audit_resource", "resource", "resource_id"),
     )
 
 
@@ -188,7 +190,7 @@ class AuditLogger:
         status: str = "success",
         reason: Optional[str] = None,
         severity: AuditSeverity = AuditSeverity.INFO,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[AuditLog]:
         """
         Log audit event
@@ -238,7 +240,7 @@ class AuditLogger:
                 reason=reason,
                 metadata=json.dumps(metadata) if metadata else None,
                 previous_hash=previous_hash,
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
             )
 
             # Calculate hash for tamper detection
@@ -264,7 +266,7 @@ class AuditLogger:
         ip_address: str,
         user_agent: str,
         status: str,
-        reason: Optional[str] = None
+        reason: Optional[str] = None,
     ) -> Optional[AuditLog]:
         """
         Log authentication event
@@ -290,7 +292,7 @@ class AuditLogger:
             user_agent=user_agent,
             status=status,
             reason=reason,
-            severity=AuditSeverity.WARNING if status == "failure" else AuditSeverity.INFO
+            severity=AuditSeverity.WARNING if status == "failure" else AuditSeverity.INFO,
         )
 
     def log_authorization(
@@ -301,11 +303,15 @@ class AuditLogger:
         resource: str,
         action: str,
         ip_address: str,
-        reason: Optional[str] = None
+        reason: Optional[str] = None,
     ) -> Optional[AuditLog]:
         """Log authorization decision"""
         return self.log(
-            event_type=AuditEventType.AUTHZ_ACCESS_GRANTED if granted else AuditEventType.AUTHZ_ACCESS_DENIED,
+            event_type=(
+                AuditEventType.AUTHZ_ACCESS_GRANTED
+                if granted
+                else AuditEventType.AUTHZ_ACCESS_DENIED
+            ),
             action=f"Access {action} on {resource}",
             user_id=user_id,
             username=username,
@@ -313,7 +319,7 @@ class AuditLogger:
             ip_address=ip_address,
             status="success" if granted else "failure",
             reason=reason,
-            severity=AuditSeverity.WARNING if not granted else AuditSeverity.INFO
+            severity=AuditSeverity.WARNING if not granted else AuditSeverity.INFO,
         )
 
     def log_data_access(
@@ -325,7 +331,7 @@ class AuditLogger:
         organization_id: int,
         ip_address: str,
         changes: Optional[Dict[str, Any]] = None,
-        is_pii: bool = False
+        is_pii: bool = False,
     ) -> Optional[AuditLog]:
         """Log data access or modification"""
         event_type_map = {
@@ -346,7 +352,7 @@ class AuditLogger:
             changes=changes,
             ip_address=ip_address,
             status="success",
-            severity=AuditSeverity.WARNING if is_pii else AuditSeverity.INFO
+            severity=AuditSeverity.WARNING if is_pii else AuditSeverity.INFO,
         )
 
     def log_admin_action(
@@ -356,7 +362,7 @@ class AuditLogger:
         target_user_id: Optional[int],
         changes: Dict[str, Any],
         ip_address: str,
-        reason: Optional[str] = None
+        reason: Optional[str] = None,
     ) -> Optional[AuditLog]:
         """Log administrative action"""
         return self.log(
@@ -369,7 +375,7 @@ class AuditLogger:
             ip_address=ip_address,
             status="success",
             reason=reason,
-            severity=AuditSeverity.WARNING
+            severity=AuditSeverity.WARNING,
         )
 
     def log_security_incident(
@@ -378,7 +384,7 @@ class AuditLogger:
         description: str,
         user_id: Optional[int],
         ip_address: str,
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
     ) -> Optional[AuditLog]:
         """Log security incident"""
         return self.log(
@@ -389,7 +395,7 @@ class AuditLogger:
             status="error",
             reason=description,
             severity=AuditSeverity.CRITICAL,
-            metadata=metadata
+            metadata=metadata,
         )
 
     def _get_last_hash(self) -> Optional[str]:
@@ -423,13 +429,15 @@ class AuditLogger:
             "changes": log_entry.changes,
             "status": log_entry.status,
             "previous_hash": log_entry.previous_hash,
-            "created_at": log_entry.created_at.isoformat() if log_entry.created_at else None
+            "created_at": log_entry.created_at.isoformat() if log_entry.created_at else None,
         }
 
         hash_string = json.dumps(hash_data, sort_keys=True)
         return hashlib.sha256(hash_string.encode()).hexdigest()
 
-    def verify_chain_integrity(self, start_id: Optional[int] = None, end_id: Optional[int] = None) -> Dict[str, Any]:
+    def verify_chain_integrity(
+        self, start_id: Optional[int] = None, end_id: Optional[int] = None
+    ) -> Dict[str, Any]:
         """
         Verify audit log chain integrity
 
@@ -460,28 +468,28 @@ class AuditLogger:
                 # Verify hash
                 calculated_hash = self._calculate_hash(log)
                 if calculated_hash != log.hash:
-                    invalid_hashes.append({
-                        "id": log.id,
-                        "expected": log.hash,
-                        "calculated": calculated_hash
-                    })
+                    invalid_hashes.append(
+                        {"id": log.id, "expected": log.hash, "calculated": calculated_hash}
+                    )
 
                 # Verify chain
                 if i > 0:
                     expected_previous = logs[i - 1].hash
                     if log.previous_hash != expected_previous:
-                        broken_chains.append({
-                            "id": log.id,
-                            "expected_previous": expected_previous,
-                            "actual_previous": log.previous_hash
-                        })
+                        broken_chains.append(
+                            {
+                                "id": log.id,
+                                "expected_previous": expected_previous,
+                                "actual_previous": log.previous_hash,
+                            }
+                        )
 
             return {
                 "total_logs": len(logs),
                 "verified_logs": len(logs) - len(invalid_hashes),
                 "broken_chains": broken_chains,
                 "invalid_hashes": invalid_hashes,
-                "integrity_valid": len(broken_chains) == 0 and len(invalid_hashes) == 0
+                "integrity_valid": len(broken_chains) == 0 and len(invalid_hashes) == 0,
             }
 
         except Exception as e:
@@ -511,7 +519,9 @@ def get_audit_logger(db_session=None) -> AuditLogger:
 
 
 # Convenience functions
-def log_auth_event(event_type: AuditEventType, username: str, ip_address: str, status: str, **kwargs):
+def log_auth_event(
+    event_type: AuditEventType, username: str, ip_address: str, status: str, **kwargs
+):
     """Convenience function for authentication logging"""
     logger = get_audit_logger()
     return logger.log_authentication(event_type, None, username, ip_address, "", status, **kwargs)

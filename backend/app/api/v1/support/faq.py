@@ -1,15 +1,14 @@
 """FAQ API Routes"""
-from typing import List, Optional, Dict
+
+from typing import Dict, List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
-from app.schemas.support import (
-    FAQCreate, FAQUpdate, FAQResponse, FAQList, FAQCategoryList
-)
+from app.schemas.support import FAQCategoryList, FAQCreate, FAQList, FAQResponse, FAQUpdate
 from app.services.support import faq_service
-
 
 router = APIRouter()
 
@@ -28,12 +27,7 @@ def get_faqs(
     By default, returns only active FAQs
     """
     if category:
-        return faq_service.get_by_category(
-            db,
-            category=category,
-            skip=skip,
-            limit=limit
-        )
+        return faq_service.get_by_category(db, category=category, skip=skip, limit=limit)
 
     if active_only:
         return faq_service.get_active(db, skip=skip, limit=limit)
@@ -92,10 +86,7 @@ def get_faq(
         faq = faq_service.get(db, id=faq_id)
 
     if not faq:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="FAQ not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FAQ not found")
     return faq
 
 
@@ -109,10 +100,7 @@ def update_faq(
     """Update FAQ"""
     faq = faq_service.get(db, id=faq_id)
     if not faq:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="FAQ not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FAQ not found")
     return faq_service.update(db, db_obj=faq, obj_in=faq_in)
 
 
@@ -125,10 +113,7 @@ def delete_faq(
     """Delete FAQ"""
     faq = faq_service.get(db, id=faq_id)
     if not faq:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="FAQ not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FAQ not found")
     faq_service.remove(db, id=faq_id)
 
 
@@ -142,8 +127,5 @@ def reorder_faq(
     """Update FAQ order"""
     faq = faq_service.reorder(db, faq_id=faq_id, new_order=new_order)
     if not faq:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="FAQ not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FAQ not found")
     return faq

@@ -2,9 +2,12 @@
 FMS Placemarks API Routes
 Provides endpoints for placemark/POI management from machinettalk.
 """
+
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, HTTPException, Body
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.fms import get_fms_client
@@ -14,6 +17,7 @@ router = APIRouter()
 
 class PlacemarkCreate(BaseModel):
     """Schema for creating a placemark."""
+
     PlacemarkName: str = Field(..., min_length=1, max_length=200, description="English name")
     PlacemarkNameAr: str = Field(..., min_length=1, max_length=200, description="Arabic name")
     Latitude: float = Field(..., ge=-90, le=90)
@@ -23,6 +27,7 @@ class PlacemarkCreate(BaseModel):
 
 class PlacemarkUpdate(BaseModel):
     """Schema for updating a placemark."""
+
     PlacemarkName: Optional[str] = Field(None, min_length=1, max_length=200)
     PlacemarkNameAr: Optional[str] = Field(None, min_length=1, max_length=200)
     Latitude: Optional[float] = Field(None, ge=-90, le=90)
@@ -44,8 +49,7 @@ async def get_placemarks(
 
     if result.get("error"):
         raise HTTPException(
-            status_code=502,
-            detail=result.get("message", "FMS service unavailable")
+            status_code=502, detail=result.get("message", "FMS service unavailable")
         )
 
     return result
@@ -65,7 +69,7 @@ async def get_placemark_by_id(
     if result.get("error"):
         raise HTTPException(
             status_code=502 if "unavailable" in str(result.get("message", "")).lower() else 404,
-            detail=result.get("message", "Placemark not found")
+            detail=result.get("message", "Placemark not found"),
         )
 
     return result
@@ -84,8 +88,7 @@ async def create_placemark(
 
     if result.get("error"):
         raise HTTPException(
-            status_code=502,
-            detail=result.get("message", "Failed to create placemark")
+            status_code=502, detail=result.get("message", "Failed to create placemark")
         )
 
     return result
@@ -105,8 +108,7 @@ async def update_placemark(
 
     if result.get("error"):
         raise HTTPException(
-            status_code=502,
-            detail=result.get("message", "Failed to update placemark")
+            status_code=502, detail=result.get("message", "Failed to update placemark")
         )
 
     return result
@@ -125,8 +127,7 @@ async def delete_placemark(
 
     if result.get("error"):
         raise HTTPException(
-            status_code=502,
-            detail=result.get("message", "Failed to delete placemark")
+            status_code=502, detail=result.get("message", "Failed to delete placemark")
         )
 
     return {"message": "Placemark deleted successfully"}

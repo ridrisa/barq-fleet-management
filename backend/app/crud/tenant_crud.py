@@ -20,12 +20,13 @@ Usage:
     couriers = crud_courier.get_multi(db, organization_id=1)
     courier = crud_courier.create(db, obj_in=data, organization_id=1)
 """
+
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from app.core.database import Base
 from app.crud.base import CRUDBase
@@ -60,12 +61,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         self.model = model
 
-    def get(
-        self,
-        db: Session,
-        id: Any,
-        organization_id: int
-    ) -> Optional[ModelType]:
+    def get(self, db: Session, id: Any, organization_id: int) -> Optional[ModelType]:
         """
         Get a single record by ID within organization scope.
 
@@ -77,18 +73,13 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             Model instance or None if not found
         """
-        return db.query(self.model).filter(
-            and_(
-                self.model.id == id,
-                self.model.organization_id == organization_id
-            )
-        ).first()
+        return (
+            db.query(self.model)
+            .filter(and_(self.model.id == id, self.model.organization_id == organization_id))
+            .first()
+        )
 
-    def get_by_id_any_org(
-        self,
-        db: Session,
-        id: Any
-    ) -> Optional[ModelType]:
+    def get_by_id_any_org(self, db: Session, id: Any) -> Optional[ModelType]:
         """
         Get a single record by ID without organization filtering.
 
@@ -104,12 +95,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db.get(self.model, id)
 
     def get_multi(
-        self,
-        db: Session,
-        organization_id: int,
-        *,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, organization_id: int, *, skip: int = 0, limit: int = 100
     ) -> List[ModelType]:
         """
         Get multiple records within organization scope.
@@ -123,15 +109,15 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             List of model instances
         """
-        return db.query(self.model).filter(
-            self.model.organization_id == organization_id
-        ).offset(skip).limit(limit).all()
+        return (
+            db.query(self.model)
+            .filter(self.model.organization_id == organization_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
-    def get_count(
-        self,
-        db: Session,
-        organization_id: int
-    ) -> int:
+    def get_count(self, db: Session, organization_id: int) -> int:
         """
         Get count of records within organization scope.
 
@@ -142,17 +128,9 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             Count of records
         """
-        return db.query(self.model).filter(
-            self.model.organization_id == organization_id
-        ).count()
+        return db.query(self.model).filter(self.model.organization_id == organization_id).count()
 
-    def create(
-        self,
-        db: Session,
-        *,
-        obj_in: CreateSchemaType,
-        organization_id: int
-    ) -> ModelType:
+    def create(self, db: Session, *, obj_in: CreateSchemaType, organization_id: int) -> ModelType:
         """
         Create a new record with organization scope.
 
@@ -173,11 +151,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def create_with_dict(
-        self,
-        db: Session,
-        *,
-        obj_in: Dict[str, Any],
-        organization_id: int
+        self, db: Session, *, obj_in: Dict[str, Any], organization_id: int
     ) -> ModelType:
         """
         Create a new record from dictionary with organization scope.
@@ -203,7 +177,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         *,
         db_obj: ModelType,
         obj_in: Union[UpdateSchemaType, Dict[str, Any]],
-        organization_id: int
+        organization_id: int,
     ) -> ModelType:
         """
         Update an existing record within organization scope.
@@ -237,13 +211,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.refresh(db_obj)
         return db_obj
 
-    def remove(
-        self,
-        db: Session,
-        *,
-        id: int,
-        organization_id: int
-    ) -> Optional[ModelType]:
+    def remove(self, db: Session, *, id: int, organization_id: int) -> Optional[ModelType]:
         """
         Remove a record within organization scope.
 
@@ -262,12 +230,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.commit()
         return obj
 
-    def exists(
-        self,
-        db: Session,
-        id: int,
-        organization_id: int
-    ) -> bool:
+    def exists(self, db: Session, id: int, organization_id: int) -> bool:
         """
         Check if a record exists within organization scope.
 
@@ -279,19 +242,15 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             True if record exists, False otherwise
         """
-        return db.query(self.model).filter(
-            and_(
-                self.model.id == id,
-                self.model.organization_id == organization_id
-            )
-        ).first() is not None
+        return (
+            db.query(self.model)
+            .filter(and_(self.model.id == id, self.model.organization_id == organization_id))
+            .first()
+            is not None
+        )
 
     def get_by_field(
-        self,
-        db: Session,
-        organization_id: int,
-        field_name: str,
-        field_value: Any
+        self, db: Session, organization_id: int, field_name: str, field_value: Any
     ) -> Optional[ModelType]:
         """
         Get a record by a specific field within organization scope.
@@ -305,12 +264,16 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             Model instance or None if not found
         """
-        return db.query(self.model).filter(
-            and_(
-                getattr(self.model, field_name) == field_value,
-                self.model.organization_id == organization_id
+        return (
+            db.query(self.model)
+            .filter(
+                and_(
+                    getattr(self.model, field_name) == field_value,
+                    self.model.organization_id == organization_id,
+                )
             )
-        ).first()
+            .first()
+        )
 
     def get_multi_by_field(
         self,
@@ -320,7 +283,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         field_value: Any,
         *,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[ModelType]:
         """
         Get multiple records by a specific field within organization scope.
@@ -336,19 +299,21 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             List of model instances
         """
-        return db.query(self.model).filter(
-            and_(
-                getattr(self.model, field_name) == field_value,
-                self.model.organization_id == organization_id
+        return (
+            db.query(self.model)
+            .filter(
+                and_(
+                    getattr(self.model, field_name) == field_value,
+                    self.model.organization_id == organization_id,
+                )
             )
-        ).offset(skip).limit(limit).all()
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
     def bulk_create(
-        self,
-        db: Session,
-        *,
-        objs_in: List[CreateSchemaType],
-        organization_id: int
+        self, db: Session, *, objs_in: List[CreateSchemaType], organization_id: int
     ) -> List[ModelType]:
         """
         Bulk create records within organization scope.
@@ -383,7 +348,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         *,
         filters: Dict[str, Any],
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[ModelType]:
         """
         Search records with multiple filters within organization scope.
@@ -398,9 +363,7 @@ class TenantAwareCRUD(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         Returns:
             List of matching model instances
         """
-        query = db.query(self.model).filter(
-            self.model.organization_id == organization_id
-        )
+        query = db.query(self.model).filter(self.model.organization_id == organization_id)
 
         for field_name, field_value in filters.items():
             if hasattr(self.model, field_name) and field_value is not None:

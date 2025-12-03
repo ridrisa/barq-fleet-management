@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, Date, DateTime, Time, ForeignKey, Text, Numeric, Boolean, Enum as SQLEnum
+import enum
+
+from sqlalchemy import Boolean, Column, Date, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text, Time
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class LogType(str, enum.Enum):
     """Type of vehicle log entry"""
+
     DAILY_LOG = "daily_log"
     FUEL_REFILL = "fuel_refill"
     TRIP = "trip"
@@ -15,6 +20,7 @@ class LogType(str, enum.Enum):
 
 class FuelProvider(str, enum.Enum):
     """Fuel station provider"""
+
     ARAMCO = "aramco"
     ADNOC = "adnoc"
     PETROL = "petrol"
@@ -27,8 +33,12 @@ class VehicleLog(TenantMixin, BaseModel):
     __tablename__ = "vehicle_logs"
 
     # Foreign Keys
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
-    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="SET NULL"), nullable=True, index=True)
+    vehicle_id = Column(
+        Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    courier_id = Column(
+        Integer, ForeignKey("couriers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Log Details
     log_type = Column(SQLEnum(LogType), default=LogType.DAILY_LOG, nullable=False, index=True)
@@ -82,7 +92,9 @@ class VehicleLog(TenantMixin, BaseModel):
     courier = relationship("Courier", back_populates="vehicle_logs")
 
     def __repr__(self):
-        return f"<VehicleLog: Vehicle #{self.vehicle_id} on {self.log_date} ({self.log_type.value})>"
+        return (
+            f"<VehicleLog: Vehicle #{self.vehicle_id} on {self.log_date} ({self.log_type.value})>"
+        )
 
     @property
     def fuel_efficiency(self) -> float:

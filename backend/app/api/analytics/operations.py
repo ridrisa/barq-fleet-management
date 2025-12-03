@@ -2,6 +2,7 @@
 
 Delivery performance, zone analysis, SLA compliance, and operational metrics.
 """
+
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -9,10 +10,7 @@ from datetime import date, datetime, timedelta, time
 
 from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.schemas.analytics.common import (
-    TrendDataPoint,
-    PeriodType
-)
+from app.schemas.analytics.common import TrendDataPoint, PeriodType
 
 
 router = APIRouter()
@@ -33,10 +31,7 @@ def get_delivery_success_rates(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_deliveries": 0,
             "successful": 0,
@@ -44,12 +39,12 @@ def get_delivery_success_rates(
             "cancelled": 0,
             "returned": 0,
             "success_rate": 0.0,
-            "first_attempt_success_rate": 0.0
+            "first_attempt_success_rate": 0.0,
         },
         "failure_reasons": {},
         "by_zone": [],
         "by_courier": [],
-        "trends": []
+        "trends": [],
     }
 
 
@@ -67,26 +62,23 @@ def get_on_time_delivery_metrics(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_deliveries": 0,
             "on_time": 0,
             "late": 0,
             "on_time_rate": 0.0,
-            "average_delay_minutes": 0.0
+            "average_delay_minutes": 0.0,
         },
         "delay_distribution": [
             {"range": "0-15 min", "count": 0, "percentage": 0.0},
             {"range": "16-30 min", "count": 0, "percentage": 0.0},
             {"range": "31-60 min", "count": 0, "percentage": 0.0},
-            {"range": "60+ min", "count": 0, "percentage": 0.0}
+            {"range": "60+ min", "count": 0, "percentage": 0.0},
         ],
         "by_zone": [],
         "by_time_slot": [],
-        "trends": []
+        "trends": [],
     }
 
 
@@ -104,21 +96,18 @@ def get_average_delivery_time(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "average_total_time": 0.0,
             "average_pickup_time": 0.0,
             "average_transit_time": 0.0,
             "average_delivery_time": 0.0,
-            "median_time": 0.0
+            "median_time": 0.0,
         },
         "by_zone": [],
         "by_distance_range": [],
         "by_courier": [],
-        "trends": []
+        "trends": [],
     }
 
 
@@ -137,10 +126,7 @@ def get_zone_performance(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "zones": [
             {
                 "zone_id": 0,
@@ -150,12 +136,12 @@ def get_zone_performance(
                 "on_time_rate": 0.0,
                 "average_delivery_time": 0.0,
                 "customer_satisfaction": 0.0,
-                "revenue": 0.0
+                "revenue": 0.0,
             }
         ],
         "top_performing_zones": [],
         "underperforming_zones": [],
-        "zone_comparison": []
+        "zone_comparison": [],
     }
 
 
@@ -173,18 +159,12 @@ def get_peak_hours_analysis(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
-        "hourly_distribution": [
-            {"hour": i, "deliveries": 0, "percentage": 0.0}
-            for i in range(24)
-        ],
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
+        "hourly_distribution": [{"hour": i, "deliveries": 0, "percentage": 0.0} for i in range(24)],
         "peak_hours": [],
         "off_peak_hours": [],
         "by_day_of_week": [],
-        "recommendations": []
+        "recommendations": [],
     }
 
 
@@ -202,36 +182,29 @@ def get_sla_compliance(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "overall_compliance_rate": 0.0,
             "total_deliveries": 0,
             "sla_met": 0,
-            "sla_breached": 0
+            "sla_breached": 0,
         },
         "by_sla_type": [
             {
                 "sla_type": "Standard Delivery",
                 "target_time": 60,
                 "compliance_rate": 0.0,
-                "breaches": 0
+                "breaches": 0,
             },
             {
                 "sla_type": "Express Delivery",
                 "target_time": 30,
                 "compliance_rate": 0.0,
-                "breaches": 0
-            }
+                "breaches": 0,
+            },
         ],
-        "breach_analysis": {
-            "common_reasons": [],
-            "by_zone": [],
-            "by_time_period": []
-        },
-        "trends": []
+        "breach_analysis": {"common_reasons": [], "by_zone": [], "by_time_period": []},
+        "trends": [],
     }
 
 
@@ -249,16 +222,13 @@ def get_incident_rates(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_incidents": 0,
             "incident_rate": 0.0,
             "resolved_incidents": 0,
             "pending_incidents": 0,
-            "average_resolution_time": 0.0
+            "average_resolution_time": 0.0,
         },
         "by_incident_type": {
             "delivery_damage": 0,
@@ -266,16 +236,11 @@ def get_incident_rates(
             "customer_complaint": 0,
             "courier_issue": 0,
             "vehicle_breakdown": 0,
-            "other": 0
+            "other": 0,
         },
-        "by_severity": {
-            "critical": 0,
-            "high": 0,
-            "medium": 0,
-            "low": 0
-        },
+        "by_severity": {"critical": 0, "high": 0, "medium": 0, "low": 0},
         "trends": [],
-        "resolution_analysis": []
+        "resolution_analysis": [],
     }
 
 
@@ -293,31 +258,28 @@ def get_customer_satisfaction(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "average_rating": 0.0,
             "total_ratings": 0,
             "nps_score": 0.0,
-            "satisfaction_rate": 0.0
+            "satisfaction_rate": 0.0,
         },
         "rating_distribution": {
             "5_stars": 0,
             "4_stars": 0,
             "3_stars": 0,
             "2_stars": 0,
-            "1_star": 0
+            "1_star": 0,
         },
         "by_service_type": [],
         "by_zone": [],
         "feedback_analysis": {
             "positive_mentions": [],
             "negative_mentions": [],
-            "common_complaints": []
+            "common_complaints": [],
         },
-        "trends": []
+        "trends": [],
     }
 
 
@@ -335,24 +297,17 @@ def get_capacity_utilization(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_capacity": 0,
             "utilized_capacity": 0,
             "utilization_rate": 0.0,
-            "peak_utilization": 0.0
+            "peak_utilization": 0.0,
         },
-        "by_resource_type": {
-            "vehicles": 0.0,
-            "couriers": 0.0,
-            "warehouse_space": 0.0
-        },
+        "by_resource_type": {"vehicles": 0.0, "couriers": 0.0, "warehouse_space": 0.0},
         "by_time_period": [],
         "bottlenecks": [],
-        "expansion_recommendations": []
+        "expansion_recommendations": [],
     }
 
 
@@ -370,23 +325,20 @@ def get_route_optimization_metrics(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_routes": 0,
             "optimized_routes": 0,
             "optimization_rate": 0.0,
             "average_stops_per_route": 0.0,
-            "average_distance_per_route": 0.0
+            "average_distance_per_route": 0.0,
         },
         "efficiency_metrics": {
             "distance_saved_km": 0.0,
             "time_saved_minutes": 0.0,
             "fuel_saved_liters": 0.0,
-            "cost_saved": 0.0
+            "cost_saved": 0.0,
         },
         "optimization_opportunities": [],
-        "trends": []
+        "trends": [],
     }

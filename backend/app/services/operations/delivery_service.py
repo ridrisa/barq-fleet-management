@@ -1,24 +1,21 @@
 """Delivery Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, func, extract
-from datetime import date, datetime
 
-from app.services.base import CRUDBase
+from datetime import date, datetime
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_, extract, func
+from sqlalchemy.orm import Session
+
 from app.models.operations.delivery import Delivery, DeliveryStatus
 from app.schemas.operations.delivery import DeliveryCreate, DeliveryUpdate
+from app.services.base import CRUDBase
 
 
 class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
     """Service for delivery management operations"""
 
     def get_by_courier(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
     ) -> List[Delivery]:
         """
         Get deliveries for a specific courier
@@ -42,12 +39,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         )
 
     def get_by_status(
-        self,
-        db: Session,
-        *,
-        status: DeliveryStatus,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, status: DeliveryStatus, skip: int = 0, limit: int = 100
     ) -> List[Delivery]:
         """
         Get deliveries by status
@@ -70,12 +62,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
             .all()
         )
 
-    def get_by_tracking_number(
-        self,
-        db: Session,
-        *,
-        tracking_number: str
-    ) -> Optional[Delivery]:
+    def get_by_tracking_number(self, db: Session, *, tracking_number: str) -> Optional[Delivery]:
         """
         Get delivery by tracking number
 
@@ -86,19 +73,10 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         Returns:
             Delivery record or None
         """
-        return (
-            db.query(self.model)
-            .filter(self.model.tracking_number == tracking_number)
-            .first()
-        )
+        return db.query(self.model).filter(self.model.tracking_number == tracking_number).first()
 
     def update_status(
-        self,
-        db: Session,
-        *,
-        delivery_id: int,
-        status: DeliveryStatus,
-        notes: Optional[str] = None
+        self, db: Session, *, delivery_id: int, status: DeliveryStatus, notes: Optional[str] = None
     ) -> Optional[Delivery]:
         """
         Update delivery status
@@ -128,12 +106,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         return self.update(db, db_obj=delivery, obj_in=update_data)
 
     def get_pending_deliveries(
-        self,
-        db: Session,
-        *,
-        courier_id: Optional[int] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> List[Delivery]:
         """
         Get pending deliveries, optionally filtered by courier
@@ -147,19 +120,12 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         Returns:
             List of pending delivery records
         """
-        query = db.query(self.model).filter(
-            self.model.status == DeliveryStatus.PENDING
-        )
+        query = db.query(self.model).filter(self.model.status == DeliveryStatus.PENDING)
 
         if courier_id:
             query = query.filter(self.model.courier_id == courier_id)
 
-        return (
-            query.order_by(self.model.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_deliveries_by_date_range(
         self,
@@ -169,7 +135,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         end_date: date,
         courier_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Delivery]:
         """
         Get deliveries within a date range
@@ -186,21 +152,13 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
             List of delivery records
         """
         query = db.query(self.model).filter(
-            and_(
-                self.model.created_at >= start_date,
-                self.model.created_at <= end_date
-            )
+            and_(self.model.created_at >= start_date, self.model.created_at <= end_date)
         )
 
         if courier_id:
             query = query.filter(self.model.courier_id == courier_id)
 
-        return (
-            query.order_by(self.model.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_statistics(
         self,
@@ -208,7 +166,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         *,
         courier_id: Optional[int] = None,
         start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        end_date: Optional[date] = None,
     ) -> Dict:
         """
         Get delivery statistics
@@ -242,9 +200,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
 
         total_cod = sum(d.cod_amount or 0 for d in deliveries)
         collected_cod = sum(
-            d.cod_amount or 0
-            for d in deliveries
-            if d.status == DeliveryStatus.DELIVERED
+            d.cod_amount or 0 for d in deliveries if d.status == DeliveryStatus.DELIVERED
         )
 
         return {
@@ -257,15 +213,11 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
             "success_rate": (delivered / total_deliveries * 100) if total_deliveries > 0 else 0,
             "total_cod_amount": total_cod,
             "collected_cod_amount": collected_cod,
-            "pending_cod_amount": total_cod - collected_cod
+            "pending_cod_amount": total_cod - collected_cod,
         }
 
     def assign_to_courier(
-        self,
-        db: Session,
-        *,
-        delivery_id: int,
-        courier_id: int
+        self, db: Session, *, delivery_id: int, courier_id: int
     ) -> Optional[Delivery]:
         """
         Assign delivery to a courier
@@ -285,7 +237,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         update_data = {
             "courier_id": courier_id,
             "status": DeliveryStatus.IN_TRANSIT,
-            "pickup_time": datetime.now()
+            "pickup_time": datetime.now(),
         }
 
         return self.update(db, db_obj=delivery, obj_in=update_data)
@@ -297,7 +249,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         courier_id: Optional[int] = None,
         status: Optional[DeliveryStatus] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Delivery]:
         """
         Get deliveries with COD amount
@@ -319,12 +271,7 @@ class DeliveryService(CRUDBase[Delivery, DeliveryCreate, DeliveryUpdate]):
         if status:
             query = query.filter(self.model.status == status)
 
-        return (
-            query.order_by(self.model.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.created_at.desc()).offset(skip).limit(limit).all()
 
 
 delivery_service = DeliveryService(Delivery)

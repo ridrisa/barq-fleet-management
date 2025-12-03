@@ -1,16 +1,19 @@
 """Workflow Instance API Routes"""
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
+
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.schemas.workflow import (
-    WorkflowInstanceCreate, WorkflowInstanceUpdate, WorkflowInstanceResponse,
-    WorkflowStatus
+    WorkflowInstanceCreate,
+    WorkflowInstanceResponse,
+    WorkflowInstanceUpdate,
+    WorkflowStatus,
 )
 from app.services.workflow import instance_service
-
 
 router = APIRouter()
 
@@ -123,9 +126,7 @@ def complete_step(
     current_user: User = Depends(get_current_user),
 ):
     """Complete current step and move to next"""
-    instance = instance_service.complete_step(
-        db, instance_id=instance_id, step_data=step_data
-    )
+    instance = instance_service.complete_step(db, instance_id=instance_id, step_data=step_data)
     if not instance:
         raise HTTPException(status_code=404, detail="Workflow instance not found")
 
@@ -140,9 +141,7 @@ def complete_workflow(
     current_user: User = Depends(get_current_user),
 ):
     """Complete a workflow instance"""
-    instance = instance_service.complete_workflow(
-        db, instance_id=instance_id, notes=notes
-    )
+    instance = instance_service.complete_workflow(db, instance_id=instance_id, notes=notes)
     if not instance:
         raise HTTPException(status_code=404, detail="Workflow instance not found")
 
@@ -157,9 +156,7 @@ def cancel_workflow(
     current_user: User = Depends(get_current_user),
 ):
     """Cancel a workflow instance"""
-    instance = instance_service.cancel_workflow(
-        db, instance_id=instance_id, reason=reason
-    )
+    instance = instance_service.cancel_workflow(db, instance_id=instance_id, reason=reason)
     if not instance:
         raise HTTPException(status_code=404, detail="Workflow instance not found")
 
@@ -188,9 +185,7 @@ def approve_workflow(
     current_user: User = Depends(get_current_user),
 ):
     """Approve a workflow instance"""
-    instance = instance_service.approve_workflow(
-        db, instance_id=instance_id, notes=notes
-    )
+    instance = instance_service.approve_workflow(db, instance_id=instance_id, notes=notes)
     if not instance:
         raise HTTPException(status_code=404, detail="Workflow instance not found")
 
@@ -205,9 +200,7 @@ def reject_workflow(
     current_user: User = Depends(get_current_user),
 ):
     """Reject a workflow instance"""
-    instance = instance_service.reject_workflow(
-        db, instance_id=instance_id, reason=reason
-    )
+    instance = instance_service.reject_workflow(db, instance_id=instance_id, reason=reason)
     if not instance:
         raise HTTPException(status_code=404, detail="Workflow instance not found")
 
@@ -223,9 +216,7 @@ def get_user_workflows(
     current_user: User = Depends(get_current_user),
 ):
     """Get all workflow instances initiated by a specific user"""
-    return instance_service.get_by_initiator(
-        db, user_id=user_id, skip=skip, limit=limit
-    )
+    return instance_service.get_by_initiator(db, user_id=user_id, skip=skip, limit=limit)
 
 
 @router.get("/statistics/summary", response_model=dict)

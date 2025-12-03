@@ -1,11 +1,13 @@
-from sqlalchemy import Column, String, Integer, Float, ForeignKey, JSON, Text, DateTime, Date
+from sqlalchemy import JSON, Column, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 
 
 class WorkflowMetrics(TenantMixin, BaseModel):
     """Aggregated metrics for workflow templates"""
+
     __tablename__ = "workflow_metrics"
 
     workflow_template_id = Column(Integer, ForeignKey("workflow_templates.id"), nullable=False)
@@ -47,6 +49,7 @@ class WorkflowMetrics(TenantMixin, BaseModel):
 
 class WorkflowStepMetrics(TenantMixin, BaseModel):
     """Metrics for individual workflow steps"""
+
     __tablename__ = "workflow_step_metrics"
 
     workflow_template_id = Column(Integer, ForeignKey("workflow_templates.id"), nullable=False)
@@ -79,6 +82,7 @@ class WorkflowStepMetrics(TenantMixin, BaseModel):
 
 class WorkflowPerformanceSnapshot(TenantMixin, BaseModel):
     """Real-time performance snapshot for dashboards"""
+
     __tablename__ = "workflow_performance_snapshots"
 
     workflow_template_id = Column(Integer, ForeignKey("workflow_templates.id"))
@@ -111,6 +115,7 @@ class WorkflowPerformanceSnapshot(TenantMixin, BaseModel):
 
 class WorkflowUserMetrics(TenantMixin, BaseModel):
     """User-specific workflow metrics"""
+
     __tablename__ = "workflow_user_metrics"
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)

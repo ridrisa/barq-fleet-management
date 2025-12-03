@@ -8,8 +8,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db
 from app.config.settings import settings
+from app.core.dependencies import get_db
 
 router = APIRouter()
 
@@ -41,7 +41,11 @@ def readiness_check(db: Session = Depends(get_db)):
     if not all_ready:
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "not_ready", "checks": checks, "timestamp": datetime.utcnow().isoformat()},
+            content={
+                "status": "not_ready",
+                "checks": checks,
+                "timestamp": datetime.utcnow().isoformat(),
+            },
         )
 
     return {"status": "ready", "checks": checks, "timestamp": datetime.utcnow().isoformat()}

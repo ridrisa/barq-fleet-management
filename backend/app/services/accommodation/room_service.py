@@ -1,23 +1,20 @@
 """Room Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
 
-from app.services.base import CRUDBase
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
 from app.models.accommodation.room import Room, RoomStatus
 from app.schemas.accommodation.room import RoomCreate, RoomUpdate
+from app.services.base import CRUDBase
 
 
 class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
     """Service for room management operations"""
 
     def get_by_building(
-        self,
-        db: Session,
-        *,
-        building_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, building_id: int, skip: int = 0, limit: int = 100
     ) -> List[Room]:
         """
         Get all rooms in a building
@@ -47,7 +44,7 @@ class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
         status: RoomStatus,
         building_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Room]:
         """
         Get rooms by status
@@ -67,20 +64,10 @@ class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
         if building_id:
             query = query.filter(self.model.building_id == building_id)
 
-        return (
-            query.order_by(self.model.room_number)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.room_number).offset(skip).limit(limit).all()
 
     def get_available(
-        self,
-        db: Session,
-        *,
-        building_id: Optional[int] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, building_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> List[Room]:
         """
         Get available rooms (status = available and has free beds)
@@ -96,27 +83,17 @@ class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
         """
         query = db.query(self.model).filter(
             and_(
-                self.model.status == RoomStatus.AVAILABLE,
-                self.model.occupied < self.model.capacity
+                self.model.status == RoomStatus.AVAILABLE, self.model.occupied < self.model.capacity
             )
         )
 
         if building_id:
             query = query.filter(self.model.building_id == building_id)
 
-        return (
-            query.order_by(self.model.room_number)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.room_number).offset(skip).limit(limit).all()
 
     def get_by_room_number(
-        self,
-        db: Session,
-        *,
-        building_id: int,
-        room_number: str
+        self, db: Session, *, building_id: int, room_number: str
     ) -> Optional[Room]:
         """
         Get room by building and room number
@@ -132,20 +109,12 @@ class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
         return (
             db.query(self.model)
             .filter(
-                and_(
-                    self.model.building_id == building_id,
-                    self.model.room_number == room_number
-                )
+                and_(self.model.building_id == building_id, self.model.room_number == room_number)
             )
             .first()
         )
 
-    def update_occupancy(
-        self,
-        db: Session,
-        *,
-        room_id: int
-    ) -> Optional[Room]:
+    def update_occupancy(self, db: Session, *, room_id: int) -> Optional[Room]:
         """
         Recalculate and update room occupancy based on bed allocations
 
@@ -163,12 +132,11 @@ class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
             return None
 
         # Count occupied beds
-        occupied_count = db.query(func.count(Bed.id)).filter(
-            and_(
-                Bed.room_id == room_id,
-                Bed.status == BedStatus.OCCUPIED
-            )
-        ).scalar()
+        occupied_count = (
+            db.query(func.count(Bed.id))
+            .filter(and_(Bed.room_id == room_id, Bed.status == BedStatus.OCCUPIED))
+            .scalar()
+        )
 
         room.occupied = occupied_count
 
@@ -184,12 +152,7 @@ class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
         db.refresh(room)
         return room
 
-    def get_statistics(
-        self,
-        db: Session,
-        *,
-        building_id: Optional[int] = None
-    ) -> Dict:
+    def get_statistics(self, db: Session, *, building_id: Optional[int] = None) -> Dict:
         """
         Get room statistics
 
@@ -207,8 +170,12 @@ class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
 
         rooms = query.all()
 
-        available_rooms = sum(1 for r in rooms if r.status == RoomStatus.AVAILABLE and r.occupied < r.capacity)
-        occupied_rooms = sum(1 for r in rooms if r.status == RoomStatus.OCCUPIED or r.occupied >= r.capacity)
+        available_rooms = sum(
+            1 for r in rooms if r.status == RoomStatus.AVAILABLE and r.occupied < r.capacity
+        )
+        occupied_rooms = sum(
+            1 for r in rooms if r.status == RoomStatus.OCCUPIED or r.occupied >= r.capacity
+        )
         maintenance_rooms = sum(1 for r in rooms if r.status == RoomStatus.MAINTENANCE)
 
         total_capacity = sum(r.capacity for r in rooms)
@@ -221,7 +188,7 @@ class RoomService(CRUDBase[Room, RoomCreate, RoomUpdate]):
             "maintenance_rooms": maintenance_rooms,
             "total_capacity": total_capacity,
             "total_occupied": total_occupied,
-            "occupancy_rate": (total_occupied / total_capacity * 100) if total_capacity > 0 else 0
+            "occupancy_rate": (total_occupied / total_capacity * 100) if total_capacity > 0 else 0,
         }
 
 

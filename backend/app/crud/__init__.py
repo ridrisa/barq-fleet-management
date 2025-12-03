@@ -18,6 +18,7 @@ Usage:
     class CRUDCourier(TenantAwareCRUD[Courier, CourierCreate, CourierUpdate]):
         pass
 """
+
 from app.crud.base import CRUDBase
 from app.crud.tenant_crud import TenantAwareCRUD, TenantCRUD
 from app.crud.user import crud_user

@@ -1,10 +1,12 @@
-from typing import Dict, Any
+import io
+from typing import Any, Dict
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-import io
 
 router = APIRouter()
 
@@ -15,15 +17,10 @@ def generate_report(
     start_date: str,
     end_date: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Generate financial report - stub implementation"""
-    return {
-        "report_type": report_type,
-        "start_date": start_date,
-        "end_date": end_date,
-        "data": {}
-    }
+    return {"report_type": report_type, "start_date": start_date, "end_date": end_date, "data": {}}
 
 
 @router.get("/export/{report_id}")
@@ -31,7 +28,7 @@ def export_report(
     report_id: int,
     format: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """Export financial report - stub implementation"""
     output = io.StringIO()
@@ -44,7 +41,5 @@ def export_report(
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type=media_type,
-        headers={
-            "Content-Disposition": f"attachment; filename=report_{report_id}.{extension}"
-        }
+        headers={"Content-Disposition": f"attachment; filename=report_{report_id}.{extension}"},
     )

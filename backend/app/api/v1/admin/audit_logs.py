@@ -1,13 +1,15 @@
 """Admin Audit Logs API"""
-from typing import List, Optional
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
 
-from app.core.dependencies import get_db, get_current_superuser
+from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_superuser, get_db
+from app.models.audit_log import AuditAction, AuditLog
 from app.models.user import User
-from app.models.audit_log import AuditLog, AuditAction
 from app.schemas.audit_log import AuditLogResponse, AuditLogSummary
 
 router = APIRouter()
@@ -71,8 +73,7 @@ def list_audit_logs(
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
-            (AuditLog.description.ilike(search_pattern)) |
-            (AuditLog.username.ilike(search_pattern))
+            (AuditLog.description.ilike(search_pattern)) | (AuditLog.username.ilike(search_pattern))
         )
 
     # Order by most recent first and apply pagination
@@ -138,28 +139,20 @@ def get_audit_logs_summary(
     user_counts = (
         query.filter(AuditLog.user_id.isnot(None))
         .with_entities(
-            AuditLog.user_id,
-            AuditLog.username,
-            func.count(AuditLog.id).label('activity_count')
+            AuditLog.user_id, AuditLog.username, func.count(AuditLog.id).label("activity_count")
         )
         .group_by(AuditLog.user_id, AuditLog.username)
-        .order_by(desc('activity_count'))
+        .order_by(desc("activity_count"))
         .limit(10)
         .all()
     )
     for user_id, username, count in user_counts:
-        top_users.append({
-            "user_id": user_id,
-            "username": username or "Unknown",
-            "activity_count": count
-        })
+        top_users.append(
+            {"user_id": user_id, "username": username or "Unknown", "activity_count": count}
+        )
 
     # Recent activities
-    recent_activities = (
-        query.order_by(desc(AuditLog.created_at))
-        .limit(10)
-        .all()
-    )
+    recent_activities = query.order_by(desc(AuditLog.created_at)).limit(10).all()
 
     return AuditLogSummary(
         total_logs=total_logs,
@@ -188,7 +181,7 @@ def get_audit_log(
     if not audit_log:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Audit log with id {audit_log_id} not found"
+            detail=f"Audit log with id {audit_log_id} not found",
         )
     return audit_log
 
@@ -215,10 +208,7 @@ def get_resource_audit_trail(
     """
     logs = (
         db.query(AuditLog)
-        .filter(
-            AuditLog.resource_type == resource_type,
-            AuditLog.resource_id == resource_id
-        )
+        .filter(AuditLog.resource_type == resource_type, AuditLog.resource_id == resource_id)
         .order_by(desc(AuditLog.created_at))
         .offset(skip)
         .limit(limit)
@@ -256,9 +246,6 @@ def list_resource_types(
     Useful for UI dropdowns and filtering options.
     """
     resource_types = (
-        db.query(AuditLog.resource_type)
-        .distinct()
-        .order_by(AuditLog.resource_type)
-        .all()
+        db.query(AuditLog.resource_type).distinct().order_by(AuditLog.resource_type).all()
     )
     return [rt[0] for rt in resource_types]

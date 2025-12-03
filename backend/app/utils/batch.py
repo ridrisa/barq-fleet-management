@@ -2,18 +2,20 @@
 Batch Operations Utilities
 Efficient bulk insert, update, and processing operations
 """
+
 import logging
-from typing import Any, Callable, List, Optional, Type, TypeVar, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import update
 from contextlib import contextmanager
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+
+from sqlalchemy import update
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 
 from app.core.performance_config import performance_config
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class BatchInsert:
@@ -41,7 +43,7 @@ class BatchInsert:
         session: Session,
         model: Type[T],
         records: List[Dict[str, Any]],
-        return_ids: bool = False
+        return_ids: bool = False,
     ) -> Optional[List[Any]]:
         """
         Batch insert records
@@ -74,7 +76,7 @@ class BatchInsert:
 
         # Process in chunks
         for i in range(0, total, self.chunk_size):
-            chunk = records[i:i + self.chunk_size]
+            chunk = records[i : i + self.chunk_size]
 
             try:
                 # Bulk insert using SQLAlchemy
@@ -110,7 +112,7 @@ class BatchInsert:
         model: Type[T],
         records: List[Dict[str, Any]],
         conflict_columns: List[str],
-        update_columns: Optional[List[str]] = None
+        update_columns: Optional[List[str]] = None,
     ):
         """
         Batch upsert (insert or update on conflict)
@@ -143,7 +145,7 @@ class BatchInsert:
 
         # Process in chunks
         for i in range(0, total, self.chunk_size):
-            chunk = records[i:i + self.chunk_size]
+            chunk = records[i : i + self.chunk_size]
 
             try:
                 # Use PostgreSQL INSERT ... ON CONFLICT
@@ -151,10 +153,7 @@ class BatchInsert:
 
                 # Determine columns to update
                 if update_columns:
-                    update_dict = {
-                        col: stmt.excluded[col]
-                        for col in update_columns
-                    }
+                    update_dict = {col: stmt.excluded[col] for col in update_columns}
                 else:
                     # Update all columns except conflict columns
                     update_dict = {
@@ -164,10 +163,7 @@ class BatchInsert:
                     }
 
                 # Add ON CONFLICT clause
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=conflict_columns,
-                    set_=update_dict
-                )
+                stmt = stmt.on_conflict_do_update(index_elements=conflict_columns, set_=update_dict)
 
                 session.execute(stmt)
                 session.flush()
@@ -204,11 +200,7 @@ class BatchUpdate:
         self.chunk_size = chunk_size
 
     def update(
-        self,
-        session: Session,
-        model: Type[T],
-        updates: List[Dict[str, Any]],
-        id_column: str = "id"
+        self, session: Session, model: Type[T], updates: List[Dict[str, Any]], id_column: str = "id"
     ):
         """
         Batch update records by ID
@@ -236,7 +228,7 @@ class BatchUpdate:
 
         # Process in chunks
         for i in range(0, total, self.chunk_size):
-            chunk = updates[i:i + self.chunk_size]
+            chunk = updates[i : i + self.chunk_size]
 
             try:
                 # Bulk update using SQLAlchemy
@@ -259,7 +251,7 @@ class BatchUpdate:
         session: Session,
         model: Type[T],
         values: Dict[str, Any],
-        filter_func: Callable[[Any], Any]
+        filter_func: Callable[[Any], Any],
     ) -> int:
         """
         Batch update with WHERE clause
@@ -324,12 +316,7 @@ class BatchDelete:
         """
         self.chunk_size = chunk_size
 
-    def delete_by_ids(
-        self,
-        session: Session,
-        model: Type[T],
-        ids: List[Any]
-    ) -> int:
+    def delete_by_ids(self, session: Session, model: Type[T], ids: List[Any]) -> int:
         """
         Batch delete records by IDs
 
@@ -356,12 +343,14 @@ class BatchDelete:
 
         # Process in chunks
         for i in range(0, total, self.chunk_size):
-            chunk = ids[i:i + self.chunk_size]
+            chunk = ids[i : i + self.chunk_size]
 
             try:
                 # Delete by IDs
-                result = session.query(model).filter(model.id.in_(chunk)).delete(
-                    synchronize_session=False
+                result = (
+                    session.query(model)
+                    .filter(model.id.in_(chunk))
+                    .delete(synchronize_session=False)
                 )
 
                 deleted_count += result
@@ -404,7 +393,7 @@ class ChunkedProcessor:
         session: Session,
         query: Any,
         processor: Callable[[List[Any]], Any],
-        on_error: Optional[Callable[[Exception, List[Any]], None]] = None
+        on_error: Optional[Callable[[Exception, List[Any]], None]] = None,
     ) -> int:
         """
         Process query results in chunks
@@ -465,7 +454,7 @@ class ChunkedProcessor:
         self,
         items: List[Any],
         processor: Callable[[List[Any]], Any],
-        on_error: Optional[Callable[[Exception, List[Any]], None]] = None
+        on_error: Optional[Callable[[Exception, List[Any]], None]] = None,
     ) -> int:
         """
         Process list in chunks
@@ -493,7 +482,7 @@ class ChunkedProcessor:
 
         # Process in chunks
         for i in range(0, total, self.chunk_size):
-            chunk = items[i:i + self.chunk_size]
+            chunk = items[i : i + self.chunk_size]
 
             try:
                 processor(chunk)
@@ -532,6 +521,7 @@ def batch_session(session: Session, batch_size: int = 100):
                 session.add(user)
                 batch.increment()  # Auto-commits every 100 operations
     """
+
     class BatchCounter:
         def __init__(self, session: Session, batch_size: int):
             self.session = session
@@ -557,10 +547,7 @@ def batch_session(session: Session, batch_size: int = 100):
 
 # Convenience functions
 def bulk_insert(
-    session: Session,
-    model: Type[T],
-    records: List[Dict[str, Any]],
-    chunk_size: int = 1000
+    session: Session, model: Type[T], records: List[Dict[str, Any]], chunk_size: int = 1000
 ):
     """
     Convenience function for bulk insert
@@ -573,10 +560,7 @@ def bulk_insert(
 
 
 def bulk_update(
-    session: Session,
-    model: Type[T],
-    updates: List[Dict[str, Any]],
-    chunk_size: int = 1000
+    session: Session, model: Type[T], updates: List[Dict[str, Any]], chunk_size: int = 1000
 ):
     """
     Convenience function for bulk update
@@ -588,12 +572,7 @@ def bulk_update(
     return batch_update.update(session, model, updates)
 
 
-def bulk_delete(
-    session: Session,
-    model: Type[T],
-    ids: List[Any],
-    chunk_size: int = 1000
-):
+def bulk_delete(session: Session, model: Type[T], ids: List[Any], chunk_size: int = 1000):
     """
     Convenience function for bulk delete
 

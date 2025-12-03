@@ -1,10 +1,10 @@
 """Analytics models"""
 
-from app.models.analytics.performance import PerformanceData
-from app.models.analytics.metric_snapshot import MetricSnapshot
-from app.models.analytics.report import Report, ReportType, ReportStatus, ReportFormat
 from app.models.analytics.dashboard import Dashboard
 from app.models.analytics.kpi import KPI, KPIPeriod, KPITrend
+from app.models.analytics.metric_snapshot import MetricSnapshot
+from app.models.analytics.performance import PerformanceData
+from app.models.analytics.report import Report, ReportFormat, ReportStatus, ReportType
 
 __all__ = [
     # Core models

@@ -1,8 +1,11 @@
-from sqlalchemy import Column, String, Integer, Date, ForeignKey, Enum, Text
+import enum
+
+from sqlalchemy import Column, Date, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
+
 
 class IncidentType(str, enum.Enum):
     ACCIDENT = "accident"
@@ -11,21 +14,28 @@ class IncidentType(str, enum.Enum):
     VIOLATION = "violation"
     OTHER = "other"
 
+
 class IncidentStatus(str, enum.Enum):
     REPORTED = "reported"
     INVESTIGATING = "investigating"
     RESOLVED = "resolved"
     CLOSED = "closed"
 
+
 class Incident(TenantMixin, BaseModel):
     __tablename__ = "incidents"
 
-    incident_type = Column(Enum(IncidentType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    incident_type = Column(
+        Enum(IncidentType, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
     courier_id = Column(Integer, ForeignKey("couriers.id"))
     vehicle_id = Column(Integer, ForeignKey("vehicles.id"))
     incident_date = Column(Date, nullable=False)
     description = Column(Text, nullable=False)
-    status = Column(Enum(IncidentStatus, values_callable=lambda x: [e.value for e in x]), default=IncidentStatus.REPORTED)
+    status = Column(
+        Enum(IncidentStatus, values_callable=lambda x: [e.value for e in x]),
+        default=IncidentStatus.REPORTED,
+    )
     resolution = Column(Text)
     cost = Column(Integer, default=0)
 

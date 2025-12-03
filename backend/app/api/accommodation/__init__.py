@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from app.api.accommodation import buildings, rooms
 
 router = APIRouter()

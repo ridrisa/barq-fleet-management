@@ -2,20 +2,22 @@
 Query Optimization Utilities
 Tools for analyzing, profiling, and optimizing database queries
 """
-import time
+
 import logging
-from typing import Any, Callable, Optional, TypeVar, List
-from functools import wraps
+import time
 from contextlib import contextmanager
-from sqlalchemy.orm import Query, Session
+from functools import wraps
+from typing import Any, Callable, List, Optional, TypeVar
+
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Query, Session
 
 from app.core.performance_config import performance_config
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class QueryAnalyzer:
@@ -56,10 +58,7 @@ class QueryAnalyzer:
         Returns:
             Dictionary with query stats
         """
-        avg_query_time = (
-            self._total_query_time / self._query_count
-            if self._query_count > 0 else 0
-        )
+        avg_query_time = self._total_query_time / self._query_count if self._query_count > 0 else 0
 
         return {
             "total_queries": self._query_count,
@@ -93,9 +92,7 @@ class QueryAnalyzer:
 
             self._queries.append(query_info)
 
-            logger.warning(
-                f"Slow query detected ({duration:.3f}s): {statement[:200]}..."
-            )
+            logger.warning(f"Slow query detected ({duration:.3f}s): {statement[:200]}...")
 
     def get_slow_queries(self, limit: int = 10) -> List[dict]:
         """
@@ -107,11 +104,7 @@ class QueryAnalyzer:
         Returns:
             List of slow queries sorted by duration
         """
-        sorted_queries = sorted(
-            self._queries,
-            key=lambda q: q["duration"],
-            reverse=True
-        )
+        sorted_queries = sorted(self._queries, key=lambda q: q["duration"], reverse=True)
         return sorted_queries[:limit]
 
     @staticmethod
@@ -128,9 +121,7 @@ class QueryAnalyzer:
         """
         try:
             # Get compiled query
-            compiled = query.statement.compile(
-                compile_kwargs={"literal_binds": True}
-            )
+            compiled = query.statement.compile(compile_kwargs={"literal_binds": True})
 
             # Execute EXPLAIN
             explain_query = text(f"EXPLAIN ANALYZE {compiled}")
@@ -144,15 +135,11 @@ class QueryAnalyzer:
             }
         except Exception as e:
             logger.error(f"Error analyzing query: {e}")
-            return {
-                "error": str(e)
-            }
+            return {"error": str(e)}
 
 
 # Global query analyzer
-query_analyzer = QueryAnalyzer(
-    slow_threshold=performance_config.monitoring.slow_query_threshold
-)
+query_analyzer = QueryAnalyzer(slow_threshold=performance_config.monitoring.slow_query_threshold)
 
 
 class N1QueryDetector:
@@ -228,14 +215,14 @@ class N1QueryDetector:
         pattern = re.sub(r"'[^']*'", "'?'", statement)
 
         # Remove numbers
-        pattern = re.sub(r'\b\d+\b', '?', pattern)
+        pattern = re.sub(r"\b\d+\b", "?", pattern)
 
         # Remove UUIDs
         pattern = re.sub(
-            r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
-            '?',
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+            "?",
             pattern,
-            flags=re.IGNORECASE
+            flags=re.IGNORECASE,
         )
 
         return pattern
@@ -274,14 +261,13 @@ def track_queries(session: Session):
 
             # Find potential N+1 queries
             potential_n1 = {
-                pattern: count for pattern, count in patterns.items()
+                pattern: count
+                for pattern, count in patterns.items()
                 if count >= n1_detector.threshold
             }
 
             if potential_n1:
-                logger.warning(
-                    f"Potential N+1 queries detected: {len(potential_n1)} patterns"
-                )
+                logger.warning(f"Potential N+1 queries detected: {len(potential_n1)} patterns")
 
 
 def profile_query(func: Callable[..., T]) -> Callable[..., T]:
@@ -293,6 +279,7 @@ def profile_query(func: Callable[..., T]) -> Callable[..., T]:
         def get_users(session):
             return session.query(User).all()
     """
+
     @wraps(func)
     def wrapper(*args, **kwargs) -> T:
         start_time = time.time()
@@ -302,22 +289,15 @@ def profile_query(func: Callable[..., T]) -> Callable[..., T]:
             duration = time.time() - start_time
 
             # Record query performance
-            query_analyzer.record_query(
-                statement=func.__name__,
-                duration=duration
-            )
+            query_analyzer.record_query(statement=func.__name__, duration=duration)
 
             if duration >= query_analyzer.slow_threshold:
-                logger.warning(
-                    f"Slow function {func.__name__} took {duration:.3f}s"
-                )
+                logger.warning(f"Slow function {func.__name__} took {duration:.3f}s")
 
             return result
         except Exception as e:
             duration = time.time() - start_time
-            logger.error(
-                f"Function {func.__name__} failed after {duration:.3f}s: {e}"
-            )
+            logger.error(f"Function {func.__name__} failed after {duration:.3f}s: {e}")
             raise
 
     return wrapper
@@ -356,9 +336,7 @@ class QueryCache:
         import hashlib
 
         # Compile query to string
-        compiled = str(query.statement.compile(
-            compile_kwargs={"literal_binds": True}
-        ))
+        compiled = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
 
         return hashlib.md5(compiled.encode()).hexdigest()
 
@@ -429,6 +407,7 @@ def cached_query(ttl: Optional[int] = None):
         def get_active_users(session):
             return session.query(User).filter(User.is_active == True).all()
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args, **kwargs) -> T:
@@ -449,6 +428,7 @@ def cached_query(ttl: Optional[int] = None):
             return result
 
         return wrapper
+
     return decorator
 
 
@@ -491,10 +471,7 @@ class QueryOptimizer:
 
     @staticmethod
     def optimize_pagination(
-        query: Query,
-        page: int,
-        page_size: int,
-        count_query: Optional[Query] = None
+        query: Query, page: int, page_size: int, count_query: Optional[Query] = None
     ) -> tuple[List[Any], int]:
         """
         Optimized pagination with efficient counting
@@ -520,11 +497,7 @@ class QueryOptimizer:
         return items, total
 
     @staticmethod
-    def batch_load_relationships(
-        session: Session,
-        instances: List[Any],
-        *relationships: str
-    ):
+    def batch_load_relationships(session: Session, instances: List[Any], *relationships: str):
         """
         Batch load relationships to avoid N+1 queries
 

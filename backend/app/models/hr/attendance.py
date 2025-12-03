@@ -1,8 +1,11 @@
-from sqlalchemy import Column, String, Integer, Date, Time, ForeignKey, Enum
+import enum
+
+from sqlalchemy import Column, Date, Enum, ForeignKey, Integer, String, Time
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
+
 
 class AttendanceStatus(str, enum.Enum):
     PRESENT = "present"
@@ -11,6 +14,7 @@ class AttendanceStatus(str, enum.Enum):
     HALF_DAY = "half_day"
     ON_LEAVE = "on_leave"
 
+
 class Attendance(TenantMixin, BaseModel):
     __tablename__ = "attendance"
 
@@ -18,7 +22,9 @@ class Attendance(TenantMixin, BaseModel):
     date = Column(Date, nullable=False)
     check_in = Column(Time, nullable=True)
     check_out = Column(Time, nullable=True)
-    status = Column(Enum(AttendanceStatus, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    status = Column(
+        Enum(AttendanceStatus, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
     hours_worked = Column(Integer, default=0)
     notes = Column(String)
 

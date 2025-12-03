@@ -9,9 +9,10 @@ Usage:
     print(__version__)  # "1.1.0"
     print(get_version_info())  # Full version details
 """
+
 import os
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Version components
 MAJOR = 1
@@ -126,6 +127,7 @@ def get_release_notes(version: str = None) -> Dict[str, Any]:
 def _get_python_version() -> str:
     """Get Python version."""
     import sys
+
     return f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
 
@@ -133,6 +135,7 @@ def _get_git_commit() -> str:
     """Get current git commit hash."""
     try:
         import subprocess
+
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
             capture_output=True,
@@ -148,6 +151,7 @@ def _get_git_branch() -> str:
     """Get current git branch."""
     try:
         import subprocess
+
         result = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
             capture_output=True,

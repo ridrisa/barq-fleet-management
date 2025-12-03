@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TriggerType(str, Enum):
@@ -50,7 +51,9 @@ class WorkflowTriggerBase(BaseModel):
     priority: int = Field(default=0, ge=0)
     deduplicate: bool = False
     deduplicate_key: Optional[str] = None
-    deduplicate_window: Optional[int] = Field(None, ge=1, description="Deduplication window in seconds")
+    deduplicate_window: Optional[int] = Field(
+        None, ge=1, description="Deduplication window in seconds"
+    )
     rate_limit: Optional[int] = Field(None, ge=1, description="Max executions per hour")
     rate_limit_window: int = Field(default=3600, ge=1, description="Rate limit window in seconds")
     webhook_url: Optional[str] = None
@@ -119,10 +122,12 @@ class TriggerExecutionResponse(TriggerExecutionBase):
 # Action Schemas
 class TriggerTestRequest(BaseModel):
     """Test trigger configuration"""
+
     test_data: Optional[Dict[str, Any]] = None
     dry_run: bool = True
 
 
 class TriggerExecuteRequest(BaseModel):
     """Manually execute a trigger"""
+
     trigger_data: Optional[Dict[str, Any]] = None

@@ -1,8 +1,11 @@
-from sqlalchemy import Column, String, Integer, Date, ForeignKey, Enum, Text
+import enum
+
+from sqlalchemy import Column, Date, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
+
 
 class LeaveType(str, enum.Enum):
     ANNUAL = "annual"
@@ -10,21 +13,28 @@ class LeaveType(str, enum.Enum):
     EMERGENCY = "emergency"
     UNPAID = "unpaid"
 
+
 class LeaveStatus(str, enum.Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
     CANCELLED = "cancelled"
 
+
 class Leave(TenantMixin, BaseModel):
     __tablename__ = "leaves"
 
     courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)
-    leave_type = Column(Enum(LeaveType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    leave_type = Column(
+        Enum(LeaveType, values_callable=lambda x: [e.value for e in x]), nullable=False
+    )
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     days = Column(Integer, nullable=False)
-    status = Column(Enum(LeaveStatus, values_callable=lambda x: [e.value for e in x]), default=LeaveStatus.PENDING)
+    status = Column(
+        Enum(LeaveStatus, values_callable=lambda x: [e.value for e in x]),
+        default=LeaveStatus.PENDING,
+    )
     reason = Column(Text)
     approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     approved_at = Column(Date, nullable=True)

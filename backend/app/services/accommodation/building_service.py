@@ -1,23 +1,20 @@
 """Building Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from app.services.base import CRUDBase
+from typing import Dict, List, Optional
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.accommodation.building import Building
 from app.schemas.accommodation.building import BuildingCreate, BuildingUpdate
+from app.services.base import CRUDBase
 
 
 class BuildingService(CRUDBase[Building, BuildingCreate, BuildingUpdate]):
     """Service for building management operations"""
 
     def get_by_location(
-        self,
-        db: Session,
-        *,
-        location_search: str,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, location_search: str, skip: int = 0, limit: int = 100
     ) -> List[Building]:
         """
         Search buildings by address/location
@@ -40,12 +37,7 @@ class BuildingService(CRUDBase[Building, BuildingCreate, BuildingUpdate]):
             .all()
         )
 
-    def get_by_name(
-        self,
-        db: Session,
-        *,
-        name: str
-    ) -> Optional[Building]:
+    def get_by_name(self, db: Session, *, name: str) -> Optional[Building]:
         """
         Get building by exact name
 
@@ -56,19 +48,10 @@ class BuildingService(CRUDBase[Building, BuildingCreate, BuildingUpdate]):
         Returns:
             Building record or None
         """
-        return (
-            db.query(self.model)
-            .filter(self.model.name == name)
-            .first()
-        )
+        return db.query(self.model).filter(self.model.name == name).first()
 
     def search_buildings(
-        self,
-        db: Session,
-        *,
-        search_term: str,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, search_term: str, skip: int = 0, limit: int = 100
     ) -> List[Building]:
         """
         Search buildings by name or address
@@ -83,19 +66,10 @@ class BuildingService(CRUDBase[Building, BuildingCreate, BuildingUpdate]):
             List of building records
         """
         return self.search(
-            db,
-            search_term=search_term,
-            search_fields=["name", "address"],
-            skip=skip,
-            limit=limit
+            db, search_term=search_term, search_fields=["name", "address"], skip=skip, limit=limit
         )
 
-    def get_statistics(
-        self,
-        db: Session,
-        *,
-        building_id: Optional[int] = None
-    ) -> Dict:
+    def get_statistics(self, db: Session, *, building_id: Optional[int] = None) -> Dict:
         """
         Get building statistics
 
@@ -121,7 +95,7 @@ class BuildingService(CRUDBase[Building, BuildingCreate, BuildingUpdate]):
                 "building_name": building.name,
                 "total_rooms": building.total_rooms,
                 "total_capacity": building.total_capacity,
-                "address": building.address
+                "address": building.address,
             }
 
         # All buildings statistics
@@ -133,15 +107,12 @@ class BuildingService(CRUDBase[Building, BuildingCreate, BuildingUpdate]):
             "total_buildings": total_buildings,
             "total_rooms": total_rooms,
             "total_capacity": total_capacity,
-            "average_capacity_per_building": total_capacity / total_buildings if total_buildings > 0 else 0
+            "average_capacity_per_building": (
+                total_capacity / total_buildings if total_buildings > 0 else 0
+            ),
         }
 
-    def update_building_stats(
-        self,
-        db: Session,
-        *,
-        building_id: int
-    ) -> Optional[Building]:
+    def update_building_stats(self, db: Session, *, building_id: int) -> Optional[Building]:
         """
         Recalculate and update building statistics (total_rooms, total_capacity)
 
@@ -159,14 +130,12 @@ class BuildingService(CRUDBase[Building, BuildingCreate, BuildingUpdate]):
             return None
 
         # Count total rooms
-        total_rooms = db.query(func.count(Room.id)).filter(
-            Room.building_id == building_id
-        ).scalar()
+        total_rooms = db.query(func.count(Room.id)).filter(Room.building_id == building_id).scalar()
 
         # Sum total capacity
-        total_capacity = db.query(func.sum(Room.capacity)).filter(
-            Room.building_id == building_id
-        ).scalar() or 0
+        total_capacity = (
+            db.query(func.sum(Room.capacity)).filter(Room.building_id == building_id).scalar() or 0
+        )
 
         building.total_rooms = total_rooms
         building.total_capacity = total_capacity

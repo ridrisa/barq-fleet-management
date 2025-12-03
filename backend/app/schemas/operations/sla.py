@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import datetime
-from enum import Enum
 from decimal import Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SLAType(str, Enum):
@@ -114,6 +115,7 @@ class SLATrackingUpdate(BaseModel):
 
 class SLABreachReport(BaseModel):
     """Schema for reporting SLA breach"""
+
     breach_reason: str = Field(..., min_length=10)
     breach_severity: str = Field(..., pattern="^(minor|major|critical)$")
     corrective_action: Optional[str] = None
@@ -152,6 +154,7 @@ class SLATrackingResponse(SLATrackingBase):
 
 class SLAComplianceReport(BaseModel):
     """SLA compliance report"""
+
     period: str
     sla_type: SLAType
     total_tracked: int

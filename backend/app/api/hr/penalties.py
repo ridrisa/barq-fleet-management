@@ -1,8 +1,10 @@
-from typing import List
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
 from datetime import datetime
+from typing import List
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
@@ -11,6 +13,7 @@ router = APIRouter()
 
 class PenaltyResponse(BaseModel):
     """Penalty response schema"""
+
     id: int
     courier_id: int
     penalty_type: str
@@ -27,7 +30,7 @@ def list_penalties(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
 ):
     """List all penalties - stub implementation"""
     # TODO: Implement actual penalty retrieval
@@ -35,10 +38,7 @@ def list_penalties(
 
 
 @router.post("/", response_model=PenaltyResponse, status_code=201)
-def create_penalty(
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
+def create_penalty(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Create penalty - stub implementation"""
     # TODO: Implement actual penalty creation
     pass
@@ -46,9 +46,7 @@ def create_penalty(
 
 @router.put("/{penalty_id}", response_model=PenaltyResponse)
 def update_penalty(
-    penalty_id: int,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    penalty_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Update penalty - stub implementation"""
     # TODO: Implement actual penalty update
@@ -57,9 +55,7 @@ def update_penalty(
 
 @router.delete("/{penalty_id}", status_code=204)
 def delete_penalty(
-    penalty_id: int,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    penalty_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Delete penalty - stub implementation"""
     # TODO: Implement actual penalty deletion

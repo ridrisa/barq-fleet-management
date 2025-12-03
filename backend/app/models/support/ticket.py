@@ -1,13 +1,19 @@
 """Support Ticket Model"""
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum as SQLEnum, Text, DateTime, Boolean, JSON
+
+import enum
+
+from sqlalchemy import JSON, Boolean, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class TicketCategory(str, enum.Enum):
     """Ticket category types"""
+
     TECHNICAL = "technical"
     BILLING = "billing"
     DELIVERY = "delivery"
@@ -24,6 +30,7 @@ class TicketCategory(str, enum.Enum):
 
 class TicketPriority(str, enum.Enum):
     """Ticket priority levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -32,6 +39,7 @@ class TicketPriority(str, enum.Enum):
 
 class TicketStatus(str, enum.Enum):
     """Ticket status workflow"""
+
     OPEN = "open"
     IN_PROGRESS = "in_progress"
     WAITING = "waiting"
@@ -41,6 +49,7 @@ class TicketStatus(str, enum.Enum):
 
 class EscalationLevel(str, enum.Enum):
     """Ticket escalation levels"""
+
     NONE = "none"
     LEVEL_1 = "level_1"
     LEVEL_2 = "level_2"
@@ -59,7 +68,7 @@ class Ticket(TenantMixin, BaseModel):
         unique=True,
         nullable=False,
         index=True,
-        comment="Unique ticket identifier (e.g., TKT-20250106-001)"
+        comment="Unique ticket identifier (e.g., TKT-20250106-001)",
     )
 
     # Relationships
@@ -68,43 +77,40 @@ class Ticket(TenantMixin, BaseModel):
         ForeignKey("couriers.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
-        comment="Related courier (nullable for non-courier issues)"
+        comment="Related courier (nullable for non-courier issues)",
     )
     created_by = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=False,
         index=True,
-        comment="User who created the ticket"
+        comment="User who created the ticket",
     )
     assigned_to = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
-        comment="User assigned to handle the ticket"
+        comment="User assigned to handle the ticket",
     )
 
     # Ticket Details
     category = Column(
-        SQLEnum(TicketCategory),
-        nullable=False,
-        index=True,
-        comment="Ticket category for routing"
+        SQLEnum(TicketCategory), nullable=False, index=True, comment="Ticket category for routing"
     )
     priority = Column(
         SQLEnum(TicketPriority),
         default=TicketPriority.MEDIUM,
         nullable=False,
         index=True,
-        comment="Ticket priority level"
+        comment="Ticket priority level",
     )
     status = Column(
         SQLEnum(TicketStatus),
         default=TicketStatus.OPEN,
         nullable=False,
         index=True,
-        comment="Current ticket status"
+        comment="Current ticket status",
     )
 
     # Content
@@ -117,19 +123,13 @@ class Ticket(TenantMixin, BaseModel):
         DateTime(timezone=True),
         nullable=True,
         index=True,
-        comment="SLA deadline for ticket resolution"
+        comment="SLA deadline for ticket resolution",
     )
     first_response_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="When first response was made"
+        DateTime(timezone=True), nullable=True, comment="When first response was made"
     )
     sla_breached = Column(
-        Boolean,
-        default=False,
-        nullable=False,
-        index=True,
-        comment="Whether SLA was breached"
+        Boolean, default=False, nullable=False, index=True, comment="Whether SLA was breached"
     )
 
     # Escalation
@@ -138,24 +138,18 @@ class Ticket(TenantMixin, BaseModel):
         default=EscalationLevel.NONE,
         nullable=False,
         index=True,
-        comment="Current escalation level"
+        comment="Current escalation level",
     )
     escalated_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="When ticket was escalated"
+        DateTime(timezone=True), nullable=True, comment="When ticket was escalated"
     )
     escalated_by = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        comment="User who escalated the ticket"
+        comment="User who escalated the ticket",
     )
-    escalation_reason = Column(
-        Text,
-        nullable=True,
-        comment="Reason for escalation"
-    )
+    escalation_reason = Column(Text, nullable=True, comment="Reason for escalation")
 
     # Merge Support
     merged_into_id = Column(
@@ -163,14 +157,14 @@ class Ticket(TenantMixin, BaseModel):
         ForeignKey("tickets.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
-        comment="ID of ticket this was merged into"
+        comment="ID of ticket this was merged into",
     )
     is_merged = Column(
         Boolean,
         default=False,
         nullable=False,
         index=True,
-        comment="Whether this ticket was merged into another"
+        comment="Whether this ticket was merged into another",
     )
 
     # Template Reference
@@ -178,39 +172,20 @@ class Ticket(TenantMixin, BaseModel):
         Integer,
         ForeignKey("ticket_templates.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Template used to create this ticket"
+        comment="Template used to create this ticket",
     )
 
     # Tags and Custom Fields
-    tags = Column(
-        Text,
-        nullable=True,
-        comment="Comma-separated tags"
-    )
-    custom_fields = Column(
-        JSON,
-        nullable=True,
-        comment="Custom fields as JSON object"
-    )
+    tags = Column(Text, nullable=True, comment="Comma-separated tags")
+    custom_fields = Column(JSON, nullable=True, comment="Custom fields as JSON object")
 
     # Contact Information
-    contact_email = Column(
-        String(255),
-        nullable=True,
-        comment="Contact email for notifications"
-    )
-    contact_phone = Column(
-        String(50),
-        nullable=True,
-        comment="Contact phone number"
-    )
+    contact_email = Column(String(255), nullable=True, comment="Contact email for notifications")
+    contact_phone = Column(String(50), nullable=True, comment="Contact phone number")
 
     # Department Routing
     department = Column(
-        String(100),
-        nullable=True,
-        index=True,
-        comment="Department responsible for this ticket"
+        String(100), nullable=True, index=True, comment="Department responsible for this ticket"
     )
 
     # Timestamps
@@ -223,7 +198,9 @@ class Ticket(TenantMixin, BaseModel):
     assignee = relationship("User", foreign_keys=[assigned_to], backref="assigned_tickets")
     escalator = relationship("User", foreign_keys=[escalated_by])
     replies = relationship("TicketReply", back_populates="ticket", cascade="all, delete-orphan")
-    attachments = relationship("TicketAttachment", back_populates="ticket", cascade="all, delete-orphan")
+    attachments = relationship(
+        "TicketAttachment", back_populates="ticket", cascade="all, delete-orphan"
+    )
     merged_tickets = relationship("Ticket", backref="parent_ticket", remote_side="Ticket.id")
     template = relationship("TicketTemplate", backref="tickets")
 
@@ -262,6 +239,7 @@ class Ticket(TenantMixin, BaseModel):
             return "breached"
         if self.sla_due_at:
             from datetime import datetime, timezone
+
             now = datetime.now(timezone.utc)
             if self.sla_due_at < now:
                 return "breached"

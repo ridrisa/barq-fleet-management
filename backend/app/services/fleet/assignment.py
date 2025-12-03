@@ -1,6 +1,8 @@
 from typing import List, Optional
+
 from sqlalchemy.orm import Session
-from app.models.fleet import CourierVehicleAssignment, AssignmentStatus
+
+from app.models.fleet import AssignmentStatus, CourierVehicleAssignment
 from app.schemas.fleet import AssignmentCreate, AssignmentUpdate
 from app.services.base import CRUDBase
 
@@ -8,7 +10,9 @@ from app.services.base import CRUDBase
 class AssignmentService(CRUDBase[CourierVehicleAssignment, AssignmentCreate, AssignmentUpdate]):
     """Service for CourierVehicleAssignment operations"""
 
-    def get_active_for_courier(self, db: Session, courier_id: int) -> Optional[CourierVehicleAssignment]:
+    def get_active_for_courier(
+        self, db: Session, courier_id: int
+    ) -> Optional[CourierVehicleAssignment]:
         """Get active assignment for a courier"""
         return (
             db.query(CourierVehicleAssignment)
@@ -17,7 +21,9 @@ class AssignmentService(CRUDBase[CourierVehicleAssignment, AssignmentCreate, Ass
             .first()
         )
 
-    def get_active_for_vehicle(self, db: Session, vehicle_id: int) -> Optional[CourierVehicleAssignment]:
+    def get_active_for_vehicle(
+        self, db: Session, vehicle_id: int
+    ) -> Optional[CourierVehicleAssignment]:
         """Get active assignment for a vehicle"""
         return (
             db.query(CourierVehicleAssignment)
@@ -26,7 +32,9 @@ class AssignmentService(CRUDBase[CourierVehicleAssignment, AssignmentCreate, Ass
             .first()
         )
 
-    def get_history_for_courier(self, db: Session, courier_id: int, *, skip: int = 0, limit: int = 100) -> List[CourierVehicleAssignment]:
+    def get_history_for_courier(
+        self, db: Session, courier_id: int, *, skip: int = 0, limit: int = 100
+    ) -> List[CourierVehicleAssignment]:
         """Get assignment history for a courier"""
         return (
             db.query(CourierVehicleAssignment)
@@ -37,7 +45,9 @@ class AssignmentService(CRUDBase[CourierVehicleAssignment, AssignmentCreate, Ass
             .all()
         )
 
-    def get_history_for_vehicle(self, db: Session, vehicle_id: int, *, skip: int = 0, limit: int = 100) -> List[CourierVehicleAssignment]:
+    def get_history_for_vehicle(
+        self, db: Session, vehicle_id: int, *, skip: int = 0, limit: int = 100
+    ) -> List[CourierVehicleAssignment]:
         """Get assignment history for a vehicle"""
         return (
             db.query(CourierVehicleAssignment)

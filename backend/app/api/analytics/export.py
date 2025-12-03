@@ -2,6 +2,7 @@
 
 Export analytics data in various formats (CSV, Excel, JSON) with streaming support.
 """
+
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse, Response
@@ -21,7 +22,7 @@ from app.utils.export import (
     filter_columns,
     sort_data,
     generate_export_filename,
-    chunk_data_for_export
+    chunk_data_for_export,
 )
 
 
@@ -30,6 +31,7 @@ router = APIRouter()
 
 class ExportRequest(BaseModel):
     """Export request schema"""
+
     data_type: str  # deliveries, fleet, financial, etc.
     format: str = "csv"  # csv, excel, json
     start_date: Optional[date] = None
@@ -62,15 +64,15 @@ def generate_export(
             "date": request.start_date.isoformat(),
             "metric1": 100,
             "metric2": 200.50,
-            "metric3": "Sample"
+            "metric3": "Sample",
         },
         {
             "id": 2,
             "date": (request.start_date + timedelta(days=1)).isoformat(),
             "metric1": 110,
             "metric2": 220.75,
-            "metric3": "Sample"
-        }
+            "metric3": "Sample",
+        },
     ]
 
     # Validate data
@@ -88,13 +90,10 @@ def generate_export(
 
     # Apply limit if specified
     if request.limit:
-        sample_data = sample_data[:request.limit]
+        sample_data = sample_data[: request.limit]
 
     # Generate filename
-    filename = generate_export_filename(
-        f"{request.data_type}_export",
-        request.format
-    )
+    filename = generate_export_filename(f"{request.data_type}_export", request.format)
 
     # Export based on format
     if request.format == "csv":
@@ -102,9 +101,7 @@ def generate_export(
         return Response(
             content=csv_content,
             media_type="text/csv",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}"
-            }
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     elif request.format == "json":
@@ -112,20 +109,14 @@ def generate_export(
         return Response(
             content=json.dumps(json_data, indent=2),
             media_type="application/json",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}"
-            }
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     elif request.format == "excel":
         # For Excel, you would need openpyxl or xlsxwriter
         # This returns the structure - implement actual Excel generation
         excel_data = export_to_excel_dict(sample_data, columns=request.columns)
-        return {
-            "message": "Excel export prepared",
-            "filename": filename,
-            "data": excel_data
-        }
+        return {"message": "Excel export prepared", "filename": filename, "data": excel_data}
 
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported format: {request.format}")
@@ -154,7 +145,7 @@ def export_deliveries_csv(
     return Response(
         content=csv_content,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -174,7 +165,7 @@ def export_fleet_csv(
     return Response(
         content=csv_content,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -200,7 +191,7 @@ def export_financial_csv(
     return Response(
         content=csv_content,
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -263,7 +254,7 @@ def stream_export(
 
             offset += chunk_size
 
-        yield ']}'
+        yield "]}"
 
     # Select generator based on format
     if format == "csv":
@@ -278,7 +269,7 @@ def stream_export(
     return StreamingResponse(
         generator,
         media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -296,7 +287,7 @@ def get_export_templates(
             "data_type": "deliveries",
             "default_format": "csv",
             "columns": ["id", "date", "courier", "status", "zone", "revenue"],
-            "filters": {"period": "last_7_days"}
+            "filters": {"period": "last_7_days"},
         },
         {
             "id": 2,
@@ -305,7 +296,7 @@ def get_export_templates(
             "data_type": "fleet",
             "default_format": "excel",
             "columns": ["vehicle_id", "registration", "type", "status", "utilization"],
-            "filters": {}
+            "filters": {},
         },
         {
             "id": 3,
@@ -314,8 +305,8 @@ def get_export_templates(
             "data_type": "financial",
             "default_format": "excel",
             "columns": ["date", "revenue", "costs", "profit", "margin"],
-            "filters": {"period": "current_month"}
-        }
+            "filters": {"period": "current_month"},
+        },
     ]
 
     return templates
@@ -339,7 +330,7 @@ def schedule_export(
         "frequency": frequency,
         "format": format,
         "recipients": recipients,
-        "next_run": (datetime.now() + timedelta(days=1)).isoformat()
+        "next_run": (datetime.now() + timedelta(days=1)).isoformat(),
     }
 
 
@@ -358,7 +349,7 @@ def get_scheduled_exports(
             "recipients": ["manager@example.com"],
             "is_active": True,
             "next_run": (datetime.now() + timedelta(days=1)).isoformat(),
-            "last_run": datetime.now().isoformat()
+            "last_run": datetime.now().isoformat(),
         }
     ]
 
@@ -392,7 +383,7 @@ def get_export_history(
             "exported_by": current_user.email,
             "row_count": 1000,
             "file_size_kb": 250,
-            "download_url": "/api/analytics/export/download/1"
+            "download_url": "/api/analytics/export/download/1",
         }
     ]
 
@@ -422,28 +413,28 @@ def get_supported_formats(
                 "description": "Comma-Separated Values",
                 "mime_type": "text/csv",
                 "supports_streaming": True,
-                "max_rows": 1000000
+                "max_rows": 1000000,
             },
             {
                 "format": "json",
                 "description": "JavaScript Object Notation",
                 "mime_type": "application/json",
                 "supports_streaming": True,
-                "max_rows": 100000
+                "max_rows": 100000,
             },
             {
                 "format": "excel",
                 "description": "Microsoft Excel",
                 "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "supports_streaming": False,
-                "max_rows": 100000
+                "max_rows": 100000,
             },
             {
                 "format": "pdf",
                 "description": "Portable Document Format",
                 "mime_type": "application/pdf",
                 "supports_streaming": False,
-                "max_rows": 10000
-            }
+                "max_rows": 10000,
+            },
         ]
     }

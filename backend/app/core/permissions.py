@@ -20,12 +20,13 @@ from typing import Any, Callable, Dict, List, Optional, Set, Union
 from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.models.user import User
 from app.models.role import Role
+from app.models.user import User
 
 
 class Resource(str, Enum):
     """System resources that can be permission-controlled"""
+
     COURIERS = "couriers"
     VEHICLES = "vehicles"
     WORKFLOWS = "workflows"
@@ -45,6 +46,7 @@ class Resource(str, Enum):
 
 class Action(str, Enum):
     """Actions that can be performed on resources"""
+
     CREATE = "create"
     READ = "read"
     UPDATE = "update"
@@ -135,9 +137,7 @@ class PermissionChecker:
 
     @staticmethod
     def has_permission(
-        user: User,
-        required_permission: Union[Permission, str],
-        db: Optional[Session] = None
+        user: User, required_permission: Union[Permission, str], db: Optional[Session] = None
     ) -> bool:
         """
         Check if user has a specific permission
@@ -179,33 +179,25 @@ class PermissionChecker:
 
     @staticmethod
     def has_any_permission(
-        user: User,
-        required_permissions: List[Union[Permission, str]],
-        db: Optional[Session] = None
+        user: User, required_permissions: List[Union[Permission, str]], db: Optional[Session] = None
     ) -> bool:
         """Check if user has any of the required permissions"""
         return any(
-            PermissionChecker.has_permission(user, perm, db)
-            for perm in required_permissions
+            PermissionChecker.has_permission(user, perm, db) for perm in required_permissions
         )
 
     @staticmethod
     def has_all_permissions(
-        user: User,
-        required_permissions: List[Union[Permission, str]],
-        db: Optional[Session] = None
+        user: User, required_permissions: List[Union[Permission, str]], db: Optional[Session] = None
     ) -> bool:
         """Check if user has all required permissions"""
         return all(
-            PermissionChecker.has_permission(user, perm, db)
-            for perm in required_permissions
+            PermissionChecker.has_permission(user, perm, db) for perm in required_permissions
         )
 
     @staticmethod
     def can_access_resource(
-        user: User,
-        resource_owner_id: int,
-        organization_id: Optional[int] = None
+        user: User, resource_owner_id: int, organization_id: Optional[int] = None
     ) -> bool:
         """
         Check if user can access a resource based on ownership and tenant isolation
@@ -268,13 +260,16 @@ class PermissionDependency:
     def __init__(self, required_permission: Union[Permission, str, List[Union[Permission, str]]]):
         if isinstance(required_permission, list):
             self.required_permissions = [
-                str(p) if isinstance(p, Permission) else p
-                for p in required_permission
+                str(p) if isinstance(p, Permission) else p for p in required_permission
             ]
             self.mode = "all"  # Require all permissions by default
         else:
             self.required_permissions = [
-                str(required_permission) if isinstance(required_permission, Permission) else required_permission
+                (
+                    str(required_permission)
+                    if isinstance(required_permission, Permission)
+                    else required_permission
+                )
             ]
             self.mode = "all"
 
@@ -282,8 +277,7 @@ class PermissionDependency:
         """Dependency injection - check permissions"""
         if not current_user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
             )
 
         # Check permissions
@@ -299,15 +293,14 @@ class PermissionDependency:
         if not has_access:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Missing required permissions: {', '.join(self.required_permissions)}"
+                detail=f"Missing required permissions: {', '.join(self.required_permissions)}",
             )
 
         return current_user
 
 
 def require_permission(
-    permission: Union[Permission, str, List[Union[Permission, str]]],
-    mode: str = "all"
+    permission: Union[Permission, str, List[Union[Permission, str]]], mode: str = "all"
 ) -> PermissionDependency:
     """
     Create permission dependency for route protection
@@ -341,23 +334,24 @@ def require_role(role_name: str):
         async def admin_only_function(...):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, current_user: User = None, **kwargs):
             if not current_user:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required"
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
                 )
 
             if not current_user.role or current_user.role.name != role_name:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Role '{role_name}' required"
+                    status_code=status.HTTP_403_FORBIDDEN, detail=f"Role '{role_name}' required"
                 )
 
             return await func(*args, current_user=current_user, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -373,29 +367,30 @@ def require_role_level(minimum_role: str):
         async def manager_and_above(...):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, current_user: User = None, **kwargs):
             if not current_user:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Authentication required"
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required"
                 )
 
             if not current_user.role:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="User has no role assigned"
+                    status_code=status.HTTP_403_FORBIDDEN, detail="User has no role assigned"
                 )
 
             if not RoleHierarchy.is_higher_or_equal(current_user.role.name, minimum_role):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Minimum role '{minimum_role}' required"
+                    detail=f"Minimum role '{minimum_role}' required",
                 )
 
             return await func(*args, current_user=current_user, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -456,32 +451,52 @@ def get_default_role_permissions(role_name: str) -> Set[str]:
     """
     permissions_map = {
         "system_admin": {"*:*"},  # All permissions
-
         "organization_admin": {
-            "couriers:*", "vehicles:*", "workflows:*", "routes:*",
-            "reports:read", "reports:export",
-            "users:read", "users:create", "users:update",
-            "settings:read", "settings:update",
+            "couriers:*",
+            "vehicles:*",
+            "workflows:*",
+            "routes:*",
+            "reports:read",
+            "reports:export",
+            "users:read",
+            "users:create",
+            "users:update",
+            "settings:read",
+            "settings:update",
             "analytics:read",
         },
-
         "manager": {
-            "couriers:read", "couriers:create", "couriers:update", "couriers:assign",
-            "vehicles:read", "vehicles:create", "vehicles:update", "vehicles:assign",
-            "workflows:read", "workflows:create", "workflows:update", "workflows:approve",
-            "routes:read", "routes:create", "routes:update",
-            "reports:read", "reports:export",
+            "couriers:read",
+            "couriers:create",
+            "couriers:update",
+            "couriers:assign",
+            "vehicles:read",
+            "vehicles:create",
+            "vehicles:update",
+            "vehicles:assign",
+            "workflows:read",
+            "workflows:create",
+            "workflows:update",
+            "workflows:approve",
+            "routes:read",
+            "routes:create",
+            "routes:update",
+            "reports:read",
+            "reports:export",
             "analytics:read",
         },
-
         "supervisor": {
-            "couriers:read", "couriers:assign",
-            "vehicles:read", "vehicles:assign",
-            "workflows:read", "workflows:create", "workflows:update",
-            "routes:read", "routes:create",
+            "couriers:read",
+            "couriers:assign",
+            "vehicles:read",
+            "vehicles:assign",
+            "workflows:read",
+            "workflows:create",
+            "workflows:update",
+            "routes:read",
+            "routes:create",
             "reports:read",
         },
-
         "user": {
             "couriers:read",
             "vehicles:read",
@@ -489,11 +504,10 @@ def get_default_role_permissions(role_name: str) -> Set[str]:
             "routes:read",
             "reports:read",
         },
-
         "guest": {
             "workflows:read",
             "reports:read",
-        }
+        },
     }
 
     return permissions_map.get(role_name.lower(), set())

@@ -1,13 +1,19 @@
 """Knowledge Base Article Model"""
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, Enum as SQLEnum, Boolean
+
+import enum
+
+from sqlalchemy import Boolean, Column
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class ArticleStatus(str, enum.Enum):
     """Article status"""
+
     DRAFT = "draft"
     PUBLISHED = "published"
     ARCHIVED = "archived"
@@ -27,57 +33,27 @@ class KBArticle(TenantMixin, BaseModel):
         unique=True,
         nullable=False,
         index=True,
-        comment="URL-friendly slug for the article"
+        comment="URL-friendly slug for the article",
     )
 
     # Content
-    title = Column(
-        String(255),
-        nullable=False,
-        index=True,
-        comment="Article title"
-    )
-    content = Column(
-        Text,
-        nullable=False,
-        comment="Article content (Markdown supported)"
-    )
-    summary = Column(
-        String(500),
-        nullable=True,
-        comment="Short summary/excerpt"
-    )
+    title = Column(String(255), nullable=False, index=True, comment="Article title")
+    content = Column(Text, nullable=False, comment="Article content (Markdown supported)")
+    summary = Column(String(500), nullable=True, comment="Short summary/excerpt")
 
     # Categorization
-    category = Column(
-        String(100),
-        nullable=False,
-        index=True,
-        comment="Article category"
-    )
-    tags = Column(
-        Text,
-        nullable=True,
-        comment="Comma-separated tags for search"
-    )
+    category = Column(String(100), nullable=False, index=True, comment="Article category")
+    tags = Column(Text, nullable=True, comment="Comma-separated tags for search")
 
     # Status & Publishing
     status = Column(
-        SQLEnum(
-            ArticleStatus,
-            values_callable=lambda obj: [e.value for e in obj]
-        ),
+        SQLEnum(ArticleStatus, values_callable=lambda obj: [e.value for e in obj]),
         default=ArticleStatus.DRAFT,
         nullable=False,
         index=True,
-        comment="Article publication status"
+        comment="Article publication status",
     )
-    version = Column(
-        Integer,
-        default=1,
-        nullable=False,
-        comment="Article version number"
-    )
+    version = Column(Integer, default=1, nullable=False, comment="Article version number")
 
     # Authorship
     author_id = Column(
@@ -85,35 +61,20 @@ class KBArticle(TenantMixin, BaseModel):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=False,
         index=True,
-        comment="Article author"
+        comment="Article author",
     )
 
     # Analytics
     view_count = Column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Number of times article was viewed"
+        Integer, default=0, nullable=False, comment="Number of times article was viewed"
     )
-    helpful_count = Column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Number of helpful votes"
-    )
+    helpful_count = Column(Integer, default=0, nullable=False, comment="Number of helpful votes")
     not_helpful_count = Column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Number of not helpful votes"
+        Integer, default=0, nullable=False, comment="Number of not helpful votes"
     )
 
     # SEO
-    meta_description = Column(
-        String(255),
-        nullable=True,
-        comment="SEO meta description"
-    )
+    meta_description = Column(String(255), nullable=True, comment="SEO meta description")
 
     # Relationships
     author = relationship("User", foreign_keys=[author_id])

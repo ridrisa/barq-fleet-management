@@ -1,7 +1,8 @@
 """Support Management API routes"""
 
 from fastapi import APIRouter
-from app.api.v1.support import tickets, kb, faq, chat, feedback, analytics, contact
+
+from app.api.v1.support import analytics, chat, contact, faq, feedback, kb, tickets
 
 # Create main support router
 support_router = APIRouter()

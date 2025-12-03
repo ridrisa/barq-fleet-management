@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import date, datetime
-from enum import Enum
 from decimal import Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class QualityMetricType(str, Enum):
@@ -94,6 +95,7 @@ class QualityInspectionUpdate(BaseModel):
 
 class QualityInspectionComplete(BaseModel):
     """Schema for completing an inspection"""
+
     overall_score: Decimal = Field(..., ge=0, le=100)
     passed: bool
     findings: str
@@ -135,6 +137,7 @@ class QualityInspectionResponse(QualityInspectionBase):
 
 class QualityReport(BaseModel):
     """Quality control report"""
+
     period: str
     total_inspections: int
     passed_inspections: int

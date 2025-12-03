@@ -14,15 +14,15 @@ Last Updated: 2025-12-02
 """
 
 import time
-from typing import Callable, Optional, Dict, Tuple
 from functools import wraps
+from typing import Callable, Dict, Optional, Tuple
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.security_config import security_config
 
@@ -64,8 +64,7 @@ class InMemoryStorage:
         """Remove expired entries"""
         current_time = time.time()
         expired_keys = [
-            key for key, (_, timestamp) in self._storage.items()
-            if current_time > timestamp
+            key for key, (_, timestamp) in self._storage.items() if current_time > timestamp
         ]
         for key in expired_keys:
             del self._storage[key]
@@ -91,11 +90,11 @@ def get_identifier(request: Request) -> str:
         Unique identifier string
     """
     # Check for authenticated user
-    if hasattr(request.state, 'user') and request.state.user:
+    if hasattr(request.state, "user") and request.state.user:
         return f"user:{request.state.user.id}"
 
     # Check for API key
-    api_key = request.headers.get('X-API-Key')
+    api_key = request.headers.get("X-API-Key")
     if api_key:
         return f"apikey:{api_key[:16]}"
 
@@ -106,7 +105,9 @@ def get_identifier(request: Request) -> str:
 # Initialize limiter
 limiter = Limiter(
     key_func=get_identifier,
-    default_limits=[security_config.rate_limit.default_limit] if security_config.rate_limit.enabled else [],
+    default_limits=(
+        [security_config.rate_limit.default_limit] if security_config.rate_limit.enabled else []
+    ),
     storage_uri=security_config.rate_limit.storage_uri,
     strategy="fixed-window",
 )
@@ -185,7 +186,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "X-RateLimit-Limit": str(limit),
                     "X-RateLimit-Remaining": "0",
                     "X-RateLimit-Reset": str(int(time.time()) + retry_after),
-                }
+                },
             )
 
         # Process request
@@ -207,7 +208,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Check prefix match for dynamic routes
         for pattern, limit in self.CUSTOM_LIMITS.items():
-            if pattern.endswith('*') and path.startswith(pattern[:-1]):
+            if pattern.endswith("*") and path.startswith(pattern[:-1]):
                 return limit
 
         # Return default limit
@@ -224,14 +225,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             Tuple of (limit, window in seconds)
         """
         try:
-            count, period = limit_string.split('/')
+            count, period = limit_string.split("/")
             count = int(count)
 
             period_map = {
-                'second': 1,
-                'minute': 60,
-                'hour': 3600,
-                'day': 86400,
+                "second": 1,
+                "minute": 60,
+                "hour": 3600,
+                "day": 86400,
             }
 
             window = period_map.get(period, 60)
@@ -272,7 +273,7 @@ class EndpointRateLimiter:
 
             if request is None:
                 # Try to find request in kwargs
-                request = kwargs.get('request')
+                request = kwargs.get("request")
 
             if request is None:
                 # Cannot rate limit without request
@@ -295,7 +296,7 @@ class EndpointRateLimiter:
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail=f"Rate limit exceeded. Maximum {self.limit}",
-                    headers={"Retry-After": str(window)}
+                    headers={"Retry-After": str(window)},
                 )
 
             return await func(*args, request=request, **kwargs)
@@ -305,14 +306,14 @@ class EndpointRateLimiter:
     def _parse_limit(self, limit_string: str) -> Tuple[int, int]:
         """Parse limit string to (count, seconds)"""
         try:
-            count, period = limit_string.split('/')
+            count, period = limit_string.split("/")
             count = int(count)
 
             period_map = {
-                'second': 1,
-                'minute': 60,
-                'hour': 3600,
-                'day': 86400,
+                "second": 1,
+                "minute": 60,
+                "hour": 3600,
+                "day": 86400,
             }
 
             return count, period_map.get(period, 60)
@@ -398,9 +399,7 @@ def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         content={
             "detail": "Rate limit exceeded. Please try again later.",
-            "error_code": "RATE_LIMIT_EXCEEDED"
+            "error_code": "RATE_LIMIT_EXCEEDED",
         },
-        headers={
-            "Retry-After": "60"  # Default retry after 60 seconds
-        }
+        headers={"Retry-After": "60"},  # Default retry after 60 seconds
     )

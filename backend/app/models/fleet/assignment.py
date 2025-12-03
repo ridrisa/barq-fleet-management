@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, Date, ForeignKey, Text, Enum as SQLEnum
+import enum
+
+from sqlalchemy import Column, Date
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class AssignmentStatus(str, enum.Enum):
     """Assignment status"""
+
     ACTIVE = "active"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
@@ -14,6 +19,7 @@ class AssignmentStatus(str, enum.Enum):
 
 class AssignmentType(str, enum.Enum):
     """Type of vehicle assignment"""
+
     PERMANENT = "permanent"
     TEMPORARY = "temporary"
     TRIAL = "trial"
@@ -25,12 +31,20 @@ class CourierVehicleAssignment(TenantMixin, BaseModel):
     __tablename__ = "courier_vehicle_assignments"
 
     # Foreign Keys
-    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="CASCADE"), nullable=False, index=True)
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
+    courier_id = Column(
+        Integer, ForeignKey("couriers.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    vehicle_id = Column(
+        Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # Assignment Details
-    assignment_type = Column(SQLEnum(AssignmentType), default=AssignmentType.PERMANENT, nullable=False)
-    status = Column(SQLEnum(AssignmentStatus), default=AssignmentStatus.ACTIVE, nullable=False, index=True)
+    assignment_type = Column(
+        SQLEnum(AssignmentType), default=AssignmentType.PERMANENT, nullable=False
+    )
+    status = Column(
+        SQLEnum(AssignmentStatus), default=AssignmentStatus.ACTIVE, nullable=False, index=True
+    )
 
     # Dates
     start_date = Column(Date, nullable=False, index=True)
@@ -64,6 +78,7 @@ class CourierVehicleAssignment(TenantMixin, BaseModel):
     def duration_days(self) -> int:
         """Calculate assignment duration in days"""
         from datetime import date
+
         end = self.end_date or date.today()
         return (end - self.start_date).days
 

@@ -1,8 +1,11 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum, Text
+import enum
+
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
+
 
 class DeliveryStatus(str, enum.Enum):
     PENDING = "pending"
@@ -11,6 +14,7 @@ class DeliveryStatus(str, enum.Enum):
     FAILED = "failed"
     RETURNED = "returned"
 
+
 class Delivery(TenantMixin, BaseModel):
     __tablename__ = "deliveries"
 
@@ -18,7 +22,10 @@ class Delivery(TenantMixin, BaseModel):
     courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)
     pickup_address = Column(Text, nullable=False)
     delivery_address = Column(Text, nullable=False)
-    status = Column(Enum(DeliveryStatus, values_callable=lambda x: [e.value for e in x]), default=DeliveryStatus.PENDING)
+    status = Column(
+        Enum(DeliveryStatus, values_callable=lambda x: [e.value for e in x]),
+        default=DeliveryStatus.PENDING,
+    )
     pickup_time = Column(DateTime)
     delivery_time = Column(DateTime)
     cod_amount = Column(Integer, default=0)

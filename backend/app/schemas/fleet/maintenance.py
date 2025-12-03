@@ -1,13 +1,15 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Optional
 
-from app.models.fleet import MaintenanceType, MaintenanceStatus, ServiceProvider
+from pydantic import BaseModel, Field
+
+from app.models.fleet import MaintenanceStatus, MaintenanceType, ServiceProvider
 
 
 class MaintenanceBase(BaseModel):
     """Base maintenance schema"""
+
     vehicle_id: int
     maintenance_type: MaintenanceType
     status: MaintenanceStatus = MaintenanceStatus.SCHEDULED
@@ -64,11 +66,13 @@ class MaintenanceBase(BaseModel):
 
 class MaintenanceCreate(MaintenanceBase):
     """Schema for creating maintenance record"""
+
     pass
 
 
 class MaintenanceUpdate(BaseModel):
     """Schema for updating maintenance record"""
+
     status: Optional[MaintenanceStatus] = None
     start_date: Optional[date] = None
     completion_date: Optional[date] = None
@@ -82,6 +86,7 @@ class MaintenanceUpdate(BaseModel):
 
 class MaintenanceResponse(MaintenanceBase):
     """Schema for maintenance response"""
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -97,6 +102,7 @@ class MaintenanceResponse(MaintenanceBase):
 
 class MaintenanceList(BaseModel):
     """Minimal schema for list views"""
+
     id: int
     vehicle_id: int
     maintenance_type: MaintenanceType

@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import date, datetime
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class IncidentType(str, Enum):
     ACCIDENT = "accident"
@@ -10,11 +12,13 @@ class IncidentType(str, Enum):
     VIOLATION = "violation"
     OTHER = "other"
 
+
 class IncidentStatus(str, Enum):
     REPORTED = "reported"
     INVESTIGATING = "investigating"
     RESOLVED = "resolved"
     CLOSED = "closed"
+
 
 class IncidentBase(BaseModel):
     courier_id: Optional[int] = None
@@ -25,8 +29,10 @@ class IncidentBase(BaseModel):
     description: str = Field(..., min_length=10)
     severity: Optional[str] = Field(None, pattern="^(low|medium|high|critical)$")
 
+
 class IncidentCreate(IncidentBase):
     pass
+
 
 class IncidentUpdate(BaseModel):
     courier_id: Optional[int] = None
@@ -40,6 +46,7 @@ class IncidentUpdate(BaseModel):
     resolution: Optional[str] = None
     resolved_by: Optional[int] = None
     resolved_at: Optional[datetime] = None
+
 
 class IncidentResponse(IncidentBase):
     id: int

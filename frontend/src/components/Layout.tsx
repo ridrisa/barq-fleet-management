@@ -3,6 +3,7 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/cn'
+import { OrganizationSelector } from '@/components/OrganizationSelector'
 import {
   Home,
   Truck,
@@ -198,6 +199,7 @@ export default function Layout() {
       icon: <Settings className="h-5 w-5" />,
       children: [
         { label: 'Profile', path: '/settings/profile', icon: null },
+        { label: 'Organization', path: '/settings/organization', icon: null },
         { label: 'User Settings', path: '/settings/user', icon: null },
         { label: 'Preferences', path: '/settings/preferences', icon: null },
         { label: 'Notifications', path: '/settings/notifications', icon: null },
@@ -320,6 +322,7 @@ export default function Layout() {
             <Menu className="h-6 w-6" />
           </button>
           <div className="flex-1" />
+          <OrganizationSelector />
           <button
             onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en')}
             className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"

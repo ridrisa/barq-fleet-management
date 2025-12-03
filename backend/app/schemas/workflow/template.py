@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import date
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class WorkflowTemplateBase(BaseModel):
     name: str = Field(..., min_length=3, max_length=100)
@@ -10,8 +12,10 @@ class WorkflowTemplateBase(BaseModel):
     estimated_duration: Optional[int] = Field(None, ge=0, description="Duration in minutes")
     is_active: bool = True
 
+
 class WorkflowTemplateCreate(WorkflowTemplateBase):
     pass
+
 
 class WorkflowTemplateUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=3, max_length=100)
@@ -20,6 +24,7 @@ class WorkflowTemplateUpdate(BaseModel):
     category: Optional[str] = None
     estimated_duration: Optional[int] = Field(None, ge=0)
     is_active: Optional[bool] = None
+
 
 class WorkflowTemplateResponse(WorkflowTemplateBase):
     id: int

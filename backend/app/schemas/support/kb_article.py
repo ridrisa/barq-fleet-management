@@ -1,23 +1,29 @@
 """Knowledge Base Article Schemas"""
-from pydantic import BaseModel, Field, validator
-from typing import Optional, List
+
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, Field, validator
 
 from app.models.support import ArticleStatus
 
 
 class KBArticleBase(BaseModel):
     """Base KB article schema"""
+
     title: str = Field(..., min_length=5, max_length=255, description="Article title")
     content: str = Field(..., min_length=10, description="Article content (Markdown supported)")
     summary: Optional[str] = Field(None, max_length=500, description="Short summary")
     category: str = Field(..., min_length=1, max_length=100, description="Article category")
     tags: Optional[str] = Field(None, description="Comma-separated tags")
-    meta_description: Optional[str] = Field(None, max_length=255, description="SEO meta description")
+    meta_description: Optional[str] = Field(
+        None, max_length=255, description="SEO meta description"
+    )
 
 
 class KBArticleCreate(KBArticleBase):
     """Schema for creating a new KB article"""
+
     slug: str = Field(..., min_length=1, max_length=255, description="URL-friendly slug")
     status: ArticleStatus = Field(default=ArticleStatus.DRAFT, description="Article status")
 
@@ -25,6 +31,7 @@ class KBArticleCreate(KBArticleBase):
     def validate_slug(cls, v):
         """Ensure slug is URL-friendly"""
         import re
+
         if not re.match(r"^[a-z0-9-]+$", v):
             raise ValueError("Slug must contain only lowercase letters, numbers, and hyphens")
         return v
@@ -32,6 +39,7 @@ class KBArticleCreate(KBArticleBase):
 
 class KBArticleUpdate(BaseModel):
     """Schema for updating a KB article"""
+
     title: Optional[str] = Field(None, min_length=5, max_length=255)
     content: Optional[str] = Field(None, min_length=10)
     summary: Optional[str] = Field(None, max_length=500)
@@ -43,16 +51,19 @@ class KBArticleUpdate(BaseModel):
 
 class KBArticlePublish(BaseModel):
     """Schema for publishing an article"""
+
     status: ArticleStatus = Field(..., description="New status (PUBLISHED or DRAFT)")
 
 
 class KBArticleVote(BaseModel):
     """Schema for voting on article helpfulness"""
+
     helpful: bool = Field(..., description="True if helpful, False if not helpful")
 
 
 class KBArticleResponse(KBArticleBase):
     """Schema for KB article response"""
+
     id: int
     slug: str
     status: ArticleStatus
@@ -72,6 +83,7 @@ class KBArticleResponse(KBArticleBase):
 
 class KBArticleList(BaseModel):
     """Minimal KB article schema for list views"""
+
     id: int
     slug: str
     title: str
@@ -87,6 +99,7 @@ class KBArticleList(BaseModel):
 
 class KBArticleWithAuthor(KBArticleResponse):
     """Extended KB article with author information"""
+
     author_name: str
 
     class Config:
@@ -95,6 +108,7 @@ class KBArticleWithAuthor(KBArticleResponse):
 
 class KBArticleSearch(BaseModel):
     """Schema for KB article search results"""
+
     articles: List[KBArticleList]
     total: int
     page: int

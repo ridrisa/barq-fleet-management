@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
+import enum
+
+from sqlalchemy import Boolean, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class SLAType(str, enum.Enum):
     """Type of SLA"""
+
     DELIVERY_TIME = "delivery_time"
     RESPONSE_TIME = "response_time"
     PICKUP_TIME = "pickup_time"
@@ -17,6 +22,7 @@ class SLAType(str, enum.Enum):
 
 class SLAPriority(str, enum.Enum):
     """SLA priority level"""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -25,6 +31,7 @@ class SLAPriority(str, enum.Enum):
 
 class SLAStatus(str, enum.Enum):
     """SLA tracking status"""
+
     ACTIVE = "active"
     BREACHED = "breached"
     AT_RISK = "at_risk"
@@ -85,7 +92,9 @@ class SLATracking(TenantMixin, BaseModel):
     __tablename__ = "sla_tracking"
 
     # Reference
-    sla_definition_id = Column(Integer, ForeignKey("sla_definitions.id", ondelete="CASCADE"), nullable=False, index=True)
+    sla_definition_id = Column(
+        Integer, ForeignKey("sla_definitions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     tracking_number = Column(String(50), unique=True, nullable=False, index=True)
 
     # Subject

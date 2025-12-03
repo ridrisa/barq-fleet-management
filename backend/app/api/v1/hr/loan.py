@@ -1,18 +1,19 @@
 """Loan Management API Routes"""
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
-from sqlalchemy.orm import Session
-from decimal import Decimal
-import logging
 
-from app.core.dependencies import get_db, get_current_user
+import logging
+from decimal import Decimal
+from typing import List, Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_organization, get_current_user, get_db
+from app.models.tenant.organization import Organization
 from app.models.user import User
-from app.schemas.hr import (
-    LoanCreate, LoanUpdate, LoanResponse, LoanStatus
-)
+from app.models.workflow.trigger import TriggerEventType
+from app.schemas.hr import LoanCreate, LoanResponse, LoanStatus, LoanUpdate
 from app.services.hr import loan_service
 from app.services.workflow import event_trigger_service
-from app.models.workflow.trigger import TriggerEventType
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ router = APIRouter()
 @router.get("/", response_model=List[LoanResponse])
 def get_loans(
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     courier_id: Optional[int] = None,
@@ -38,11 +40,11 @@ def get_loans(
     # If courier_id filter is provided
     if courier_id:
         return loan_service.get_by_courier(
-            db, courier_id=courier_id, skip=skip, limit=limit
+            db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
         )
 
     # Build dynamic filters
-    filters = {}
+    filters = {"organization_id": current_org.id}
     if status:
         filters["status"] = status
 
@@ -53,11 +55,16 @@ def get_loans(
 def create_loan(
     loan_in: LoanCreate,
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     current_user: User = Depends(get_current_user),
 ):
     """Create new loan request - automatically triggers approval workflow if configured"""
+    # Add organization_id to the create data
+    create_data = loan_in.model_dump() if hasattr(loan_in, "model_dump") else loan_in.dict()
+    create_data["organization_id"] = current_org.id
+
     # Create the loan
-    loan = loan_service.create(db, obj_in=loan_in)
+    loan = loan_service.create(db, obj_in=create_data)
 
     # Trigger workflow for loan approval
     try:
@@ -72,6 +79,7 @@ def create_loan(
                 "loan_type": loan.loan_type.value if loan.loan_type else None,
                 "reason": loan.reason,
                 "status": loan.status.value if loan.status else "pending",
+                "organization_id": current_org.id,
             },
             initiated_by=current_user.id,
         )
@@ -88,11 +96,12 @@ def create_loan(
 def get_loan(
     loan_id: int,
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     current_user: User = Depends(get_current_user),
 ):
     """Get loan by ID"""
     loan = loan_service.get(db, id=loan_id)
-    if not loan:
+    if not loan or loan.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Loan not found")
     return loan
 
@@ -102,11 +111,12 @@ def update_loan(
     loan_id: int,
     loan_in: LoanUpdate,
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     current_user: User = Depends(get_current_user),
 ):
     """Update loan"""
     loan = loan_service.get(db, id=loan_id)
-    if not loan:
+    if not loan or loan.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Loan not found")
 
     return loan_service.update(db, db_obj=loan, obj_in=loan_in)
@@ -116,11 +126,12 @@ def update_loan(
 def delete_loan(
     loan_id: int,
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     current_user: User = Depends(get_current_user),
 ):
     """Delete loan"""
     loan = loan_service.get(db, id=loan_id)
-    if not loan:
+    if not loan or loan.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Loan not found")
 
     loan_service.delete(db, id=loan_id)
@@ -131,13 +142,14 @@ def delete_loan(
 def get_courier_loans(
     courier_id: int,
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_current_user),
 ):
     """Get all loans for a specific courier"""
     return loan_service.get_by_courier(
-        db, courier_id=courier_id, skip=skip, limit=limit
+        db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
     )
 
 
@@ -146,6 +158,7 @@ def make_loan_payment(
     loan_id: int,
     amount: Decimal = Body(..., embed=True, gt=0),
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -154,14 +167,11 @@ def make_loan_payment(
     Updates the remaining amount and marks as paid if fully repaid
     """
     loan = loan_service.get(db, id=loan_id)
-    if not loan:
+    if not loan or loan.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Loan not found")
 
     if loan.status != LoanStatus.ACTIVE:
-        raise HTTPException(
-            status_code=400,
-            detail="Can only make payments on active loans"
-        )
+        raise HTTPException(status_code=400, detail="Can only make payments on active loans")
 
     updated_loan = loan_service.make_payment(db, loan_id=loan_id, amount=amount)
     if not updated_loan:
@@ -175,6 +185,7 @@ def approve_loan(
     loan_id: int,
     notes: Optional[str] = Body(None, embed=True),
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -183,14 +194,11 @@ def approve_loan(
     Changes status from pending to approved/active
     """
     loan = loan_service.get(db, id=loan_id)
-    if not loan:
+    if not loan or loan.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Loan not found")
 
     if loan.status != LoanStatus.PENDING:
-        raise HTTPException(
-            status_code=400,
-            detail="Can only approve pending loans"
-        )
+        raise HTTPException(status_code=400, detail="Can only approve pending loans")
 
     updated_loan = loan_service.approve_loan(
         db, loan_id=loan_id, approved_by=current_user.id, notes=notes
@@ -202,6 +210,7 @@ def approve_loan(
 @router.get("/statistics", response_model=dict)
 def get_loan_statistics(
     db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -215,4 +224,4 @@ def get_loan_statistics(
     - total_amount: Total loan amount issued
     - total_outstanding: Total amount still owed
     """
-    return loan_service.get_statistics(db)
+    return loan_service.get_statistics(db, organization_id=current_org.id)

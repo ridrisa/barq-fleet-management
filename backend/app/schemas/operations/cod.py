@@ -1,14 +1,17 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class CODStatus(str, Enum):
     PENDING = "pending"
     COLLECTED = "collected"
     DEPOSITED = "deposited"
     RECONCILED = "reconciled"
+
 
 class CODBase(BaseModel):
     courier_id: int = Field(..., description="Courier ID")
@@ -17,8 +20,10 @@ class CODBase(BaseModel):
     reference_number: Optional[str] = None
     notes: Optional[str] = None
 
+
 class CODCreate(CODBase):
     pass
+
 
 class CODUpdate(BaseModel):
     amount: Optional[Decimal] = Field(None, ge=0)
@@ -27,6 +32,7 @@ class CODUpdate(BaseModel):
     status: Optional[CODStatus] = None
     reference_number: Optional[str] = None
     notes: Optional[str] = None
+
 
 class CODResponse(CODBase):
     id: int

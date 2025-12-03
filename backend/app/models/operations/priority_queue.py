@@ -1,21 +1,27 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
+import enum
+
+from sqlalchemy import Boolean, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class QueuePriority(str, enum.Enum):
     """Priority level in queue"""
+
     CRITICAL = "critical"  # Same-hour delivery
-    URGENT = "urgent"      # 2-hour delivery
-    HIGH = "high"          # 4-hour delivery
-    NORMAL = "normal"      # Same-day delivery
-    LOW = "low"            # Next-day delivery
+    URGENT = "urgent"  # 2-hour delivery
+    HIGH = "high"  # 4-hour delivery
+    NORMAL = "normal"  # Same-day delivery
+    LOW = "low"  # Next-day delivery
 
 
 class QueueStatus(str, enum.Enum):
     """Queue entry status"""
+
     QUEUED = "queued"
     PROCESSING = "processing"
     ASSIGNED = "assigned"
@@ -35,17 +41,27 @@ class PriorityQueueEntry(TenantMixin, BaseModel):
     status = Column(SQLEnum(QueueStatus), default=QueueStatus.QUEUED, nullable=False, index=True)
 
     # Delivery Reference
-    delivery_id = Column(Integer, ForeignKey("deliveries.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    delivery_id = Column(
+        Integer,
+        ForeignKey("deliveries.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
 
     # Priority Calculation
     base_priority_score = Column(Integer, nullable=False, comment="Base score 1-100")
     time_factor_score = Column(Integer, default=0, comment="Urgency-based score")
     customer_tier_score = Column(Integer, default=0, comment="Customer priority score")
     sla_factor_score = Column(Integer, default=0, comment="SLA compliance score")
-    total_priority_score = Column(Integer, nullable=False, index=True, comment="Composite priority score")
+    total_priority_score = Column(
+        Integer, nullable=False, index=True, comment="Composite priority score"
+    )
 
     # SLA Requirements
-    sla_deadline = Column(DateTime, nullable=False, index=True, comment="Must be delivered by this time")
+    sla_deadline = Column(
+        DateTime, nullable=False, index=True, comment="Must be delivered by this time"
+    )
     sla_buffer_minutes = Column(Integer, default=30, comment="Buffer time before deadline")
     warning_threshold = Column(DateTime, comment="Time to trigger warning")
 
@@ -114,6 +130,7 @@ class PriorityQueueEntry(TenantMixin, BaseModel):
     def is_at_risk(self) -> bool:
         """Check if approaching SLA deadline"""
         from datetime import datetime, timedelta
+
         if not self.sla_deadline:
             return False
         warning_time = self.sla_deadline - timedelta(minutes=self.sla_buffer_minutes)

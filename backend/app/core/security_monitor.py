@@ -14,10 +14,10 @@ Last Updated: 2025-12-02
 """
 
 import json
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
 from enum import Enum
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional
 
 import redis
 
@@ -26,6 +26,7 @@ from app.core.security_config import security_config
 
 class ThreatLevel(str, Enum):
     """Threat severity levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -34,6 +35,7 @@ class ThreatLevel(str, Enum):
 
 class AlertType(str, Enum):
     """Types of security alerts"""
+
     BRUTE_FORCE = "brute_force"
     ACCOUNT_TAKEOVER = "account_takeover"
     UNUSUAL_LOCATION = "unusual_location"
@@ -47,6 +49,7 @@ class AlertType(str, Enum):
 @dataclass
 class SecurityAlert:
     """Security alert data structure"""
+
     alert_id: str
     alert_type: AlertType
     threat_level: ThreatLevel
@@ -89,13 +92,13 @@ class SecurityMonitor:
         if not self.redis:
             try:
                 from app.config.settings import settings
-                redis_url = security_config.rate_limit.storage_uri or getattr(settings, 'REDIS_URL', None)
+
+                redis_url = security_config.rate_limit.storage_uri or getattr(
+                    settings, "REDIS_URL", None
+                )
                 if redis_url:
                     self.redis = redis.from_url(
-                        redis_url,
-                        decode_responses=True,
-                        socket_connect_timeout=5,
-                        socket_timeout=5
+                        redis_url, decode_responses=True, socket_connect_timeout=5, socket_timeout=5
                     )
             except:
                 pass
@@ -105,10 +108,7 @@ class SecurityMonitor:
             self._memory_alerts: List[SecurityAlert] = []
 
     def detect_brute_force(
-        self,
-        identifier: str,
-        failed_attempts: int,
-        time_window_minutes: int = 15
+        self, identifier: str, failed_attempts: int, time_window_minutes: int = 15
     ) -> Optional[SecurityAlert]:
         """
         Detect brute force attack
@@ -133,8 +133,8 @@ class SecurityMonitor:
                     "identifier": identifier,
                     "failed_attempts": failed_attempts,
                     "time_window": time_window_minutes,
-                    "threshold": threshold
-                }
+                    "threshold": threshold,
+                },
             )
 
             self._store_alert(alert)
@@ -143,11 +143,7 @@ class SecurityMonitor:
         return None
 
     def detect_unusual_location(
-        self,
-        user_id: int,
-        username: str,
-        current_ip: str,
-        current_location: Optional[str] = None
+        self, user_id: int, username: str, current_ip: str, current_location: Optional[str] = None
     ) -> Optional[SecurityAlert]:
         """
         Detect login from unusual location
@@ -178,8 +174,8 @@ class SecurityMonitor:
                     metadata={
                         "current_ip": current_ip,
                         "current_location": current_location,
-                        "previous_ips": list(previous_ips)[:5]  # Last 5 IPs
-                    }
+                        "previous_ips": list(previous_ips)[:5],  # Last 5 IPs
+                    },
                 )
 
                 self._store_alert(alert)
@@ -195,7 +191,7 @@ class SecurityMonitor:
         username: str,
         old_role: str,
         new_role: str,
-        changed_by: Optional[int] = None
+        changed_by: Optional[int] = None,
     ) -> Optional[SecurityAlert]:
         """
         Detect privilege escalation
@@ -218,7 +214,11 @@ class SecurityMonitor:
 
         if new_level > old_level:
             # Privilege escalation
-            threat_level = ThreatLevel.HIGH if new_role in ["system_admin", "organization_admin"] else ThreatLevel.MEDIUM
+            threat_level = (
+                ThreatLevel.HIGH
+                if new_role in ["system_admin", "organization_admin"]
+                else ThreatLevel.MEDIUM
+            )
 
             alert = self._create_alert(
                 alert_type=AlertType.PRIVILEGE_ESCALATION,
@@ -232,8 +232,8 @@ class SecurityMonitor:
                     "new_role": new_role,
                     "changed_by": changed_by,
                     "old_level": old_level,
-                    "new_level": new_level
-                }
+                    "new_level": new_level,
+                },
             )
 
             self._store_alert(alert)
@@ -242,11 +242,7 @@ class SecurityMonitor:
         return None
 
     def detect_data_exfiltration(
-        self,
-        user_id: int,
-        username: str,
-        export_count: int,
-        time_window_hours: int = 1
+        self, user_id: int, username: str, export_count: int, time_window_hours: int = 1
     ) -> Optional[SecurityAlert]:
         """
         Detect potential data exfiltration
@@ -273,8 +269,8 @@ class SecurityMonitor:
                 metadata={
                     "export_count": export_count,
                     "time_window_hours": time_window_hours,
-                    "threshold": threshold
-                }
+                    "threshold": threshold,
+                },
             )
 
             self._store_alert(alert)
@@ -288,7 +284,7 @@ class SecurityMonitor:
         username: str,
         activity_type: str,
         reason: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> SecurityAlert:
         """
         Report suspicious activity
@@ -310,7 +306,7 @@ class SecurityMonitor:
             description=reason,
             user_id=user_id,
             username=username,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
         self._store_alert(alert)
@@ -321,7 +317,7 @@ class SecurityMonitor:
         limit: int = 100,
         threat_level: Optional[ThreatLevel] = None,
         alert_type: Optional[AlertType] = None,
-        unacknowledged_only: bool = False
+        unacknowledged_only: bool = False,
     ) -> List[SecurityAlert]:
         """
         Get security alerts
@@ -422,21 +418,22 @@ class SecurityMonitor:
 
         # Filter by time range
         cutoff = datetime.utcnow() - timedelta(days=days)
-        recent_alerts = [
-            a for a in alerts
-            if datetime.fromisoformat(a.timestamp) > cutoff
-        ]
+        recent_alerts = [a for a in alerts if datetime.fromisoformat(a.timestamp) > cutoff]
 
         # Calculate metrics
         metrics = {
             "total_alerts": len(recent_alerts),
-            "critical_alerts": len([a for a in recent_alerts if a.threat_level == ThreatLevel.CRITICAL]),
+            "critical_alerts": len(
+                [a for a in recent_alerts if a.threat_level == ThreatLevel.CRITICAL]
+            ),
             "high_alerts": len([a for a in recent_alerts if a.threat_level == ThreatLevel.HIGH]),
-            "medium_alerts": len([a for a in recent_alerts if a.threat_level == ThreatLevel.MEDIUM]),
+            "medium_alerts": len(
+                [a for a in recent_alerts if a.threat_level == ThreatLevel.MEDIUM]
+            ),
             "low_alerts": len([a for a in recent_alerts if a.threat_level == ThreatLevel.LOW]),
             "unacknowledged": len([a for a in recent_alerts if not a.acknowledged]),
             "by_type": {},
-            "days_analyzed": days
+            "days_analyzed": days,
         }
 
         # Group by type
@@ -456,7 +453,7 @@ class SecurityMonitor:
         user_id: Optional[int] = None,
         username: Optional[str] = None,
         ip_address: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> SecurityAlert:
         """Create security alert"""
         import secrets
@@ -473,7 +470,7 @@ class SecurityMonitor:
             username=username,
             ip_address=ip_address,
             metadata=metadata or {},
-            timestamp=datetime.utcnow().isoformat()
+            timestamp=datetime.utcnow().isoformat(),
         )
 
     def _store_alert(self, alert: SecurityAlert):

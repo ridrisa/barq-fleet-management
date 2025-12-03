@@ -1,5 +1,6 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
 
 
 class Token(BaseModel):
@@ -9,6 +10,7 @@ class Token(BaseModel):
 
 class TokenWithOrganization(BaseModel):
     """Token response with organization context"""
+
     access_token: str
     token_type: str = "bearer"
     organization_id: Optional[int] = None

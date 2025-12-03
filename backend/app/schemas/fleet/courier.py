@@ -1,20 +1,21 @@
-from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Optional
 
+from pydantic import BaseModel, EmailStr, Field, validator
 
 # Enums (matching SQLAlchemy enums)
-from app.models.fleet import CourierStatus, SponsorshipStatus, ProjectType
+from app.models.fleet import CourierStatus, ProjectType, SponsorshipStatus
 
 
 # Base schema with common fields
 class CourierBase(BaseModel):
     """Base courier schema with common fields"""
+
     barq_id: str = Field(..., min_length=1, max_length=50, description="Unique BARQ identifier")
     full_name: str = Field(..., min_length=2, max_length=200)
     email: Optional[EmailStr] = None
-    mobile_number: str = Field(..., pattern=r'^\+?[0-9]{9,15}$')
+    mobile_number: str = Field(..., pattern=r"^\+?[0-9]{9,15}$")
 
     employee_id: Optional[str] = Field(None, max_length=50)
     status: CourierStatus = CourierStatus.ONBOARDING
@@ -53,22 +54,24 @@ class CourierBase(BaseModel):
 
     notes: Optional[str] = None
     emergency_contact_name: Optional[str] = Field(None, max_length=200)
-    emergency_contact_phone: Optional[str] = Field(None, pattern=r'^\+?[0-9]{9,15}$')
+    emergency_contact_phone: Optional[str] = Field(None, pattern=r"^\+?[0-9]{9,15}$")
 
 
 # Schema for creating a new courier
 class CourierCreate(CourierBase):
     """Schema for creating a new courier"""
+
     pass
 
 
 # Schema for updating a courier
 class CourierUpdate(BaseModel):
     """Schema for updating a courier - all fields optional"""
+
     barq_id: Optional[str] = Field(None, min_length=1, max_length=50)
     full_name: Optional[str] = Field(None, min_length=2, max_length=200)
     email: Optional[EmailStr] = None
-    mobile_number: Optional[str] = Field(None, pattern=r'^\+?[0-9]{9,15}$')
+    mobile_number: Optional[str] = Field(None, pattern=r"^\+?[0-9]{9,15}$")
 
     employee_id: Optional[str] = Field(None, max_length=50)
     status: Optional[CourierStatus] = None
@@ -108,7 +111,7 @@ class CourierUpdate(BaseModel):
 
     notes: Optional[str] = None
     emergency_contact_name: Optional[str] = Field(None, max_length=200)
-    emergency_contact_phone: Optional[str] = Field(None, pattern=r'^\+?[0-9]{9,15}$')
+    emergency_contact_phone: Optional[str] = Field(None, pattern=r"^\+?[0-9]{9,15}$")
 
     performance_score: Optional[Decimal] = Field(None, ge=0, le=100)
     total_deliveries: Optional[int] = Field(None, ge=0)
@@ -117,6 +120,7 @@ class CourierUpdate(BaseModel):
 # Schema for courier response
 class CourierResponse(CourierBase):
     """Schema for courier response with database fields"""
+
     id: int
     last_working_day: Optional[date] = None
     performance_score: Decimal = Field(default=0.0, ge=0, le=100)
@@ -136,6 +140,7 @@ class CourierResponse(CourierBase):
 # Schema for courier list (minimal fields)
 class CourierList(BaseModel):
     """Minimal courier schema for list views"""
+
     id: int
     barq_id: str
     full_name: str
@@ -154,6 +159,7 @@ class CourierList(BaseModel):
 # Schema for courier dropdown/select
 class CourierOption(BaseModel):
     """Minimal schema for dropdown selections"""
+
     id: int
     barq_id: str
     full_name: str
@@ -166,6 +172,7 @@ class CourierOption(BaseModel):
 # Schema for bulk operations
 class CourierBulkUpdate(BaseModel):
     """Schema for bulk updating multiple couriers"""
+
     courier_ids: list[int] = Field(..., min_items=1)
     status: Optional[CourierStatus] = None
     city: Optional[str] = None
@@ -176,6 +183,7 @@ class CourierBulkUpdate(BaseModel):
 # Schema for courier statistics
 class CourierStats(BaseModel):
     """Statistics for a courier"""
+
     courier_id: int
     total_deliveries: int = 0
     total_distance_km: Decimal = 0.0
@@ -189,6 +197,7 @@ class CourierStats(BaseModel):
 # Schema for document expiry check
 class CourierDocumentStatus(BaseModel):
     """Document expiry status for a courier"""
+
     courier_id: int
     barq_id: str
     full_name: str

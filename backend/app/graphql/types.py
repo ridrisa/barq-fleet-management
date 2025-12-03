@@ -3,16 +3,17 @@ GraphQL Type Definitions for BARQ Fleet
 Maps SQLAlchemy models to Strawberry GraphQL types
 """
 
-import strawberry
-from typing import Optional, List
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
+from typing import List, Optional
 
+import strawberry
 
 # ============================================
 # ENUMS
 # ============================================
+
 
 @strawberry.enum
 class LoanStatus(Enum):
@@ -105,6 +106,7 @@ class RoomStatus(Enum):
 # HR TYPES
 # ============================================
 
+
 @strawberry.type
 class LoanType:
     id: int
@@ -171,6 +173,7 @@ class BonusType:
 # ============================================
 # FLEET TYPES
 # ============================================
+
 
 @strawberry.type
 class VehicleTypeGQL:
@@ -262,6 +265,7 @@ class CourierType:
 # ACCOMMODATION TYPES
 # ============================================
 
+
 @strawberry.type
 class BuildingType:
     id: int
@@ -294,6 +298,7 @@ class RoomType:
 # INPUT TYPES
 # ============================================
 
+
 @strawberry.input
 class LeaveRequestInput:
     leave_type: LeaveType
@@ -315,6 +320,7 @@ class LoanRequestInput:
 # RESPONSE TYPES
 # ============================================
 
+
 @strawberry.type
 class MutationResponse:
     success: bool
@@ -325,6 +331,7 @@ class MutationResponse:
 @strawberry.type
 class CourierDashboard:
     """Aggregated data for courier dashboard"""
+
     courier: CourierType
     current_vehicle: Optional[VehicleTypeGQL]
     active_loans: List[LoanType]

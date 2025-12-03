@@ -2,19 +2,21 @@
 Async Utilities for Performance Optimization
 Async database operations, HTTP clients, and concurrent task execution
 """
+
 import asyncio
 import logging
-from typing import Any, Callable, Coroutine, List, Optional, TypeVar
-from functools import wraps
-import aiofiles
 from concurrent.futures import ThreadPoolExecutor
+from functools import wraps
+from typing import Any, Callable, Coroutine, List, Optional, TypeVar
+
+import aiofiles
 import httpx
 
 from app.core.performance_config import performance_config
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 # Thread pool for CPU-bound operations
@@ -53,10 +55,7 @@ class AsyncHTTPClient:
     """
 
     def __init__(
-        self,
-        timeout: int = 30,
-        max_connections: int = 100,
-        max_keepalive_connections: int = 20
+        self, timeout: int = 30, max_connections: int = 100, max_keepalive_connections: int = 20
     ):
         self.timeout = timeout
         self.max_connections = max_connections
@@ -79,8 +78,8 @@ class AsyncHTTPClient:
                 timeout=httpx.Timeout(self.timeout),
                 limits=httpx.Limits(
                     max_connections=self.max_connections,
-                    max_keepalive_connections=self.max_keepalive_connections
-                )
+                    max_keepalive_connections=self.max_keepalive_connections,
+                ),
             )
             logger.info("Async HTTP client initialized")
 
@@ -172,7 +171,7 @@ class AsyncFileHandler:
     """
 
     @staticmethod
-    async def read_file(file_path: str, mode: str = 'r') -> str:
+    async def read_file(file_path: str, mode: str = "r") -> str:
         """
         Read file asynchronously
 
@@ -193,7 +192,7 @@ class AsyncFileHandler:
             raise
 
     @staticmethod
-    async def write_file(file_path: str, content: str, mode: str = 'w') -> None:
+    async def write_file(file_path: str, content: str, mode: str = "w") -> None:
         """
         Write file asynchronously
 
@@ -219,7 +218,7 @@ class AsyncFileHandler:
             file_path: Path to file
             content: Content to append
         """
-        await AsyncFileHandler.write_file(file_path, content, mode='a')
+        await AsyncFileHandler.write_file(file_path, content, mode="a")
 
     @staticmethod
     async def read_lines(file_path: str) -> List[str]:
@@ -233,7 +232,7 @@ class AsyncFileHandler:
             List of lines
         """
         try:
-            async with aiofiles.open(file_path, 'r') as f:
+            async with aiofiles.open(file_path, "r") as f:
                 lines = await f.readlines()
             return lines
         except Exception as e:
@@ -243,9 +242,7 @@ class AsyncFileHandler:
 
 # Concurrent Task Execution
 async def run_concurrent(
-    tasks: List[Coroutine],
-    max_concurrent: Optional[int] = None,
-    return_exceptions: bool = False
+    tasks: List[Coroutine], max_concurrent: Optional[int] = None, return_exceptions: bool = False
 ) -> List[Any]:
     """
     Run multiple async tasks concurrently with optional concurrency limit
@@ -303,16 +300,14 @@ async def run_in_executor(func: Callable[..., T], *args, **kwargs) -> T:
 
     # Create partial function with args/kwargs
     from functools import partial
+
     partial_func = partial(func, *args, **kwargs)
 
     return await loop.run_in_executor(thread_pool, partial_func)
 
 
 def async_retry(
-    max_retries: int = 3,
-    delay: float = 1.0,
-    backoff: float = 2.0,
-    exceptions: tuple = (Exception,)
+    max_retries: int = 3, delay: float = 1.0, backoff: float = 2.0, exceptions: tuple = (Exception,)
 ):
     """
     Decorator for async function retry logic
@@ -329,7 +324,10 @@ def async_retry(
             # potentially failing async operation
             pass
     """
-    def decorator(func: Callable[..., Coroutine[Any, Any, T]]) -> Callable[..., Coroutine[Any, Any, T]]:
+
+    def decorator(
+        func: Callable[..., Coroutine[Any, Any, T]],
+    ) -> Callable[..., Coroutine[Any, Any, T]]:
         @wraps(func)
         async def wrapper(*args, **kwargs) -> T:
             current_delay = delay
@@ -356,6 +354,7 @@ def async_retry(
             raise RuntimeError("Unexpected end of retry loop")
 
         return wrapper
+
     return decorator
 
 
@@ -392,11 +391,7 @@ class AsyncBatchProcessor:
     - Progress tracking
     """
 
-    def __init__(
-        self,
-        batch_size: int = 100,
-        max_concurrent_batches: int = 5
-    ):
+    def __init__(self, batch_size: int = 100, max_concurrent_batches: int = 5):
         self.batch_size = batch_size
         self.max_concurrent_batches = max_concurrent_batches
 
@@ -404,7 +399,7 @@ class AsyncBatchProcessor:
         self,
         items: List[Any],
         processor: Callable[[List[Any]], Coroutine[Any, Any, Any]],
-        on_error: Optional[Callable[[Exception, List[Any]], None]] = None
+        on_error: Optional[Callable[[Exception, List[Any]], None]] = None,
     ) -> List[Any]:
         """
         Process items in batches
@@ -428,10 +423,7 @@ class AsyncBatchProcessor:
             return []
 
         # Split into batches
-        batches = [
-            items[i:i + self.batch_size]
-            for i in range(0, len(items), self.batch_size)
-        ]
+        batches = [items[i : i + self.batch_size] for i in range(0, len(items), self.batch_size)]
 
         logger.info(f"Processing {len(items)} items in {len(batches)} batches")
 
@@ -449,7 +441,7 @@ class AsyncBatchProcessor:
         batch_results = await run_concurrent(
             [_process_batch(batch) for batch in batches],
             max_concurrent=self.max_concurrent_batches,
-            return_exceptions=True
+            return_exceptions=True,
         )
 
         # Flatten results
@@ -475,11 +467,15 @@ def async_cached(cache_manager, namespace: str, ttl: Optional[int] = None):
         async def get_user(user_id: str):
             return await fetch_user_from_db(user_id)
     """
-    def decorator(func: Callable[..., Coroutine[Any, Any, T]]) -> Callable[..., Coroutine[Any, Any, T]]:
+
+    def decorator(
+        func: Callable[..., Coroutine[Any, Any, T]],
+    ) -> Callable[..., Coroutine[Any, Any, T]]:
         @wraps(func)
         async def wrapper(*args, **kwargs) -> T:
             # Generate cache key
             import hashlib
+
             key_parts = [func.__name__] + [str(arg) for arg in args]
             key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
             key_string = "|".join(key_parts)
@@ -497,6 +493,7 @@ def async_cached(cache_manager, namespace: str, ttl: Optional[int] = None):
             return result
 
         return wrapper
+
     return decorator
 
 

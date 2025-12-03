@@ -1,20 +1,22 @@
 """Admin API Keys Management API"""
-import hashlib
-from typing import List, Optional
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
 
-from app.core.dependencies import get_db, get_current_superuser
-from app.models.user import User
+import hashlib
+from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_superuser, get_db
 from app.models.admin.api_key import ApiKey, ApiKeyStatus
+from app.models.user import User
 from app.schemas.admin.api_key import (
     ApiKeyCreate,
-    ApiKeyUpdate,
-    ApiKeyResponse,
-    ApiKeyWithSecret,
     ApiKeyListResponse,
+    ApiKeyResponse,
+    ApiKeyUpdate,
+    ApiKeyWithSecret,
 )
 
 router = APIRouter()
@@ -50,8 +52,7 @@ def list_api_keys(
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
-            (ApiKey.name.ilike(search_pattern)) |
-            (ApiKey.description.ilike(search_pattern))
+            (ApiKey.name.ilike(search_pattern)) | (ApiKey.description.ilike(search_pattern))
         )
 
     # Get total count
@@ -60,12 +61,7 @@ def list_api_keys(
     # Get paginated results
     api_keys = query.order_by(desc(ApiKey.created_at)).offset(skip).limit(limit).all()
 
-    return ApiKeyListResponse(
-        items=api_keys,
-        total=total,
-        skip=skip,
-        limit=limit
-    )
+    return ApiKeyListResponse(items=api_keys, total=total, skip=skip, limit=limit)
 
 
 @router.post("/", response_model=ApiKeyWithSecret, status_code=status.HTTP_201_CREATED)
@@ -122,8 +118,7 @@ def get_api_key(
     api_key = db.query(ApiKey).filter(ApiKey.id == api_key_id).first()
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"API key with id {api_key_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"API key with id {api_key_id} not found"
         )
     return api_key
 
@@ -146,8 +141,7 @@ def update_api_key(
     api_key = db.query(ApiKey).filter(ApiKey.id == api_key_id).first()
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"API key with id {api_key_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"API key with id {api_key_id} not found"
         )
 
     update_data = api_key_in.dict(exclude_unset=True)
@@ -175,8 +169,7 @@ def delete_api_key(
     api_key = db.query(ApiKey).filter(ApiKey.id == api_key_id).first()
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"API key with id {api_key_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"API key with id {api_key_id} not found"
         )
 
     db.delete(api_key)
@@ -200,8 +193,7 @@ def revoke_api_key(
     api_key = db.query(ApiKey).filter(ApiKey.id == api_key_id).first()
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"API key with id {api_key_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"API key with id {api_key_id} not found"
         )
 
     api_key.status = ApiKeyStatus.REVOKED.value
@@ -228,8 +220,7 @@ def rotate_api_key(
     api_key = db.query(ApiKey).filter(ApiKey.id == api_key_id).first()
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"API key with id {api_key_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"API key with id {api_key_id} not found"
         )
 
     # Generate new key
@@ -270,8 +261,7 @@ def get_api_key_usage(
     api_key = db.query(ApiKey).filter(ApiKey.id == api_key_id).first()
     if not api_key:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"API key with id {api_key_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"API key with id {api_key_id} not found"
         )
 
     return {
@@ -303,9 +293,10 @@ def list_user_api_keys(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
-    api_keys = db.query(ApiKey).filter(ApiKey.user_id == user_id).order_by(desc(ApiKey.created_at)).all()
+    api_keys = (
+        db.query(ApiKey).filter(ApiKey.user_id == user_id).order_by(desc(ApiKey.created_at)).all()
+    )
     return api_keys

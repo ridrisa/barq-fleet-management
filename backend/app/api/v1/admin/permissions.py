@@ -1,14 +1,16 @@
 """Admin Permissions Management API"""
+
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_superuser
-from app.models.user import User
+from app.core.dependencies import get_current_superuser, get_db
 from app.models.role import Permission
+from app.models.user import User
 from app.schemas.role import (
-    PermissionResponse,
     PermissionCreate,
+    PermissionResponse,
     PermissionUpdate,
 )
 
@@ -48,15 +50,13 @@ def list_permissions(
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
-            (Permission.name.ilike(search_pattern)) |
-            (Permission.description.ilike(search_pattern))
+            (Permission.name.ilike(search_pattern)) | (Permission.description.ilike(search_pattern))
         )
 
     # Order by resource, then action, and apply pagination
-    permissions = query.order_by(
-        Permission.resource,
-        Permission.action
-    ).offset(skip).limit(limit).all()
+    permissions = (
+        query.order_by(Permission.resource, Permission.action).offset(skip).limit(limit).all()
+    )
 
     return permissions
 
@@ -76,7 +76,7 @@ def get_permission(
     if not permission:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Permission with id {permission_id} not found"
+            detail=f"Permission with id {permission_id} not found",
         )
     return permission
 
@@ -101,20 +101,18 @@ def create_permission(
     - **description**: Optional human-readable description
     """
     # Check if permission with same name already exists
-    existing_permission = db.query(Permission).filter(
-        Permission.name == permission_in.name
-    ).first()
+    existing_permission = db.query(Permission).filter(Permission.name == permission_in.name).first()
     if existing_permission:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Permission with name '{permission_in.name}' already exists"
+            detail=f"Permission with name '{permission_in.name}' already exists",
         )
 
     # Validate name format (should be "resource:action")
     if ":" not in permission_in.name or permission_in.name.count(":") != 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Permission name must follow format 'resource:action'"
+            detail="Permission name must follow format 'resource:action'",
         )
 
     # Create permission
@@ -151,7 +149,7 @@ def update_permission(
     if not permission:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Permission with id {permission_id} not found"
+            detail=f"Permission with id {permission_id} not found",
         )
 
     # Update only the description
@@ -184,14 +182,14 @@ def delete_permission(
     if not permission:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Permission with id {permission_id} not found"
+            detail=f"Permission with id {permission_id} not found",
         )
 
     # Check if permission is assigned to any roles
     if permission.roles:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot delete permission. It is assigned to {len(permission.roles)} role(s)"
+            detail=f"Cannot delete permission. It is assigned to {len(permission.roles)} role(s)",
         )
 
     db.delete(permission)

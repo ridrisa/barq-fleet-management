@@ -1,11 +1,13 @@
 """
 Customer Feedback Schemas
 """
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import Optional, List, Dict, Any
+
 from datetime import datetime
-from enum import Enum
 from decimal import Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FeedbackType(str, Enum):
@@ -55,12 +57,17 @@ class CustomerFeedbackBase(BaseModel):
     source: Optional[str] = Field(None, pattern="^(app|web|email|phone|social)$")
     device_type: Optional[str] = Field(None, pattern="^(ios|android|web)$")
 
-    @field_validator('overall_rating', 'delivery_speed_rating', 'courier_behavior_rating',
-                     'package_condition_rating', 'communication_rating')
+    @field_validator(
+        "overall_rating",
+        "delivery_speed_rating",
+        "courier_behavior_rating",
+        "package_condition_rating",
+        "communication_rating",
+    )
     @classmethod
     def validate_rating(cls, v):
         if v is not None and (v < 1 or v > 5):
-            raise ValueError('Rating must be between 1 and 5')
+            raise ValueError("Rating must be between 1 and 5")
         return v
 
 
@@ -111,6 +118,7 @@ class CustomerFeedbackResponse(CustomerFeedbackBase):
 
 class FeedbackRespondSchema(BaseModel):
     """Schema for responding to feedback"""
+
     response_text: str = Field(..., min_length=10, max_length=2000)
     use_template: Optional[str] = None
     send_email: bool = True
@@ -119,6 +127,7 @@ class FeedbackRespondSchema(BaseModel):
 
 class FeedbackResolveSchema(BaseModel):
     """Schema for resolving feedback"""
+
     resolution_text: str = Field(..., min_length=10, max_length=2000)
     compensation_amount: Optional[Decimal] = Field(None, ge=0)
     refund_amount: Optional[Decimal] = Field(None, ge=0)
@@ -128,6 +137,7 @@ class FeedbackResolveSchema(BaseModel):
 
 class FeedbackEscalateSchema(BaseModel):
     """Schema for escalating feedback"""
+
     escalated_to_id: int
     escalation_reason: str = Field(..., min_length=10, max_length=500)
     priority: str = Field("high", pattern="^(normal|high|urgent)$")
@@ -135,6 +145,7 @@ class FeedbackEscalateSchema(BaseModel):
 
 class FeedbackFollowupSchema(BaseModel):
     """Schema for scheduling follow-up"""
+
     followup_date: datetime
     followup_notes: Optional[str] = None
 
@@ -175,6 +186,7 @@ class FeedbackTemplateResponse(FeedbackTemplateBase):
 # Analytics Schemas
 class FeedbackMetrics(BaseModel):
     """Feedback performance metrics"""
+
     period: str
     total_feedbacks: int
     avg_overall_rating: float
@@ -198,6 +210,7 @@ class FeedbackMetrics(BaseModel):
 
 class FeedbackSummary(BaseModel):
     """Summary of feedback for a courier or delivery"""
+
     subject_id: int
     subject_type: str
     total_feedbacks: int

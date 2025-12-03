@@ -19,6 +19,7 @@ Usage:
     logger = get_logger(__name__)
     logger.info("Processing request", extra={"user_id": 123, "action": "login"})
 """
+
 import json
 import logging
 import os

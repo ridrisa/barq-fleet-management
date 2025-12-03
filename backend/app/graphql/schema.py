@@ -3,23 +3,32 @@ GraphQL Schema for BARQ Fleet
 Main schema definition with Query and Mutation types
 """
 
-import strawberry
 from typing import List, Optional
+
+import strawberry
 from strawberry.types import Info
 
-from app.graphql.types import (
-    LoanType, LeaveTypeGQL, SalaryType,
-    VehicleTypeGQL, VehicleAssignmentType, CourierType,
-    BuildingType, RoomType, CourierDashboard,
-    LeaveRequestInput, LoanRequestInput, MutationResponse,
-)
-from app.graphql.resolvers import QueryResolvers
 from app.core.database import get_db
+from app.graphql.resolvers import QueryResolvers
+from app.graphql.types import (
+    BuildingType,
+    CourierDashboard,
+    CourierType,
+    LeaveRequestInput,
+    LeaveTypeGQL,
+    LoanRequestInput,
+    LoanType,
+    MutationResponse,
+    RoomType,
+    SalaryType,
+    VehicleAssignmentType,
+    VehicleTypeGQL,
+)
 
 
 def get_db_session(info: Info):
     """Get database session from context or create new one"""
-    if hasattr(info.context, 'db'):
+    if hasattr(info.context, "db"):
         return info.context.db
     # Fallback: create new session
     return next(get_db())
@@ -88,9 +97,7 @@ class Query:
     # ============================================
 
     @strawberry.field
-    def courier_salaries(
-        self, info: Info, courier_id: int, limit: int = 12
-    ) -> List[SalaryType]:
+    def courier_salaries(self, info: Info, courier_id: int, limit: int = 12) -> List[SalaryType]:
         """Get salary history for a courier"""
         db = get_db_session(info)
         return QueryResolvers.get_courier_salaries(db, courier_id, limit)
@@ -175,7 +182,9 @@ class Mutation:
         """Submit a leave request"""
         db = get_db_session(info)
         try:
-            from app.models.hr.leave import Leave, LeaveType as DBLeaveType, LeaveStatus as DBLeaveStatus
+            from app.models.hr.leave import Leave
+            from app.models.hr.leave import LeaveStatus as DBLeaveStatus
+            from app.models.hr.leave import LeaveType as DBLeaveType
 
             leave = Leave(
                 courier_id=courier_id,
@@ -207,7 +216,8 @@ class Mutation:
         """Cancel a pending leave request"""
         db = get_db_session(info)
         try:
-            from app.models.hr.leave import Leave, LeaveStatus as DBLeaveStatus
+            from app.models.hr.leave import Leave
+            from app.models.hr.leave import LeaveStatus as DBLeaveStatus
 
             leave = db.query(Leave).filter(Leave.id == leave_id).first()
             if not leave:
@@ -241,7 +251,8 @@ class Mutation:
         """Submit a loan request"""
         db = get_db_session(info)
         try:
-            from app.models.hr.loan import Loan, LoanStatus as DBLoanStatus
+            from app.models.hr.loan import Loan
+            from app.models.hr.loan import LoanStatus as DBLoanStatus
 
             loan = Loan(
                 courier_id=courier_id,

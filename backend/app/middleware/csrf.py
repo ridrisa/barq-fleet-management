@@ -15,7 +15,7 @@ Last Updated: 2025-12-02
 import secrets
 from typing import Callable, List, Optional, Set
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
@@ -68,7 +68,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         header_name: str = "X-CSRF-Token",
         cookie_secure: bool = True,
         cookie_samesite: str = "Lax",
-        token_length: int = 32
+        token_length: int = 32,
     ):
         """
         Initialize CSRF protection middleware
@@ -155,8 +155,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
 
         if not cookie_token:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="CSRF token missing from cookie"
+                status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token missing from cookie"
             )
 
         # Get token from header
@@ -164,21 +163,20 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
 
         if not header_token:
             # Also check in form data for traditional forms
-            if hasattr(request, 'form'):
+            if hasattr(request, "form"):
                 form_data = request.form()
                 header_token = form_data.get(self.cookie_name)
 
         if not header_token:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"CSRF token missing from header ({self.header_name})"
+                detail=f"CSRF token missing from header ({self.header_name})",
             )
 
         # Validate tokens match (constant-time comparison)
         if not secrets.compare_digest(cookie_token, header_token):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="CSRF token validation failed"
+                status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token validation failed"
             )
 
     def _validate_origin(self, request: Request):
@@ -206,15 +204,14 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             if security_config.is_production:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Origin or Referer header required"
+                    detail="Origin or Referer header required",
                 )
             return
 
         # Validate origin matches allowed origins
         if not self._is_allowed_origin(origin):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Origin not allowed: {origin}"
+                status_code=status.HTTP_403_FORBIDDEN, detail=f"Origin not allowed: {origin}"
             )
 
     def _is_allowed_origin(self, origin: str) -> bool:
@@ -239,6 +236,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
 
         # Parse and check domain
         from urllib.parse import urlparse
+
         parsed = urlparse(origin)
         origin_host = f"{parsed.scheme}://{parsed.netloc}"
 
@@ -269,7 +267,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
             path="/",
             secure=self.cookie_secure,
             httponly=False,  # JS needs to read this
-            samesite=self.cookie_samesite
+            samesite=self.cookie_samesite,
         )
 
     def _generate_token(self) -> str:
@@ -372,14 +370,15 @@ def csrf_protect(func: Callable) -> Callable:
         async def protected_endpoint(request: Request):
             ...
     """
+
     async def wrapper(*args, request: Request = None, **kwargs):
         if request is None:
-            request = kwargs.get('request')
+            request = kwargs.get("request")
 
         if request is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Request object required for CSRF protection"
+                detail="Request object required for CSRF protection",
             )
 
         # Get tokens
@@ -389,8 +388,7 @@ def csrf_protect(func: Callable) -> Callable:
         # Validate
         if not CSRFTokenGenerator.validate_token(cookie_token or "", header_token or ""):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="CSRF validation failed"
+                status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed"
             )
 
         return await func(*args, request=request, **kwargs)

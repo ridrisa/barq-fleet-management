@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import date
 from decimal import Decimal
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class SalaryBase(BaseModel):
     courier_id: int = Field(..., description="Courier ID")
@@ -13,8 +15,10 @@ class SalaryBase(BaseModel):
     loan_deduction: Decimal = Field(default=Decimal("0"), ge=0, decimal_places=2)
     gosi_employee: Decimal = Field(default=Decimal("0"), ge=0, decimal_places=2)
 
+
 class SalaryCreate(SalaryBase):
     pass
+
 
 class SalaryUpdate(BaseModel):
     base_salary: Optional[Decimal] = Field(None, ge=0)
@@ -24,6 +28,7 @@ class SalaryUpdate(BaseModel):
     gosi_employee: Optional[Decimal] = Field(None, ge=0)
     gross_salary: Optional[Decimal] = Field(None, ge=0)
     net_salary: Optional[Decimal] = Field(None, ge=0)
+
 
 class SalaryResponse(SalaryBase):
     id: int

@@ -1,6 +1,8 @@
 """Canned Response Model"""
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, Boolean
+
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 
@@ -14,25 +16,20 @@ class CannedResponse(TenantMixin, BaseModel):
     __tablename__ = "canned_responses"
 
     # Response Identification
-    title = Column(
-        String(100),
-        nullable=False,
-        index=True,
-        comment="Response title/name"
-    )
+    title = Column(String(100), nullable=False, index=True, comment="Response title/name")
     shortcut = Column(
         String(50),
         unique=True,
         nullable=True,
         index=True,
-        comment="Keyboard shortcut (e.g., /greeting)"
+        comment="Keyboard shortcut (e.g., /greeting)",
     )
 
     # Content
     content = Column(
         Text,
         nullable=False,
-        comment="Response content (can include variables like {customer_name})"
+        comment="Response content (can include variables like {customer_name})",
     )
 
     # Categorization
@@ -40,30 +37,20 @@ class CannedResponse(TenantMixin, BaseModel):
         String(100),
         nullable=False,
         index=True,
-        comment="Response category (e.g., greeting, closing, technical)"
+        comment="Response category (e.g., greeting, closing, technical)",
     )
 
     # Status
     is_active = Column(
-        Boolean,
-        default=True,
-        nullable=False,
-        index=True,
-        comment="Whether response is active"
+        Boolean, default=True, nullable=False, index=True, comment="Whether response is active"
     )
     is_public = Column(
-        Boolean,
-        default=True,
-        nullable=False,
-        comment="Whether response is available to all agents"
+        Boolean, default=True, nullable=False, comment="Whether response is available to all agents"
     )
 
     # Usage Tracking
     usage_count = Column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Number of times this response was used"
+        Integer, default=0, nullable=False, comment="Number of times this response was used"
     )
 
     # Authorship
@@ -71,7 +58,7 @@ class CannedResponse(TenantMixin, BaseModel):
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        comment="User who created the response"
+        comment="User who created the response",
     )
 
     # Relationships

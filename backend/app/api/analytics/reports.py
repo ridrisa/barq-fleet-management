@@ -2,21 +2,23 @@
 
 Report templates, custom report builder, scheduled reports, and report management.
 """
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
+
 from datetime import date, datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
-
 
 router = APIRouter()
 
 
 class ReportTemplate(BaseModel):
     """Report template schema"""
+
     id: Optional[int] = None
     name: str
     description: Optional[str] = None
@@ -30,6 +32,7 @@ class ReportTemplate(BaseModel):
 
 class ReportSchedule(BaseModel):
     """Report schedule schema"""
+
     id: Optional[int] = None
     template_id: int
     frequency: str  # daily, weekly, monthly
@@ -41,6 +44,7 @@ class ReportSchedule(BaseModel):
 
 class ReportExecution(BaseModel):
     """Report execution request"""
+
     template_id: int
     parameters: Optional[Dict[str, Any]] = None
     format: str = "json"  # json, csv, excel, pdf
@@ -64,7 +68,7 @@ def get_report_templates(
             "parameters": ["start_date", "end_date", "zone_id"],
             "columns": ["date", "deliveries", "success_rate", "revenue"],
             "is_public": True,
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         },
         {
             "id": 2,
@@ -74,7 +78,7 @@ def get_report_templates(
             "parameters": ["start_date", "end_date", "vehicle_id"],
             "columns": ["vehicle", "utilization", "fuel_efficiency", "maintenance_cost"],
             "is_public": True,
-            "created_at": datetime.now().isoformat()
+            "created_at": datetime.now().isoformat(),
         },
         {
             "id": 3,
@@ -84,8 +88,8 @@ def get_report_templates(
             "parameters": ["start_date", "end_date"],
             "columns": ["period", "revenue", "costs", "profit", "margin"],
             "is_public": True,
-            "created_at": datetime.now().isoformat()
-        }
+            "created_at": datetime.now().isoformat(),
+        },
     ]
 
     # Apply filters
@@ -115,7 +119,7 @@ def get_report_template(
         "filters": {},
         "is_public": True,
         "created_by": current_user.id,
-        "created_at": datetime.now().isoformat()
+        "created_at": datetime.now().isoformat(),
     }
 
 
@@ -138,7 +142,7 @@ def create_report_template(
         "is_public": template.is_public,
         "created_by": current_user.id,
         "created_at": datetime.now().isoformat(),
-        "message": "Report template created successfully"
+        "message": "Report template created successfully",
     }
 
 
@@ -155,7 +159,7 @@ def update_report_template(
         "id": template_id,
         "name": template.name,
         "updated_at": datetime.now().isoformat(),
-        "message": "Report template updated successfully"
+        "message": "Report template updated successfully",
     }
 
 
@@ -188,10 +192,7 @@ def execute_report(
         "executed_by": current_user.id,
         "format": execution.format,
         "data": [],
-        "summary": {
-            "total_rows": 0,
-            "execution_time_ms": 0
-        }
+        "summary": {"total_rows": 0, "execution_time_ms": 0},
     }
 
 
@@ -212,7 +213,7 @@ def get_report_history(
             "executed_by": "user@example.com",
             "status": "completed",
             "format": "pdf",
-            "file_url": "/reports/download/1"
+            "file_url": "/reports/download/1",
         }
     ]
 
@@ -249,7 +250,7 @@ def get_report_schedules(
             "format": "pdf",
             "is_active": True,
             "next_run": (datetime.now() + timedelta(days=1)).isoformat(),
-            "last_run": datetime.now().isoformat()
+            "last_run": datetime.now().isoformat(),
         }
     ]
 
@@ -275,7 +276,7 @@ def create_report_schedule(
         "format": schedule.format,
         "is_active": schedule.is_active,
         "created_at": datetime.now().isoformat(),
-        "message": "Report schedule created successfully"
+        "message": "Report schedule created successfully",
     }
 
 
@@ -291,7 +292,7 @@ def update_report_schedule(
     return {
         "id": schedule_id,
         "updated_at": datetime.now().isoformat(),
-        "message": "Report schedule updated successfully"
+        "message": "Report schedule updated successfully",
     }
 
 
@@ -318,7 +319,7 @@ def run_scheduled_report_now(
         "schedule_id": schedule_id,
         "executed_at": datetime.now().isoformat(),
         "status": "running",
-        "message": "Report execution started"
+        "message": "Report execution started",
     }
 
 
@@ -337,21 +338,18 @@ def get_available_fields(
             {"name": "courier_name", "type": "string", "label": "Courier Name"},
             {"name": "zone", "type": "string", "label": "Zone"},
             {"name": "status", "type": "string", "label": "Status"},
-            {"name": "revenue", "type": "decimal", "label": "Revenue"}
+            {"name": "revenue", "type": "decimal", "label": "Revenue"},
         ],
         "fleet": [
             {"name": "vehicle_id", "type": "integer", "label": "Vehicle ID"},
             {"name": "registration", "type": "string", "label": "Registration"},
             {"name": "vehicle_type", "type": "string", "label": "Vehicle Type"},
             {"name": "utilization_rate", "type": "decimal", "label": "Utilization Rate"},
-            {"name": "fuel_efficiency", "type": "decimal", "label": "Fuel Efficiency"}
-        ]
+            {"name": "fuel_efficiency", "type": "decimal", "label": "Fuel Efficiency"},
+        ],
     }
 
-    return {
-        "report_type": report_type,
-        "fields": fields.get(report_type, [])
-    }
+    return {"report_type": report_type, "fields": fields.get(report_type, [])}
 
 
 @router.get("/share/{report_id}")
@@ -367,5 +365,5 @@ def share_report(
         "report_id": report_id,
         "shared_with": recipients,
         "shared_at": datetime.now().isoformat(),
-        "message": "Report shared successfully"
+        "message": "Report shared successfully",
     }

@@ -22,6 +22,7 @@ Usage:
         code="INVALID_PHONE_FORMAT"
     )
 """
+
 from typing import Any, Dict, List, Optional
 
 
@@ -157,9 +158,7 @@ class BadRequestException(AppException):
         code: str = ErrorCode.BAD_REQUEST,
         errors: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
-        super().__init__(
-            status_code=400, detail=detail, code=code, errors=errors
-        )
+        super().__init__(status_code=400, detail=detail, code=code, errors=errors)
 
 
 class ValidationException(BadRequestException):
@@ -355,9 +354,7 @@ class StateTransitionException(ConflictException):
         target_state: Optional[str] = None,
     ) -> None:
         if current_state and target_state:
-            detail = (
-                f"Cannot transition from '{current_state}' to '{target_state}'"
-            )
+            detail = f"Cannot transition from '{current_state}' to '{target_state}'"
         super().__init__(detail=detail, code=ErrorCode.STATE_TRANSITION_INVALID)
 
 
@@ -375,9 +372,7 @@ class UnprocessableEntityException(AppException):
         code: str = ErrorCode.OPERATION_NOT_ALLOWED,
         errors: Optional[List[Dict[str, Any]]] = None,
     ) -> None:
-        super().__init__(
-            status_code=422, detail=detail, code=code, errors=errors
-        )
+        super().__init__(status_code=422, detail=detail, code=code, errors=errors)
 
 
 # =============================================================================
@@ -480,9 +475,7 @@ def get_exception_handlers() -> Dict[type, Any]:
     from fastapi import Request
     from fastapi.responses import JSONResponse
 
-    async def app_exception_handler(
-        request: Request, exc: AppException
-    ) -> JSONResponse:
+    async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content=exc.to_dict(),

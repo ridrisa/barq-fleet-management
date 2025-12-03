@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
+import enum
+
+from sqlalchemy import Boolean, Column, Date, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class QualityMetricType(str, enum.Enum):
     """Type of quality metric"""
+
     DELIVERY_QUALITY = "delivery_quality"
     CUSTOMER_SATISFACTION = "customer_satisfaction"
     VEHICLE_CONDITION = "vehicle_condition"
@@ -18,6 +23,7 @@ class QualityMetricType(str, enum.Enum):
 
 class InspectionStatus(str, enum.Enum):
     """Quality inspection status"""
+
     SCHEDULED = "scheduled"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -113,7 +119,11 @@ class QualityInspection(TenantMixin, BaseModel):
     @property
     def is_completed(self) -> bool:
         """Check if inspection is completed"""
-        return self.status in [InspectionStatus.COMPLETED, InspectionStatus.PASSED, InspectionStatus.FAILED]
+        return self.status in [
+            InspectionStatus.COMPLETED,
+            InspectionStatus.PASSED,
+            InspectionStatus.FAILED,
+        ]
 
     @property
     def needs_attention(self) -> bool:

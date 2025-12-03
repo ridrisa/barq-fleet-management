@@ -2,8 +2,11 @@
 FMS Assets API Routes
 Provides endpoints for vehicle/asset tracking data from machinettalk.
 """
+
 from typing import Optional
-from fastapi import APIRouter, Depends, Query, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.fms import get_fms_client
@@ -26,8 +29,7 @@ async def get_assets(
 
     if result.get("error"):
         raise HTTPException(
-            status_code=502,
-            detail=result.get("message", "FMS service unavailable")
+            status_code=502, detail=result.get("message", "FMS service unavailable")
         )
 
     return result
@@ -48,7 +50,7 @@ async def get_asset_by_id(
     if result.get("error"):
         raise HTTPException(
             status_code=502 if "unavailable" in str(result.get("message", "")).lower() else 404,
-            detail=result.get("message", "Asset not found")
+            detail=result.get("message", "Asset not found"),
         )
 
     return result
@@ -69,7 +71,7 @@ async def get_asset_by_plate(
     if result.get("error"):
         raise HTTPException(
             status_code=502 if "unavailable" in str(result.get("message", "")).lower() else 404,
-            detail=result.get("message", "Asset not found")
+            detail=result.get("message", "Asset not found"),
         )
 
     return result
@@ -91,8 +93,7 @@ async def get_location_history(
 
     if result.get("error"):
         raise HTTPException(
-            status_code=502,
-            detail=result.get("message", "Failed to get location history")
+            status_code=502, detail=result.get("message", "Failed to get location history")
         )
 
     return result
@@ -133,15 +134,12 @@ async def search_nearby_assets(
             dlat = math.radians(asset_lat - latitude)
             dlng = math.radians(asset_lng - longitude)
 
-            a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng/2)**2
-            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
             distance = R * c
 
             if distance <= radius_km:
-                nearby.append({
-                    **asset,
-                    "distance_km": round(distance, 2)
-                })
+                nearby.append({**asset, "distance_km": round(distance, 2)})
 
     # Sort by distance
     nearby.sort(key=lambda x: x.get("distance_km", float("inf")))
@@ -150,5 +148,5 @@ async def search_nearby_assets(
         "result": nearby,
         "totalCount": len(nearby),
         "center": {"latitude": latitude, "longitude": longitude},
-        "radius_km": radius_km
+        "radius_km": radius_km,
     }

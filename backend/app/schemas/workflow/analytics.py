@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # Workflow Metrics Schemas
@@ -177,6 +178,7 @@ class WorkflowUserMetricsResponse(WorkflowUserMetricsBase):
 # Analytics Query Schemas
 class WorkflowAnalyticsQuery(BaseModel):
     """Query parameters for workflow analytics"""
+
     workflow_template_id: Optional[int] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
@@ -186,6 +188,7 @@ class WorkflowAnalyticsQuery(BaseModel):
 
 class WorkflowBottleneckResponse(BaseModel):
     """Bottleneck analysis response"""
+
     workflow_template_id: int
     bottlenecks: List[Dict[str, Any]]
     recommendations: List[str]
@@ -193,6 +196,7 @@ class WorkflowBottleneckResponse(BaseModel):
 
 class WorkflowPerformanceReport(BaseModel):
     """Comprehensive performance report"""
+
     workflow_template_id: int
     period_start: date
     period_end: date

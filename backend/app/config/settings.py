@@ -1,6 +1,7 @@
 import os
 from typing import List, Optional
 from urllib.parse import quote_plus
+
 from dotenv import load_dotenv
 
 # Load .env file

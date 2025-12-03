@@ -1,13 +1,19 @@
 """Live Chat Session Model"""
-from sqlalchemy import Column, String, Integer, ForeignKey, Enum as SQLEnum, DateTime
+
+import enum
+
+from sqlalchemy import Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class ChatStatus(str, enum.Enum):
     """Chat session status"""
+
     WAITING = "waiting"
     ACTIVE = "active"
     ENDED = "ended"
@@ -24,11 +30,7 @@ class ChatSession(TenantMixin, BaseModel):
 
     # Session Identification
     session_id = Column(
-        String(50),
-        unique=True,
-        nullable=False,
-        index=True,
-        comment="Unique session identifier"
+        String(50), unique=True, nullable=False, index=True, comment="Unique session identifier"
     )
 
     # Participants
@@ -37,14 +39,14 @@ class ChatSession(TenantMixin, BaseModel):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Customer user ID"
+        comment="Customer user ID",
     )
     agent_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
-        comment="Support agent user ID"
+        comment="Support agent user ID",
     )
 
     # Status
@@ -53,27 +55,17 @@ class ChatSession(TenantMixin, BaseModel):
         default=ChatStatus.WAITING,
         nullable=False,
         index=True,
-        comment="Current session status"
+        comment="Current session status",
     )
 
     # Timestamps
     started_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="When agent joined the chat"
+        DateTime(timezone=True), nullable=True, comment="When agent joined the chat"
     )
-    ended_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="When chat session ended"
-    )
+    ended_at = Column(DateTime(timezone=True), nullable=True, comment="When chat session ended")
 
     # Metadata
-    initial_message = Column(
-        String(500),
-        nullable=True,
-        comment="Customer's initial message"
-    )
+    initial_message = Column(String(500), nullable=True, comment="Customer's initial message")
 
     # Relationships
     customer = relationship("User", foreign_keys=[customer_id], backref="customer_chats")

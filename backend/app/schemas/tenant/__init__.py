@@ -3,16 +3,16 @@
 from app.schemas.tenant.organization import (
     OrganizationBase,
     OrganizationCreate,
-    OrganizationUpdate,
     OrganizationResponse,
+    OrganizationUpdate,
     OrganizationWithStats,
     SubscriptionUpgrade,
 )
 from app.schemas.tenant.organization_user import (
     OrganizationUserBase,
     OrganizationUserCreate,
-    OrganizationUserUpdate,
     OrganizationUserResponse,
+    OrganizationUserUpdate,
     OrganizationUserWithDetails,
 )
 

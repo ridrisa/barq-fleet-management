@@ -1,18 +1,25 @@
 """Live Chat API Routes"""
+
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status, WebSocket, WebSocketDisconnect
+
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
-from app.models.user import User
+from app.core.dependencies import get_current_user, get_db
 from app.models.support import ChatStatus
+from app.models.user import User
 from app.schemas.support import (
-    ChatSessionCreate, ChatSessionUpdate, ChatSessionResponse,
-    ChatSessionList, ChatSessionAssign, ChatSessionTransfer,
-    ChatMessageCreate, ChatMessageResponse, ChatTranscript
+    ChatMessageCreate,
+    ChatMessageResponse,
+    ChatSessionAssign,
+    ChatSessionCreate,
+    ChatSessionList,
+    ChatSessionResponse,
+    ChatSessionTransfer,
+    ChatSessionUpdate,
+    ChatTranscript,
 )
-from app.services.support import chat_session_service, chat_message_service
-
+from app.services.support import chat_message_service, chat_session_service
 
 router = APIRouter()
 
@@ -40,12 +47,7 @@ def get_chat_sessions(
         return chat_session_service.get_waiting_sessions(db)
 
     if agent_id:
-        return chat_session_service.get_by_agent(
-            db,
-            agent_id=agent_id,
-            skip=skip,
-            limit=limit
-        )
+        return chat_session_service.get_by_agent(db, agent_id=agent_id, skip=skip, limit=limit)
 
     return chat_session_service.get_multi(db, skip=skip, limit=limit)
 
@@ -58,9 +60,7 @@ def create_chat_session(
 ):
     """Create new chat session (customer initiates chat)"""
     return chat_session_service.create_session(
-        db,
-        customer_id=current_user.id,
-        initial_message=session_in.initial_message
+        db, customer_id=current_user.id, initial_message=session_in.initial_message
     )
 
 
@@ -82,10 +82,7 @@ def get_my_chat_sessions(
 ):
     """Get chat sessions for current user (as customer)"""
     return chat_session_service.get_by_customer(
-        db,
-        customer_id=current_user.id,
-        skip=skip,
-        limit=limit
+        db, customer_id=current_user.id, skip=skip, limit=limit
     )
 
 
@@ -97,12 +94,7 @@ def get_assigned_chat_sessions(
     current_user: User = Depends(get_current_user),
 ):
     """Get chat sessions assigned to current user (as agent)"""
-    return chat_session_service.get_by_agent(
-        db,
-        agent_id=current_user.id,
-        skip=skip,
-        limit=limit
-    )
+    return chat_session_service.get_by_agent(db, agent_id=current_user.id, skip=skip, limit=limit)
 
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionResponse)
@@ -114,10 +106,7 @@ def get_chat_session(
     """Get chat session by ID"""
     session = chat_session_service.get(db, id=session_id)
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
     return session
 
 
@@ -131,10 +120,7 @@ def update_chat_session(
     """Update chat session"""
     session = chat_session_service.get(db, id=session_id)
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
     return chat_session_service.update(db, db_obj=session, obj_in=session_in)
 
 
@@ -147,15 +133,10 @@ def assign_chat_session(
 ):
     """Assign chat session to an agent"""
     session = chat_session_service.assign_agent(
-        db,
-        session_id=session_id,
-        agent_id=assign_data.agent_id
+        db, session_id=session_id, agent_id=assign_data.agent_id
     )
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
     return session
 
 
@@ -168,15 +149,10 @@ def transfer_chat_session(
 ):
     """Transfer chat session to another agent"""
     session = chat_session_service.transfer_session(
-        db,
-        session_id=session_id,
-        new_agent_id=transfer_data.new_agent_id
+        db, session_id=session_id, new_agent_id=transfer_data.new_agent_id
     )
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
     return session
 
 
@@ -189,10 +165,7 @@ def end_chat_session(
     """End chat session"""
     session = chat_session_service.end_session(db, session_id=session_id)
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
     return session
 
 
@@ -207,20 +180,16 @@ def get_chat_messages(
     """Get all messages for a chat session"""
     session = chat_session_service.get(db, id=session_id)
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
 
-    return chat_message_service.get_by_session(
-        db,
-        session_id=session_id,
-        skip=skip,
-        limit=limit
-    )
+    return chat_message_service.get_by_session(db, session_id=session_id, skip=skip, limit=limit)
 
 
-@router.post("/sessions/{session_id}/messages", response_model=ChatMessageResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/sessions/{session_id}/messages",
+    response_model=ChatMessageResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def send_chat_message(
     session_id: int,
     message_in: ChatMessageCreate,
@@ -230,10 +199,7 @@ def send_chat_message(
     """Send a message in a chat session"""
     session = chat_session_service.get(db, id=session_id)
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
 
     # Determine if user is agent or customer
     is_agent = session.agent_id == current_user.id
@@ -244,7 +210,7 @@ def send_chat_message(
         sender_id=current_user.id,
         message=message_in.message,
         is_agent=is_agent,
-        is_system=False
+        is_system=False,
     )
 
 
@@ -257,10 +223,7 @@ def get_chat_transcript(
     """Get chat transcript for download"""
     session = chat_session_service.get(db, id=session_id)
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
 
     messages = chat_message_service.get_by_session(db, session_id=session_id)
 
@@ -277,7 +240,7 @@ def get_chat_transcript(
         "started_at": session.started_at,
         "ended_at": session.ended_at,
         "duration_minutes": duration_minutes,
-        "messages": messages
+        "messages": messages,
     }
 
 

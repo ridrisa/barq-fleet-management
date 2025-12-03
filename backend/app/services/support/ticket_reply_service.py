@@ -1,11 +1,13 @@
 """Ticket Reply Service"""
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
 
-from app.services.base import CRUDBase
+from typing import List, Optional
+
+from sqlalchemy import and_
+from sqlalchemy.orm import Session
+
 from app.models.support import TicketReply
 from app.schemas.support import TicketReplyCreate, TicketReplyUpdate
+from app.services.base import CRUDBase
 
 
 class TicketReplyService(CRUDBase[TicketReply, TicketReplyCreate, TicketReplyUpdate]):
@@ -18,7 +20,7 @@ class TicketReplyService(CRUDBase[TicketReply, TicketReplyCreate, TicketReplyUpd
         ticket_id: int,
         skip: int = 0,
         limit: int = 100,
-        include_internal: bool = True
+        include_internal: bool = True,
     ) -> List[TicketReply]:
         """
         Get all replies for a specific ticket
@@ -41,12 +43,7 @@ class TicketReplyService(CRUDBase[TicketReply, TicketReplyCreate, TicketReplyUpd
         return query.order_by(self.model.created_at.asc()).offset(skip).limit(limit).all()
 
     def get_by_user(
-        self,
-        db: Session,
-        *,
-        user_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, user_id: int, skip: int = 0, limit: int = 100
     ) -> List[TicketReply]:
         """
         Get all replies by a specific user

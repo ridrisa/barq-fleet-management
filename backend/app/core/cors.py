@@ -13,7 +13,9 @@ Last Updated: 2025-12-02
 """
 
 from typing import List, Optional
+
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.core.security_config import security_config
 
 
@@ -148,6 +150,7 @@ def validate_origin(origin: str) -> bool:
 
 
 # Pre-defined CORS configurations for common scenarios
+
 
 class DevelopmentCORS:
     """CORS configuration for development environment"""

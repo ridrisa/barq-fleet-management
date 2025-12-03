@@ -7,13 +7,15 @@ Provides SMS notifications for:
 - Emergency notifications
 - OTP/verification codes
 """
-from typing import Optional
-from decimal import Decimal
+
 import logging
+from decimal import Decimal
+from typing import Optional
 
 # Twilio SDK
 try:
     from twilio.rest import Client as TwilioClient
+
     TWILIO_AVAILABLE = True
 except ImportError:
     TWILIO_AVAILABLE = False
@@ -35,7 +37,7 @@ class SMSNotificationService:
         self,
         account_sid: Optional[str] = None,
         auth_token: Optional[str] = None,
-        from_phone: str = "+966501234567"  # Default Saudi number
+        from_phone: str = "+966501234567",  # Default Saudi number
     ):
         """
         Initialize SMS notification service
@@ -57,11 +59,7 @@ class SMSNotificationService:
             self.client = None
             self.logger.warning("Running in mock mode - SMS will be logged but not sent")
 
-    def send_sms(
-        self,
-        to_phone: str,
-        message: str
-    ) -> bool:
+    def send_sms(self, to_phone: str, message: str) -> bool:
         """
         Send a single SMS
 
@@ -76,9 +74,7 @@ class SMSNotificationService:
             if self.client:
                 # Send via Twilio
                 message_obj = self.client.messages.create(
-                    body=message,
-                    from_=self.from_phone,
-                    to=to_phone
+                    body=message, from_=self.from_phone, to=to_phone
                 )
                 self.logger.info(f"SMS sent to {to_phone} - SID: {message_obj.sid}")
                 return message_obj.status in ["queued", "sent", "delivered"]
@@ -97,12 +93,7 @@ class SMSNotificationService:
             return False
 
     def send_leave_approval_sms(
-        self,
-        to_phone: str,
-        courier_name: str,
-        leave_type: str,
-        start_date: str,
-        end_date: str
+        self, to_phone: str, courier_name: str, leave_type: str, start_date: str, end_date: str
     ) -> bool:
         """Send leave approval SMS"""
         message = (
@@ -115,12 +106,7 @@ class SMSNotificationService:
 
         return self.send_sms(to_phone, message)
 
-    def send_leave_rejection_sms(
-        self,
-        to_phone: str,
-        courier_name: str,
-        leave_type: str
-    ) -> bool:
+    def send_leave_rejection_sms(self, to_phone: str, courier_name: str, leave_type: str) -> bool:
         """Send leave rejection SMS"""
         message = (
             f"مرحبا {courier_name},\n"
@@ -132,12 +118,7 @@ class SMSNotificationService:
         return self.send_sms(to_phone, message)
 
     def send_salary_payment_sms(
-        self,
-        to_phone: str,
-        courier_name: str,
-        month: int,
-        year: int,
-        net_salary: Decimal
+        self, to_phone: str, courier_name: str, month: int, year: int, net_salary: Decimal
     ) -> bool:
         """Send salary payment SMS"""
         message = (
@@ -155,7 +136,7 @@ class SMSNotificationService:
         courier_name: str,
         document_type: str,
         expiry_date: str,
-        days_remaining: int
+        days_remaining: int,
     ) -> bool:
         """Send document expiry alert"""
         urgency = "عاجل" if days_remaining <= 7 else "تنبيه"
@@ -169,12 +150,7 @@ class SMSNotificationService:
 
         return self.send_sms(to_phone, message)
 
-    def send_otp_code(
-        self,
-        to_phone: str,
-        otp_code: str,
-        expiry_minutes: int = 5
-    ) -> bool:
+    def send_otp_code(self, to_phone: str, otp_code: str, expiry_minutes: int = 5) -> bool:
         """Send OTP verification code"""
         message = (
             f"رمز التحقق الخاص بك: {otp_code}\n"
@@ -184,54 +160,27 @@ class SMSNotificationService:
 
         return self.send_sms(to_phone, message)
 
-    def send_emergency_alert(
-        self,
-        to_phone: str,
-        courier_name: str,
-        message_text: str
-    ) -> bool:
+    def send_emergency_alert(self, to_phone: str, courier_name: str, message_text: str) -> bool:
         """Send emergency alert"""
-        message = (
-            f"تنبيه طارئ - {courier_name}:\n"
-            f"{message_text}\n"
-            f"BARQ Fleet Management"
-        )
+        message = f"تنبيه طارئ - {courier_name}:\n" f"{message_text}\n" f"BARQ Fleet Management"
 
         return self.send_sms(to_phone, message)
 
-    def send_password_reset_sms(
-        self,
-        to_phone: str,
-        reset_code: str
-    ) -> bool:
+    def send_password_reset_sms(self, to_phone: str, reset_code: str) -> bool:
         """Send password reset code"""
-        message = (
-            f"رمز إعادة تعيين كلمة المرور: {reset_code}\n"
-            f"صالح لمدة 15 دقيقة\n"
-            f"BARQ"
-        )
+        message = f"رمز إعادة تعيين كلمة المرور: {reset_code}\n" f"صالح لمدة 15 دقيقة\n" f"BARQ"
 
         return self.send_sms(to_phone, message)
 
-    def send_attendance_reminder(
-        self,
-        to_phone: str,
-        courier_name: str
-    ) -> bool:
+    def send_attendance_reminder(self, to_phone: str, courier_name: str) -> bool:
         """Send attendance reminder"""
         message = (
-            f"تذكير: {courier_name}\n"
-            f"لم يتم تسجيل حضورك اليوم\n"
-            f"يرجى تسجيل الحضور - BARQ"
+            f"تذكير: {courier_name}\n" f"لم يتم تسجيل حضورك اليوم\n" f"يرجى تسجيل الحضور - BARQ"
         )
 
         return self.send_sms(to_phone, message)
 
-    def send_bulk_sms(
-        self,
-        phone_numbers: list,
-        message: str
-    ) -> dict:
+    def send_bulk_sms(self, phone_numbers: list, message: str) -> dict:
         """
         Send bulk SMS to multiple recipients
 
@@ -262,7 +211,7 @@ class SMSNotificationService:
             "total": len(phone_numbers),
             "success": success_count,
             "failure": failure_count,
-            "failed_numbers": failed_numbers
+            "failed_numbers": failed_numbers,
         }
 
 

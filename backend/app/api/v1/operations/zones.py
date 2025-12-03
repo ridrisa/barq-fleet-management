@@ -1,12 +1,13 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from app.crud.operations import zone as crud_zone
-from app.schemas.operations.zone import (
-    ZoneCreate, ZoneUpdate, ZoneResponse, ZoneMetrics
-)
+
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_organization, get_current_user
+from app.crud.operations import zone as crud_zone
+from app.models.tenant.organization import Organization
+from app.schemas.operations.zone import ZoneCreate, ZoneMetrics, ZoneResponse, ZoneUpdate
 
 router = APIRouter()
 
@@ -18,22 +19,28 @@ def list_zones(
     city: str = Query(None, description="Filter by city"),
     status: str = Query(None, description="Filter by status"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """List all zones with optional filters"""
     if city:
-        zones = crud_zone.get_by_city(db, city=city, skip=skip, limit=limit)
+        zones = crud_zone.get_by_city(
+            db, city=city, skip=skip, limit=limit, organization_id=current_org.id
+        )
     elif status == "active":
-        zones = crud_zone.get_active_zones(db, skip=skip, limit=limit)
+        zones = crud_zone.get_active_zones(
+            db, skip=skip, limit=limit, organization_id=current_org.id
+        )
     else:
-        zones = crud_zone.get_multi(db, skip=skip, limit=limit)
+        zones = crud_zone.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
     return zones
 
 
 @router.get("/at-capacity", response_model=List[ZoneResponse])
 def list_zones_at_capacity(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """List zones at or near capacity
 
@@ -42,7 +49,7 @@ def list_zones_at_capacity(
     - Used for load balancing decisions
     - Helps identify zones needing additional resources
     """
-    zones = crud_zone.get_at_capacity(db)
+    zones = crud_zone.get_at_capacity(db, organization_id=current_org.id)
     return zones
 
 
@@ -50,15 +57,13 @@ def list_zones_at_capacity(
 def get_zone(
     zone_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific zone by ID"""
     zone = crud_zone.get(db, id=zone_id)
-    if not zone:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Zone not found"
-        )
+    if not zone or zone.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
     return zone
 
 
@@ -66,15 +71,13 @@ def get_zone(
 def get_zone_by_code(
     zone_code: str,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get zone by unique code"""
-    zone = crud_zone.get_by_code(db, zone_code=zone_code)
+    zone = crud_zone.get_by_code(db, zone_code=zone_code, organization_id=current_org.id)
     if not zone:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Zone not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
     return zone
 
 
@@ -82,28 +85,31 @@ def get_zone_by_code(
 def create_zone(
     zone_in: ZoneCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Create a new delivery zone
 
     Business Logic:
-    - Validates zone code is unique
+    - Validates zone code is unique within organization
     - Validates GeoJSON boundaries if provided
     - Initializes performance metrics to 0
     - Sets status to ACTIVE by default
     """
-    # Check if zone code already exists
-    existing_zone = crud_zone.get_by_code(db, zone_code=zone_in.zone_code)
+    # Check if zone code already exists in organization
+    existing_zone = crud_zone.get_by_code(
+        db, zone_code=zone_in.zone_code, organization_id=current_org.id
+    )
     if existing_zone:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Zone with code '{zone_in.zone_code}' already exists"
+            detail=f"Zone with code '{zone_in.zone_code}' already exists",
         )
 
     # TODO: Validate GeoJSON boundaries
     # TODO: Calculate coverage area from boundaries
 
-    zone = crud_zone.create(db, obj_in=zone_in)
+    zone = crud_zone.create(db, obj_in=zone_in, organization_id=current_org.id)
     return zone
 
 
@@ -112,15 +118,13 @@ def update_zone(
     zone_id: int,
     zone_in: ZoneUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Update a zone"""
     zone = crud_zone.get(db, id=zone_id)
-    if not zone:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Zone not found"
-        )
+    if not zone or zone.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
     zone = crud_zone.update(db, db_obj=zone, obj_in=zone_in)
     return zone
 
@@ -129,7 +133,8 @@ def update_zone(
 def delete_zone(
     zone_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a zone
 
@@ -139,17 +144,14 @@ def delete_zone(
     - Soft delete or hard delete based on business rules
     """
     zone = crud_zone.get(db, id=zone_id)
-    if not zone:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Zone not found"
-        )
+    if not zone or zone.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
     # Check if zone has active couriers
     if zone.current_couriers > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete zone with active couriers"
+            detail="Cannot delete zone with active couriers",
         )
 
     crud_zone.remove(db, id=zone_id)
@@ -160,7 +162,8 @@ def delete_zone(
 def get_zone_metrics(
     zone_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get zone performance metrics
 
@@ -172,14 +175,11 @@ def get_zone_metrics(
     - Capacity status
     """
     zone = crud_zone.get(db, id=zone_id)
-    if not zone:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Zone not found"
-        )
+    if not zone or zone.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
     # Calculate utilization rate
-    utilization_rate = zone.utilization_rate if hasattr(zone, 'utilization_rate') else 0.0
+    utilization_rate = zone.utilization_rate if hasattr(zone, "utilization_rate") else 0.0
 
     metrics = ZoneMetrics(
         zone_id=zone.id,
@@ -191,7 +191,7 @@ def get_zone_metrics(
         avg_delivery_time_minutes=zone.avg_delivery_time_minutes or 0.0,
         total_deliveries_today=0,  # TODO: Calculate from deliveries
         success_rate=zone.success_rate or 0.0,
-        is_at_capacity=zone.is_at_capacity if hasattr(zone, 'is_at_capacity') else False
+        is_at_capacity=zone.is_at_capacity if hasattr(zone, "is_at_capacity") else False,
     )
 
     return metrics
@@ -201,7 +201,8 @@ def get_zone_metrics(
 def increment_courier_count(
     zone_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Increment zone courier count
 
@@ -211,16 +212,12 @@ def increment_courier_count(
     - Updates current_couriers count
     """
     zone = crud_zone.get(db, id=zone_id)
-    if not zone:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Zone not found"
-        )
+    if not zone or zone.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
     if zone.current_couriers >= zone.max_couriers:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Zone is at maximum capacity"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Zone is at maximum capacity"
         )
 
     zone = crud_zone.increment_courier_count(db, zone_id=zone_id)
@@ -231,7 +228,8 @@ def increment_courier_count(
 def decrement_courier_count(
     zone_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Decrement zone courier count
 
@@ -241,11 +239,8 @@ def decrement_courier_count(
     - Prevents negative count
     """
     zone = crud_zone.get(db, id=zone_id)
-    if not zone:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Zone not found"
-        )
+    if not zone or zone.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
     zone = crud_zone.decrement_courier_count(db, zone_id=zone_id)
     return zone

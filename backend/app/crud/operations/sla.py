@@ -1,15 +1,16 @@
-from typing import List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
+from typing import List, Optional
+
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.crud.base import CRUDBase
-from app.models.operations.sla import (
-    SLADefinition, SLATracking,
-    SLAType, SLAStatus
-)
+from app.models.operations.sla import SLADefinition, SLAStatus, SLATracking, SLAType
 from app.schemas.operations.sla import (
-    SLADefinitionCreate, SLADefinitionUpdate,
-    SLATrackingCreate, SLATrackingUpdate
+    SLADefinitionCreate,
+    SLADefinitionUpdate,
+    SLATrackingCreate,
+    SLATrackingUpdate,
 )
 
 
@@ -26,7 +27,7 @@ class CRUDSLADefinition(CRUDBase[SLADefinition, SLADefinitionCreate, SLADefiniti
             .filter(
                 SLADefinition.is_active == True,
                 SLADefinition.effective_from <= now,
-                (SLADefinition.effective_until.is_(None)) | (SLADefinition.effective_until >= now)
+                (SLADefinition.effective_until.is_(None)) | (SLADefinition.effective_until >= now),
             )
             .all()
         )
@@ -100,11 +101,7 @@ class CRUDSLATracking(CRUDBase[SLATracking, SLATrackingCreate, SLATrackingUpdate
 
     def get_by_delivery(self, db: Session, *, delivery_id: int) -> List[SLATracking]:
         """Get SLA trackings for a delivery"""
-        return (
-            db.query(SLATracking)
-            .filter(SLATracking.delivery_id == delivery_id)
-            .all()
-        )
+        return db.query(SLATracking).filter(SLATracking.delivery_id == delivery_id).all()
 
     def get_by_courier(
         self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
@@ -135,7 +132,9 @@ class CRUDSLATracking(CRUDBase[SLATracking, SLATrackingCreate, SLATrackingUpdate
             db.refresh(tracking)
         return tracking
 
-    def mark_as_met(self, db: Session, *, tracking_id: int, actual_value: float) -> Optional[SLATracking]:
+    def mark_as_met(
+        self, db: Session, *, tracking_id: int, actual_value: float
+    ) -> Optional[SLATracking]:
         """Mark SLA as met"""
         tracking = self.get(db, id=tracking_id)
         if tracking:
@@ -145,7 +144,9 @@ class CRUDSLATracking(CRUDBase[SLATracking, SLATrackingCreate, SLATrackingUpdate
             # Calculate variance
             tracking.variance = actual_value - float(tracking.target_value)
             if tracking.target_value != 0:
-                tracking.variance_percentage = (tracking.variance / float(tracking.target_value)) * 100
+                tracking.variance_percentage = (
+                    tracking.variance / float(tracking.target_value)
+                ) * 100
             # Calculate compliance score
             tracking.compliance_score = max(0, min(100, 100 - abs(tracking.variance_percentage)))
             db.add(tracking)
@@ -153,7 +154,9 @@ class CRUDSLATracking(CRUDBase[SLATracking, SLATrackingCreate, SLATrackingUpdate
             db.refresh(tracking)
         return tracking
 
-    def escalate(self, db: Session, *, tracking_id: int, escalated_to_id: int) -> Optional[SLATracking]:
+    def escalate(
+        self, db: Session, *, tracking_id: int, escalated_to_id: int
+    ) -> Optional[SLATracking]:
         """Escalate SLA tracking"""
         tracking = self.get(db, id=tracking_id)
         if tracking:

@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AutomationTriggerType(str, Enum):
@@ -121,10 +122,12 @@ class AutomationExecutionLogResponse(AutomationExecutionLogBase):
 # Action Schemas
 class AutomationExecuteRequest(BaseModel):
     """Manual trigger for automation"""
+
     trigger_data: Optional[Dict[str, Any]] = None
 
 
 class AutomationTestRequest(BaseModel):
     """Test automation configuration"""
+
     test_data: Optional[Dict[str, Any]] = None
     dry_run: bool = True

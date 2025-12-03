@@ -1,8 +1,10 @@
 """Backup Model for Database Backups"""
+
 import enum
-from sqlalchemy import Column, Integer, String, BigInteger, Boolean, Text, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
 from datetime import datetime
+
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
@@ -10,6 +12,7 @@ from app.models.mixins import TenantMixin
 
 class BackupType(str, enum.Enum):
     """Backup types"""
+
     FULL = "full"
     INCREMENTAL = "incremental"
     DIFFERENTIAL = "differential"
@@ -17,6 +20,7 @@ class BackupType(str, enum.Enum):
 
 class BackupStatus(str, enum.Enum):
     """Backup status"""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -27,6 +31,7 @@ class BackupStatus(str, enum.Enum):
 
 class BackupStorage(str, enum.Enum):
     """Backup storage locations"""
+
     LOCAL = "local"
     S3 = "s3"
     GCS = "gcs"  # Google Cloud Storage
@@ -54,6 +59,7 @@ class Backup(TenantMixin, BaseModel):
     - Retention management
     - Point-in-time recovery
     """
+
     __tablename__ = "backups"
 
     # Basic information
@@ -105,7 +111,9 @@ class Backup(TenantMixin, BaseModel):
     # Restoration tracking
     last_restored_at = Column(DateTime, nullable=True)
     restoration_count = Column(Integer, default=0, nullable=False)
-    last_restored_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    last_restored_by_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     last_restored_by = relationship("User", foreign_keys=[last_restored_by_id])
 
     # Metadata

@@ -1,23 +1,20 @@
 """Bed Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
 
-from app.services.base import CRUDBase
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_
+from sqlalchemy.orm import Session
+
 from app.models.accommodation.bed import Bed, BedStatus
 from app.schemas.accommodation.bed import BedCreate, BedUpdate
+from app.services.base import CRUDBase
 
 
 class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
     """Service for bed management operations"""
 
     def get_by_room(
-        self,
-        db: Session,
-        *,
-        room_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, room_id: int, skip: int = 0, limit: int = 100
     ) -> List[Bed]:
         """
         Get all beds in a room
@@ -47,7 +44,7 @@ class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
         status: BedStatus,
         room_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Bed]:
         """
         Get beds by status
@@ -67,20 +64,10 @@ class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
         if room_id:
             query = query.filter(self.model.room_id == room_id)
 
-        return (
-            query.order_by(self.model.bed_number)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.bed_number).offset(skip).limit(limit).all()
 
     def get_available(
-        self,
-        db: Session,
-        *,
-        room_id: Optional[int] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, room_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> List[Bed]:
         """
         Get available beds
@@ -99,20 +86,9 @@ class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
         if room_id:
             query = query.filter(self.model.room_id == room_id)
 
-        return (
-            query.order_by(self.model.bed_number)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.bed_number).offset(skip).limit(limit).all()
 
-    def get_by_bed_number(
-        self,
-        db: Session,
-        *,
-        room_id: int,
-        bed_number: int
-    ) -> Optional[Bed]:
+    def get_by_bed_number(self, db: Session, *, room_id: int, bed_number: int) -> Optional[Bed]:
         """
         Get bed by room and bed number
 
@@ -126,21 +102,11 @@ class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
         """
         return (
             db.query(self.model)
-            .filter(
-                and_(
-                    self.model.room_id == room_id,
-                    self.model.bed_number == bed_number
-                )
-            )
+            .filter(and_(self.model.room_id == room_id, self.model.bed_number == bed_number))
             .first()
         )
 
-    def allocate_bed(
-        self,
-        db: Session,
-        *,
-        bed_id: int
-    ) -> Optional[Bed]:
+    def allocate_bed(self, db: Session, *, bed_id: int) -> Optional[Bed]:
         """
         Mark a bed as occupied
 
@@ -163,12 +129,7 @@ class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
         db.refresh(bed)
         return bed
 
-    def release_bed(
-        self,
-        db: Session,
-        *,
-        bed_id: int
-    ) -> Optional[Bed]:
+    def release_bed(self, db: Session, *, bed_id: int) -> Optional[Bed]:
         """
         Mark a bed as available (release)
 
@@ -188,12 +149,7 @@ class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
         db.refresh(bed)
         return bed
 
-    def reserve_bed(
-        self,
-        db: Session,
-        *,
-        bed_id: int
-    ) -> Optional[Bed]:
+    def reserve_bed(self, db: Session, *, bed_id: int) -> Optional[Bed]:
         """
         Mark a bed as reserved
 
@@ -216,12 +172,7 @@ class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
         db.refresh(bed)
         return bed
 
-    def get_statistics(
-        self,
-        db: Session,
-        *,
-        room_id: Optional[int] = None
-    ) -> Dict:
+    def get_statistics(self, db: Session, *, room_id: Optional[int] = None) -> Dict:
         """
         Get bed statistics
 
@@ -248,7 +199,7 @@ class BedService(CRUDBase[Bed, BedCreate, BedUpdate]):
             "available": available_count,
             "occupied": occupied_count,
             "reserved": reserved_count,
-            "availability_rate": (available_count / len(beds) * 100) if len(beds) > 0 else 0
+            "availability_rate": (available_count / len(beds) * 100) if len(beds) > 0 else 0,
         }
 
 

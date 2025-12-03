@@ -5,20 +5,21 @@ Manage organization memberships and user roles.
 """
 
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_active_user
-from app.models.user import User
+from app.core.dependencies import get_current_active_user, get_db
 from app.models.tenant.organization_user import OrganizationRole
+from app.models.user import User
 from app.schemas.tenant.organization_user import (
     OrganizationUserCreate,
-    OrganizationUserUpdate,
     OrganizationUserResponse,
+    OrganizationUserUpdate,
     OrganizationUserWithDetails,
 )
-from app.services.tenant.organization_user_service import organization_user_service
 from app.services.tenant.organization_service import organization_service
+from app.services.tenant.organization_user_service import organization_user_service
 
 router = APIRouter()
 
@@ -42,8 +43,7 @@ def list_organization_members(
     if not current_user.is_superuser:
         if not organization_user_service.is_member(db, organization_id, current_user.id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not a member of this organization"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization"
             )
 
     memberships = organization_user_service.get_by_organization(
@@ -56,25 +56,31 @@ def list_organization_members(
         user = db.query(User).filter(User.id == m.user_id).first()
         org = organization_service.get(db, m.organization_id)
 
-        result.append(OrganizationUserWithDetails(
-            id=m.id,
-            organization_id=m.organization_id,
-            user_id=m.user_id,
-            role=m.role,
-            permissions=m.permissions,
-            is_active=m.is_active,
-            created_at=m.created_at,
-            updated_at=m.updated_at,
-            user_email=user.email if user else None,
-            user_full_name=user.full_name if user else None,
-            organization_name=org.name if org else None,
-            organization_slug=org.slug if org else None,
-        ))
+        result.append(
+            OrganizationUserWithDetails(
+                id=m.id,
+                organization_id=m.organization_id,
+                user_id=m.user_id,
+                role=m.role,
+                permissions=m.permissions,
+                is_active=m.is_active,
+                created_at=m.created_at,
+                updated_at=m.updated_at,
+                user_email=user.email if user else None,
+                user_full_name=user.full_name if user else None,
+                organization_name=org.name if org else None,
+                organization_slug=org.slug if org else None,
+            )
+        )
 
     return result
 
 
-@router.post("/{organization_id}/members", response_model=OrganizationUserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{organization_id}/members",
+    response_model=OrganizationUserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def add_organization_member(
     *,
     db: Session = Depends(get_db),
@@ -93,14 +99,13 @@ def add_organization_member(
         if role not in [OrganizationRole.OWNER, OrganizationRole.ADMIN]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners and admins can add members"
+                detail="Only owners and admins can add members",
             )
 
         # Admins cannot add owners
         if member_in.role == OrganizationRole.OWNER and role != OrganizationRole.OWNER:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners can add other owners"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can add other owners"
             )
 
     return organization_user_service.add_user(db, organization_id=organization_id, obj_in=member_in)
@@ -123,8 +128,7 @@ def get_organization_member(
     if not current_user.is_superuser:
         if not organization_user_service.is_member(db, organization_id, current_user.id):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not a member of this organization"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this organization"
             )
 
     # Get membership
@@ -133,8 +137,7 @@ def get_organization_member(
 
     if not membership:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found in this organization"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Member not found in this organization"
         )
 
     # Enrich with details
@@ -177,21 +180,20 @@ def update_organization_member(
         if role not in [OrganizationRole.OWNER, OrganizationRole.ADMIN]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners and admins can update members"
+                detail="Only owners and admins can update members",
             )
 
         # Cannot modify your own role
         if user_id == current_user.id:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot modify your own membership"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot modify your own membership"
             )
 
         # Admins cannot promote to owner
         if member_in.role == OrganizationRole.OWNER and role != OrganizationRole.OWNER:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners can promote to owner role"
+                detail="Only owners can promote to owner role",
             )
 
     return organization_user_service.update_role(db, organization_id, user_id, member_in)
@@ -222,15 +224,14 @@ def remove_organization_member(
         if role not in [OrganizationRole.OWNER, OrganizationRole.ADMIN]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners and admins can remove members"
+                detail="Only owners and admins can remove members",
             )
 
         # Admins cannot remove owners
         target_role = organization_user_service.get_user_role(db, organization_id, user_id)
         if target_role == OrganizationRole.OWNER and role != OrganizationRole.OWNER:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only owners can remove other owners"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can remove other owners"
             )
 
     organization_user_service.remove_user(db, organization_id, user_id)

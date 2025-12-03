@@ -1,16 +1,18 @@
 """Admin Roles Management API"""
+
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_superuser
+from app.core.dependencies import get_current_superuser, get_db
+from app.models.role import Permission, Role, role_permissions
 from app.models.user import User
-from app.models.role import Role, Permission, role_permissions
 from app.schemas.role import (
-    RoleResponse,
-    RoleCreate,
-    RoleUpdate,
     PermissionResponse,
+    RoleCreate,
+    RoleResponse,
+    RoleUpdate,
 )
 
 router = APIRouter()
@@ -44,8 +46,7 @@ def list_roles(
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
-            (Role.name.ilike(search_pattern)) |
-            (Role.display_name.ilike(search_pattern))
+            (Role.name.ilike(search_pattern)) | (Role.display_name.ilike(search_pattern))
         )
 
     # Order by name and apply pagination
@@ -67,8 +68,7 @@ def get_role(
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Role with id {role_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with id {role_id} not found"
         )
     return role
 
@@ -94,18 +94,16 @@ def create_role(
     if existing_role:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Role with name '{role_in.name}' already exists"
+            detail=f"Role with name '{role_in.name}' already exists",
         )
 
     # Validate permission IDs
     if role_in.permission_ids:
-        permissions = db.query(Permission).filter(
-            Permission.id.in_(role_in.permission_ids)
-        ).all()
+        permissions = db.query(Permission).filter(Permission.id.in_(role_in.permission_ids)).all()
         if len(permissions) != len(role_in.permission_ids):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="One or more permission IDs are invalid"
+                detail="One or more permission IDs are invalid",
             )
 
     # Create role
@@ -119,9 +117,7 @@ def create_role(
 
     # Assign permissions
     if role_in.permission_ids:
-        permissions = db.query(Permission).filter(
-            Permission.id.in_(role_in.permission_ids)
-        ).all()
+        permissions = db.query(Permission).filter(Permission.id.in_(role_in.permission_ids)).all()
         role.permissions = permissions
 
     db.add(role)
@@ -147,15 +143,13 @@ def update_role(
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Role with id {role_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with id {role_id} not found"
         )
 
     # Prevent deactivating system roles
     if role.is_system_role and role_in.is_active is False:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot deactivate system roles"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate system roles"
         )
 
     # Update fields
@@ -165,13 +159,11 @@ def update_role(
     if "permission_ids" in update_data:
         permission_ids = update_data.pop("permission_ids")
         if permission_ids is not None:
-            permissions = db.query(Permission).filter(
-                Permission.id.in_(permission_ids)
-            ).all()
+            permissions = db.query(Permission).filter(Permission.id.in_(permission_ids)).all()
             if len(permissions) != len(permission_ids):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="One or more permission IDs are invalid"
+                    detail="One or more permission IDs are invalid",
                 )
             role.permissions = permissions
 
@@ -200,22 +192,20 @@ def delete_role(
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Role with id {role_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with id {role_id} not found"
         )
 
     # Prevent deleting system roles
     if role.is_system_role:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete system roles"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete system roles"
         )
 
     # Check if role is assigned to any users
     if role.users:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot delete role. It is assigned to {len(role.users)} user(s)"
+            detail=f"Cannot delete role. It is assigned to {len(role.users)} user(s)",
         )
 
     db.delete(role)
@@ -238,8 +228,7 @@ def get_role_permissions(
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Role with id {role_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with id {role_id} not found"
         )
 
     return role.permissions
@@ -262,18 +251,14 @@ def assign_permissions_to_role(
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Role with id {role_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with id {role_id} not found"
         )
 
     # Validate permission IDs
-    permissions = db.query(Permission).filter(
-        Permission.id.in_(permission_ids)
-    ).all()
+    permissions = db.query(Permission).filter(Permission.id.in_(permission_ids)).all()
     if len(permissions) != len(permission_ids):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more permission IDs are invalid"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="One or more permission IDs are invalid"
         )
 
     # Replace permissions

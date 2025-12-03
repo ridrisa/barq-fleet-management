@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
 from datetime import datetime
-from enum import Enum
 from decimal import Decimal
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class QueuePriority(str, Enum):
@@ -57,6 +58,7 @@ class PriorityQueueEntryUpdate(BaseModel):
 
 class PriorityQueueEntryEscalate(BaseModel):
     """Schema for escalating queue entry"""
+
     escalation_reason: str = Field(..., min_length=10)
     escalated_to_id: int
     new_priority: Optional[QueuePriority] = None
@@ -98,6 +100,7 @@ class PriorityQueueEntryResponse(PriorityQueueEntryBase):
 
 class QueueMetrics(BaseModel):
     """Priority queue metrics"""
+
     total_entries: int
     queued_entries: int
     processing_entries: int
@@ -113,6 +116,7 @@ class QueueMetrics(BaseModel):
 
 class QueuePosition(BaseModel):
     """Current position in queue"""
+
     delivery_id: int
     queue_number: str
     current_position: int

@@ -1,24 +1,24 @@
+from datetime import date, timedelta
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from datetime import date, timedelta
 
-from app.core.dependencies import get_db, get_current_user
-from app.models.user import User
+from app.core.dependencies import get_current_user, get_db
 from app.models.analytics import PerformanceData
+from app.models.user import User
 from app.schemas.analytics import (
-    PerformanceCreate,
-    PerformanceUpdate,
-    PerformanceResponse,
-    PerformanceList,
-    PerformanceStats,
-    TopPerformer,
-    PerformanceTrend,
     CourierComparison,
     PerformanceBulkCreate,
+    PerformanceCreate,
+    PerformanceList,
+    PerformanceResponse,
+    PerformanceStats,
+    PerformanceTrend,
+    PerformanceUpdate,
+    TopPerformer,
 )
 from app.services.analytics import performance_service
-
 
 router = APIRouter()
 
@@ -41,15 +41,10 @@ def get_performance_records(
             end_date=end_date,
             courier_id=courier_id,
             skip=skip,
-            limit=limit
+            limit=limit,
         )
     elif courier_id:
-        return performance_service.get_by_courier(
-            db,
-            courier_id=courier_id,
-            skip=skip,
-            limit=limit
-        )
+        return performance_service.get_by_courier(db, courier_id=courier_id, skip=skip, limit=limit)
     else:
         filters = {}
         if courier_id:
@@ -66,12 +61,7 @@ def get_courier_performance(
     current_user: User = Depends(get_current_user),
 ):
     """Get all performance records for a specific courier"""
-    return performance_service.get_by_courier(
-        db,
-        courier_id=courier_id,
-        skip=skip,
-        limit=limit
-    )
+    return performance_service.get_by_courier(db, courier_id=courier_id, skip=skip, limit=limit)
 
 
 @router.get("/date/{performance_date}", response_model=List[PerformanceList])
@@ -103,16 +93,10 @@ def get_courier_metrics(
 ):
     """Calculate performance metrics for a courier within date range"""
     if end_date < start_date:
-        raise HTTPException(
-            status_code=400,
-            detail="end_date must be after start_date"
-        )
+        raise HTTPException(status_code=400, detail="end_date must be after start_date")
 
     return performance_service.calculate_metrics(
-        db,
-        courier_id=courier_id,
-        start_date=start_date,
-        end_date=end_date
+        db, courier_id=courier_id, start_date=start_date, end_date=end_date
     )
 
 
@@ -122,7 +106,9 @@ def get_top_performers(
     start_date: date = Query(default=None, description="Start date (defaults to 30 days ago)"),
     end_date: date = Query(default=None, description="End date (defaults to today)"),
     limit: int = Query(10, ge=1, le=100, description="Number of top performers"),
-    metric: str = Query("orders", regex="^(orders|revenue|efficiency|rating)$", description="Metric to rank by"),
+    metric: str = Query(
+        "orders", regex="^(orders|revenue|efficiency|rating)$", description="Metric to rank by"
+    ),
     current_user: User = Depends(get_current_user),
 ):
     """Get top performing couriers for a date range"""
@@ -133,17 +119,10 @@ def get_top_performers(
         start_date = end_date - timedelta(days=30)
 
     if end_date < start_date:
-        raise HTTPException(
-            status_code=400,
-            detail="end_date must be after start_date"
-        )
+        raise HTTPException(status_code=400, detail="end_date must be after start_date")
 
     return performance_service.get_top_performers(
-        db,
-        start_date=start_date,
-        end_date=end_date,
-        limit=limit,
-        metric=metric
+        db, start_date=start_date, end_date=end_date, limit=limit, metric=metric
     )
 
 
@@ -157,22 +136,18 @@ def get_performance_trends(
 ):
     """Get performance trends over time for a courier"""
     if end_date < start_date:
-        raise HTTPException(
-            status_code=400,
-            detail="end_date must be after start_date"
-        )
+        raise HTTPException(status_code=400, detail="end_date must be after start_date")
 
     return performance_service.get_performance_trends(
-        db,
-        courier_id=courier_id,
-        start_date=start_date,
-        end_date=end_date
+        db, courier_id=courier_id, start_date=start_date, end_date=end_date
     )
 
 
 @router.post("/compare", response_model=List[CourierComparison])
 def compare_couriers(
-    courier_ids: List[int] = Query(..., min_items=2, max_items=10, description="Courier IDs to compare"),
+    courier_ids: List[int] = Query(
+        ..., min_items=2, max_items=10, description="Courier IDs to compare"
+    ),
     start_date: date = Query(..., description="Start date"),
     end_date: date = Query(..., description="End date"),
     db: Session = Depends(get_db),
@@ -180,16 +155,10 @@ def compare_couriers(
 ):
     """Compare performance metrics for multiple couriers"""
     if end_date < start_date:
-        raise HTTPException(
-            status_code=400,
-            detail="end_date must be after start_date"
-        )
+        raise HTTPException(status_code=400, detail="end_date must be after start_date")
 
     return performance_service.compare_couriers(
-        db,
-        courier_ids=courier_ids,
-        start_date=start_date,
-        end_date=end_date
+        db, courier_ids=courier_ids, start_date=start_date, end_date=end_date
     )
 
 
@@ -215,15 +184,13 @@ def create_performance_record(
     """Create new performance record"""
     # Check if record already exists for this courier and date
     existing = performance_service.get_by_courier_and_date(
-        db,
-        courier_id=performance_in.courier_id,
-        performance_date=performance_in.date
+        db, courier_id=performance_in.courier_id, performance_date=performance_in.date
     )
 
     if existing:
         raise HTTPException(
             status_code=400,
-            detail=f"Performance record already exists for courier {performance_in.courier_id} on {performance_in.date}"
+            detail=f"Performance record already exists for courier {performance_in.courier_id} on {performance_in.date}",
         )
 
     return performance_service.create(db, obj_in=performance_in)
@@ -237,10 +204,7 @@ def bulk_create_performance_records(
 ):
     """Bulk create performance records"""
     created = performance_service.bulk_create(db, obj_list=bulk_data.records)
-    return {
-        "message": f"Created {len(created)} performance records",
-        "count": len(created)
-    }
+    return {"message": f"Created {len(created)} performance records", "count": len(created)}
 
 
 @router.post("/upsert", response_model=PerformanceResponse)
@@ -254,7 +218,7 @@ def upsert_performance_record(
         db,
         courier_id=performance_in.courier_id,
         performance_date=performance_in.date,
-        data=performance_in
+        data=performance_in,
     )
 
 
@@ -288,7 +252,9 @@ def delete_performance_record(
     return None
 
 
-@router.delete("/courier/{courier_id}/date/{performance_date}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/courier/{courier_id}/date/{performance_date}", status_code=status.HTTP_204_NO_CONTENT
+)
 def delete_performance_by_courier_date(
     courier_id: int,
     performance_date: date,
@@ -297,15 +263,13 @@ def delete_performance_by_courier_date(
 ):
     """Delete performance record by courier and date"""
     performance = performance_service.get_by_courier_and_date(
-        db,
-        courier_id=courier_id,
-        performance_date=performance_date
+        db, courier_id=courier_id, performance_date=performance_date
     )
 
     if not performance:
         raise HTTPException(
             status_code=404,
-            detail=f"Performance record not found for courier {courier_id} on {performance_date}"
+            detail=f"Performance record not found for courier {courier_id} on {performance_date}",
         )
 
     performance_service.delete(db, id=performance.id)

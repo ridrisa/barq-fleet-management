@@ -1,11 +1,13 @@
 """Knowledge Base Article Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import or_, func
 
-from app.services.base import CRUDBase
-from app.models.support import KBArticle, ArticleStatus
+from typing import Dict, List, Optional
+
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session
+
+from app.models.support import ArticleStatus, KBArticle
 from app.schemas.support import KBArticleCreate, KBArticleUpdate
+from app.services.base import CRUDBase
 
 
 class KBArticleService(CRUDBase[KBArticle, KBArticleCreate, KBArticleUpdate]):
@@ -15,13 +17,7 @@ class KBArticleService(CRUDBase[KBArticle, KBArticleCreate, KBArticleUpdate]):
         """Get article by slug"""
         return db.query(self.model).filter(self.model.slug == slug).first()
 
-    def get_published(
-        self,
-        db: Session,
-        *,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[KBArticle]:
+    def get_published(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[KBArticle]:
         """Get published articles only"""
         return (
             db.query(self.model)
@@ -33,21 +29,13 @@ class KBArticleService(CRUDBase[KBArticle, KBArticleCreate, KBArticleUpdate]):
         )
 
     def get_by_category(
-        self,
-        db: Session,
-        *,
-        category: str,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, category: str, skip: int = 0, limit: int = 100
     ) -> List[KBArticle]:
         """Get articles by category"""
         return (
             db.query(self.model)
             .filter(
-                and_(
-                    self.model.category == category,
-                    self.model.status == ArticleStatus.PUBLISHED
-                )
+                and_(self.model.category == category, self.model.status == ArticleStatus.PUBLISHED)
             )
             .order_by(self.model.view_count.desc())
             .offset(skip)
@@ -56,12 +44,7 @@ class KBArticleService(CRUDBase[KBArticle, KBArticleCreate, KBArticleUpdate]):
         )
 
     def search(
-        self,
-        db: Session,
-        *,
-        query: str,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, query: str, skip: int = 0, limit: int = 100
     ) -> List[KBArticle]:
         """
         Search articles by title, content, or tags
@@ -84,9 +67,9 @@ class KBArticleService(CRUDBase[KBArticle, KBArticleCreate, KBArticleUpdate]):
                         self.model.title.ilike(search_term),
                         self.model.content.ilike(search_term),
                         self.model.tags.ilike(search_term),
-                        self.model.summary.ilike(search_term)
+                        self.model.summary.ilike(search_term),
                     ),
-                    self.model.status == ArticleStatus.PUBLISHED
+                    self.model.status == ArticleStatus.PUBLISHED,
                 )
             )
             .order_by(self.model.view_count.desc())
@@ -119,19 +102,14 @@ class KBArticleService(CRUDBase[KBArticle, KBArticleCreate, KBArticleUpdate]):
     def get_categories(self, db: Session) -> List[str]:
         """Get list of all unique categories"""
         return [
-            row[0] for row in
-            db.query(self.model.category)
+            row[0]
+            for row in db.query(self.model.category)
             .filter(self.model.status == ArticleStatus.PUBLISHED)
             .distinct()
             .all()
         ]
 
-    def get_top_articles(
-        self,
-        db: Session,
-        *,
-        limit: int = 10
-    ) -> List[KBArticle]:
+    def get_top_articles(self, db: Session, *, limit: int = 10) -> List[KBArticle]:
         """Get top viewed articles"""
         return (
             db.query(self.model)

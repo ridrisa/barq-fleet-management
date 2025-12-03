@@ -1,15 +1,20 @@
 """
 Operations Document CRUD
 """
+
 from typing import List, Optional
-from sqlalchemy.orm import Session
+
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.crud.base import CRUDBase
-from app.models.operations.document import OperationsDocument, DocumentCategory
+from app.models.operations.document import DocumentCategory, OperationsDocument
 from app.schemas.operations.document import OperationsDocumentCreate, OperationsDocumentUpdate
 
 
-class CRUDOperationsDocument(CRUDBase[OperationsDocument, OperationsDocumentCreate, OperationsDocumentUpdate]):
+class CRUDOperationsDocument(
+    CRUDBase[OperationsDocument, OperationsDocumentCreate, OperationsDocumentUpdate]
+):
     """CRUD operations for operations documents"""
 
     def create(self, db: Session, *, obj_in: OperationsDocumentCreate) -> OperationsDocument:
@@ -18,22 +23,14 @@ class CRUDOperationsDocument(CRUDBase[OperationsDocument, OperationsDocumentCrea
         max_id = db.query(func.coalesce(func.max(self.model.id), 0)).scalar() or 0
         doc_number = f"DOC-{(max_id + 1):05d}"
 
-        db_obj = self.model(
-            **obj_in.model_dump(),
-            doc_number=doc_number
-        )
+        db_obj = self.model(**obj_in.model_dump(), doc_number=doc_number)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
         return db_obj
 
     def get_by_category(
-        self,
-        db: Session,
-        *,
-        category: DocumentCategory,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, category: DocumentCategory, skip: int = 0, limit: int = 100
     ) -> List[OperationsDocument]:
         """Get documents by category"""
         return (
@@ -70,12 +67,14 @@ class CRUDOperationsDocument(CRUDBase[OperationsDocument, OperationsDocumentCrea
         query: str,
         category: Optional[DocumentCategory] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[OperationsDocument]:
         """Search documents by name, description, or tags"""
-        search_filter = self.model.doc_name.ilike(f"%{query}%") | \
-                       self.model.description.ilike(f"%{query}%") | \
-                       self.model.tags.ilike(f"%{query}%")
+        search_filter = (
+            self.model.doc_name.ilike(f"%{query}%")
+            | self.model.description.ilike(f"%{query}%")
+            | self.model.tags.ilike(f"%{query}%")
+        )
 
         q = db.query(self.model).filter(search_filter)
 

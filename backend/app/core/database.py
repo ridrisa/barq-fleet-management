@@ -2,14 +2,16 @@
 Optimized Database Configuration
 Production-ready database setup with connection pooling, query optimization, and read replicas
 """
-from typing import Generator, Optional, Any
-from contextlib import contextmanager
+
 import logging
-from sqlalchemy import create_engine, event, pool
-from sqlalchemy.orm import declarative_base, sessionmaker, Session, Query
-from sqlalchemy.pool import QueuePool, NullPool
-from sqlalchemy.engine import Engine
 import time
+from contextlib import contextmanager
+from typing import Any, Generator, Optional
+
+from sqlalchemy import create_engine, event, pool
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Query, Session, declarative_base, sessionmaker
+from sqlalchemy.pool import NullPool, QueuePool
 
 from app.config.settings import settings
 from app.core.performance_config import performance_config
@@ -36,8 +38,7 @@ class DatabaseManager:
         """Get or create the write engine (primary database)"""
         if self._write_engine is None:
             self._write_engine = self._create_engine(
-                settings.SQLALCHEMY_DATABASE_URI,
-                is_read_replica=False
+                settings.SQLALCHEMY_DATABASE_URI, is_read_replica=False
             )
         return self._write_engine
 
@@ -96,11 +97,7 @@ class DatabaseManager:
             pool_kwargs = {}
 
         engine = create_engine(
-            database_url,
-            poolclass=poolclass,
-            echo=config.echo_queries,
-            future=True,
-            **pool_kwargs
+            database_url, poolclass=poolclass, echo=config.echo_queries, future=True, **pool_kwargs
         )
 
         # Event listeners for performance monitoring
@@ -117,6 +114,7 @@ class DatabaseManager:
         """Setup SQLAlchemy event listeners for monitoring"""
 
         if performance_config.monitoring.log_queries:
+
             @event.listens_for(engine, "before_cursor_execute")
             def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
                 conn.info.setdefault("query_start_time", []).append(time.time())
@@ -285,7 +283,9 @@ class OptimizedQuery:
         return items, total
 
     @staticmethod
-    def batch_fetch(session: Session, model_class: type, ids: list[Any], batch_size: int = 100) -> list[Any]:
+    def batch_fetch(
+        session: Session, model_class: type, ids: list[Any], batch_size: int = 100
+    ) -> list[Any]:
         """
         Batch fetch records by IDs to avoid N+1 queries
 
@@ -303,10 +303,8 @@ class OptimizedQuery:
 
         results = []
         for i in range(0, len(ids), batch_size):
-            batch_ids = ids[i:i + batch_size]
-            batch_results = session.query(model_class).filter(
-                model_class.id.in_(batch_ids)
-            ).all()
+            batch_ids = ids[i : i + batch_size]
+            batch_results = session.query(model_class).filter(model_class.id.in_(batch_ids)).all()
             results.extend(batch_results)
 
         return results
@@ -356,9 +354,9 @@ def close_database():
 # Multi-Tenancy Support
 # ============================================================================
 
+
 def get_tenant_db(
-    organization_id: int,
-    is_superuser: bool = False
+    organization_id: int, is_superuser: bool = False
 ) -> Generator[Session, None, None]:
     """
     Get database session with tenant context for Row-Level Security (RLS).
@@ -415,12 +413,8 @@ class TenantContext:
 
     def __enter__(self) -> Session:
         self.session = db_manager.create_session()
-        self.session.execute(
-            text(f"SET app.current_org_id = '{self.organization_id}'")
-        )
-        self.session.execute(
-            text(f"SET app.is_superuser = '{str(self.is_superuser).lower()}'")
-        )
+        self.session.execute(text(f"SET app.current_org_id = '{self.organization_id}'"))
+        self.session.execute(text(f"SET app.is_superuser = '{str(self.is_superuser).lower()}'"))
         return self.session
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -442,7 +436,6 @@ class TenantContext:
 
 # Import text for SQL execution
 from sqlalchemy import text
-
 
 # Export commonly used items
 __all__ = [

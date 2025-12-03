@@ -1,16 +1,19 @@
 """Admin Users Management API"""
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
 
-from app.core.dependencies import get_db, get_current_superuser
-from app.models.user import User
-from app.models.role import Role, user_roles
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_superuser, get_db
 from app.models.audit_log import AuditLog
-from app.schemas.user import User as UserSchema, UserUpdate
-from app.schemas.role import RoleResponse
+from app.models.role import Role, user_roles
+from app.models.user import User
 from app.schemas.audit_log import AuditLogResponse
+from app.schemas.role import RoleResponse
+from app.schemas.user import User as UserSchema
+from app.schemas.user import UserUpdate
 
 router = APIRouter()
 
@@ -53,8 +56,7 @@ def list_users(
     if search:
         search_pattern = f"%{search}%"
         query = query.filter(
-            (User.email.ilike(search_pattern)) |
-            (User.full_name.ilike(search_pattern))
+            (User.email.ilike(search_pattern)) | (User.full_name.ilike(search_pattern))
         )
 
     # Order by email and apply pagination
@@ -79,8 +81,7 @@ def get_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
     return user
 
@@ -103,19 +104,17 @@ def update_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
     # Prevent user from deactivating themselves
-    if user.id == current_user.id and hasattr(user_in, 'is_active') and user_in.is_active is False:
+    if user.id == current_user.id and hasattr(user_in, "is_active") and user_in.is_active is False:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot deactivate your own account"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account"
         )
 
     # Update fields
-    update_data = user_in.model_dump(exclude_unset=True, exclude={'password'})
+    update_data = user_in.model_dump(exclude_unset=True, exclude={"password"})
     for field, value in update_data.items():
         setattr(user, field, value)
 
@@ -142,27 +141,24 @@ def deactivate_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
     # Prevent user from deactivating themselves
     if user.id == current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot deactivate your own account"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate your own account"
         )
 
     # Prevent deactivating the last superuser
     if user.is_superuser:
-        active_superusers_count = db.query(User).filter(
-            User.is_superuser == True,
-            User.is_active == True
-        ).count()
+        active_superusers_count = (
+            db.query(User).filter(User.is_superuser == True, User.is_active == True).count()
+        )
         if active_superusers_count <= 1:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot deactivate the last active superuser"
+                detail="Cannot deactivate the last active superuser",
             )
 
     user.is_active = False
@@ -186,8 +182,7 @@ def activate_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
     user.is_active = True
@@ -211,8 +206,7 @@ def get_user_roles(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
     return user.roles
@@ -235,19 +229,15 @@ def assign_roles_to_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
     # Validate role IDs
-    roles = db.query(Role).filter(
-        Role.id.in_(role_ids),
-        Role.is_active == True
-    ).all()
+    roles = db.query(Role).filter(Role.id.in_(role_ids), Role.is_active == True).all()
     if len(roles) != len(role_ids):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="One or more role IDs are invalid or inactive"
+            detail="One or more role IDs are invalid or inactive",
         )
 
     # Replace roles
@@ -277,8 +267,7 @@ def get_user_activity_logs(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
     logs = (
@@ -308,22 +297,19 @@ def remove_role_from_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"User with id {user_id} not found"
         )
 
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Role with id {role_id} not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Role with id {role_id} not found"
         )
 
     # Check if user has this role
     if role not in user.roles:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User does not have this role"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User does not have this role"
         )
 
     # Remove role

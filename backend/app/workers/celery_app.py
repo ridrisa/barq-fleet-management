@@ -2,9 +2,11 @@
 Celery Application Configuration
 Main Celery app instance and configuration
 """
+
+import logging
+
 from celery import Celery
 from celery.schedules import crontab
-import logging
 
 from app.core.performance_config import performance_config
 
@@ -25,24 +27,19 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-
     # Task time limits
     task_soft_time_limit=performance_config.background_jobs.task_soft_time_limit,
     task_time_limit=performance_config.background_jobs.task_time_limit,
-
     # Task retry settings
     task_acks_late=True,  # Acknowledge task after execution
     task_reject_on_worker_lost=True,
     task_default_retry_delay=performance_config.background_jobs.task_default_retry_delay,
-
     # Worker settings
     worker_prefetch_multiplier=performance_config.background_jobs.worker_prefetch_multiplier,
     worker_max_tasks_per_child=1000,  # Restart worker after 1000 tasks (memory management)
-
     # Result backend settings
     result_expires=performance_config.background_jobs.result_expires,
     result_compression="gzip",
-
     # Task routing
     task_routes={
         "app.workers.tasks.send_email_task": {
@@ -58,11 +55,9 @@ celery_app.conf.update(
             "queue": performance_config.background_jobs.low_priority_queue
         },
     },
-
     # Monitoring
     task_track_started=True,
     task_send_sent_event=True,
-
     # Periodic tasks (Celery Beat schedule)
     beat_schedule={
         # Aggregate metrics every 5 minutes
@@ -70,19 +65,16 @@ celery_app.conf.update(
             "task": "app.workers.tasks.aggregate_metrics_task",
             "schedule": crontab(minute="*/5"),
         },
-
         # Check SLA compliance every 15 minutes
         "check-sla-compliance": {
             "task": "app.workers.tasks.check_sla_compliance_task",
             "schedule": crontab(minute="*/15"),
         },
-
         # Cleanup old data daily at 2 AM
         "cleanup-old-data": {
             "task": "app.workers.tasks.cleanup_old_data_task",
             "schedule": crontab(hour=2, minute=0),
         },
-
         # Generate daily reports at 6 AM
         "daily-reports": {
             "task": "app.workers.tasks.generate_daily_reports_task",

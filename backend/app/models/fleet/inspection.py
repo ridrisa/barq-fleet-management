@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text, Boolean, Enum as SQLEnum, Numeric
+import enum
+
+from sqlalchemy import Boolean, Column, Date, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class InspectionType(str, enum.Enum):
     """Type of vehicle inspection"""
+
     PRE_TRIP = "pre_trip"  # Before starting shift
     POST_TRIP = "post_trip"  # After shift
     PERIODIC = "periodic"  # Monthly/quarterly
@@ -17,6 +22,7 @@ class InspectionType(str, enum.Enum):
 
 class InspectionStatus(str, enum.Enum):
     """Inspection result status"""
+
     PASSED = "passed"
     FAILED = "failed"
     CONDITIONAL = "conditional"  # Pass with minor issues
@@ -25,6 +31,7 @@ class InspectionStatus(str, enum.Enum):
 
 class VehicleCondition(str, enum.Enum):
     """Overall vehicle condition"""
+
     EXCELLENT = "excellent"
     GOOD = "good"
     FAIR = "fair"
@@ -37,7 +44,9 @@ class Inspection(TenantMixin, BaseModel):
     __tablename__ = "vehicle_inspections"
 
     # Foreign Keys
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
+    vehicle_id = Column(
+        Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     inspector_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Inspection Details
@@ -170,21 +179,43 @@ class Inspection(TenantMixin, BaseModel):
     def calculate_inspection_score(self):
         """Calculate inspection score based on checklist"""
         checklist_items = [
-            self.engine_condition, self.engine_oil_level, self.coolant_level,
-            self.battery_condition, self.transmission,
-            self.headlights, self.taillights, self.indicators,
-            self.brake_lights, self.horn, self.dashboard_lights,
-            self.brake_pads_front, self.brake_pads_rear,
-            self.brake_fluid_level, self.handbrake,
-            self.tire_front_left, self.tire_front_right,
-            self.tire_rear_left, self.tire_rear_right,
-            self.spare_tire, self.tire_pressure_ok,
-            self.body_condition, self.windshield, self.mirrors,
-            self.wipers, self.doors, self.windows,
-            self.seats, self.seatbelts, self.air_conditioning, self.steering,
-            self.first_aid_kit, self.fire_extinguisher,
-            self.warning_triangle, self.jack_and_tools,
-            self.registration_document, self.insurance_document
+            self.engine_condition,
+            self.engine_oil_level,
+            self.coolant_level,
+            self.battery_condition,
+            self.transmission,
+            self.headlights,
+            self.taillights,
+            self.indicators,
+            self.brake_lights,
+            self.horn,
+            self.dashboard_lights,
+            self.brake_pads_front,
+            self.brake_pads_rear,
+            self.brake_fluid_level,
+            self.handbrake,
+            self.tire_front_left,
+            self.tire_front_right,
+            self.tire_rear_left,
+            self.tire_rear_right,
+            self.spare_tire,
+            self.tire_pressure_ok,
+            self.body_condition,
+            self.windshield,
+            self.mirrors,
+            self.wipers,
+            self.doors,
+            self.windows,
+            self.seats,
+            self.seatbelts,
+            self.air_conditioning,
+            self.steering,
+            self.first_aid_kit,
+            self.fire_extinguisher,
+            self.warning_triangle,
+            self.jack_and_tools,
+            self.registration_document,
+            self.insurance_document,
         ]
 
         self.total_checks = len(checklist_items)

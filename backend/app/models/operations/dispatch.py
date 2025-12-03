@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
+import enum
+
+from sqlalchemy import Boolean, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class DispatchStatus(str, enum.Enum):
     """Dispatch request status"""
+
     PENDING = "pending"
     ASSIGNED = "assigned"
     ACCEPTED = "accepted"
@@ -18,6 +23,7 @@ class DispatchStatus(str, enum.Enum):
 
 class DispatchPriority(str, enum.Enum):
     """Dispatch priority level"""
+
     URGENT = "urgent"
     HIGH = "high"
     NORMAL = "normal"
@@ -31,11 +37,15 @@ class DispatchAssignment(TenantMixin, BaseModel):
 
     # Assignment Details
     assignment_number = Column(String(50), unique=True, nullable=False, index=True)
-    status = Column(SQLEnum(DispatchStatus), default=DispatchStatus.PENDING, nullable=False, index=True)
+    status = Column(
+        SQLEnum(DispatchStatus), default=DispatchStatus.PENDING, nullable=False, index=True
+    )
     priority = Column(SQLEnum(DispatchPriority), default=DispatchPriority.NORMAL, index=True)
 
     # Delivery Reference
-    delivery_id = Column(Integer, ForeignKey("deliveries.id", ondelete="CASCADE"), nullable=False, index=True)
+    delivery_id = Column(
+        Integer, ForeignKey("deliveries.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # Courier Assignment
     courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="SET NULL"), index=True)
@@ -49,7 +59,9 @@ class DispatchAssignment(TenantMixin, BaseModel):
     completed_at = Column(DateTime)
 
     # Assignment Logic
-    assignment_algorithm = Column(String(50), comment="nearest, load_balanced, priority_based, manual")
+    assignment_algorithm = Column(
+        String(50), comment="nearest, load_balanced, priority_based, manual"
+    )
     distance_to_pickup_km = Column(Numeric(10, 2), comment="Distance from courier to pickup")
     estimated_time_minutes = Column(Integer, comment="Estimated completion time")
 
@@ -98,9 +110,17 @@ class DispatchAssignment(TenantMixin, BaseModel):
     @property
     def is_active(self) -> bool:
         """Check if assignment is currently active"""
-        return self.status in [DispatchStatus.ASSIGNED, DispatchStatus.ACCEPTED, DispatchStatus.IN_PROGRESS]
+        return self.status in [
+            DispatchStatus.ASSIGNED,
+            DispatchStatus.ACCEPTED,
+            DispatchStatus.IN_PROGRESS,
+        ]
 
     @property
     def is_completed_status(self) -> bool:
         """Check if assignment is in final state"""
-        return self.status in [DispatchStatus.COMPLETED, DispatchStatus.CANCELLED, DispatchStatus.REJECTED]
+        return self.status in [
+            DispatchStatus.COMPLETED,
+            DispatchStatus.CANCELLED,
+            DispatchStatus.REJECTED,
+        ]

@@ -1,12 +1,14 @@
 """Ticket Service"""
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, extract, or_
-from datetime import datetime, timedelta, timezone
 
-from app.services.base import CRUDBase
-from app.models.support import Ticket, TicketCategory, TicketPriority, TicketStatus, EscalationLevel
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import and_, extract, func, or_
+from sqlalchemy.orm import Session
+
+from app.models.support import EscalationLevel, Ticket, TicketCategory, TicketPriority, TicketStatus
 from app.schemas.support import TicketCreate, TicketUpdate
+from app.services.base import CRUDBase
 
 
 class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
@@ -29,16 +31,19 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         date_prefix = today.strftime("%Y%m%d")
 
         # Count today's tickets to get next sequence number
-        today_count = db.query(func.count(self.model.id)).filter(
-            func.date(self.model.created_at) == today.date()
-        ).scalar() or 0
+        today_count = (
+            db.query(func.count(self.model.id))
+            .filter(func.date(self.model.created_at) == today.date())
+            .scalar()
+            or 0
+        )
 
         ticket_id = f"TKT-{date_prefix}-{(today_count + 1):03d}"
 
         # Create ticket
         obj_in_data = obj_in.model_dump()
-        obj_in_data['ticket_id'] = ticket_id
-        obj_in_data['created_by'] = created_by
+        obj_in_data["ticket_id"] = ticket_id
+        obj_in_data["created_by"] = created_by
 
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
@@ -134,18 +139,14 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
             .all()
         )
 
-    def get_open_tickets(
-        self, db: Session, *, skip: int = 0, limit: int = 100
-    ) -> List[Ticket]:
+    def get_open_tickets(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[Ticket]:
         """Get all open tickets (open, in_progress, pending)"""
         return (
             db.query(self.model)
             .filter(
-                self.model.status.in_([
-                    TicketStatus.OPEN,
-                    TicketStatus.IN_PROGRESS,
-                    TicketStatus.PENDING
-                ])
+                self.model.status.in_(
+                    [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.PENDING]
+                )
             )
             .order_by(self.model.priority.desc(), self.model.created_at)
             .offset(skip)
@@ -162,11 +163,9 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
             .filter(
                 and_(
                     self.model.assigned_to.is_(None),
-                    self.model.status.in_([
-                        TicketStatus.OPEN,
-                        TicketStatus.IN_PROGRESS,
-                        TicketStatus.PENDING
-                    ])
+                    self.model.status.in_(
+                        [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.PENDING]
+                    ),
                 )
             )
             .order_by(self.model.priority.desc(), self.model.created_at)
@@ -175,9 +174,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
             .all()
         )
 
-    def assign_ticket(
-        self, db: Session, *, ticket_id: int, assigned_to: int
-    ) -> Optional[Ticket]:
+    def assign_ticket(self, db: Session, *, ticket_id: int, assigned_to: int) -> Optional[Ticket]:
         """Assign a ticket to a user"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket:
@@ -193,9 +190,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         db.refresh(ticket)
         return ticket
 
-    def resolve_ticket(
-        self, db: Session, *, ticket_id: int, resolution: str
-    ) -> Optional[Ticket]:
+    def resolve_ticket(self, db: Session, *, ticket_id: int, resolution: str) -> Optional[Ticket]:
         """Mark a ticket as resolved"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket:
@@ -209,9 +204,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         db.refresh(ticket)
         return ticket
 
-    def close_ticket(
-        self, db: Session, *, ticket_id: int
-    ) -> Optional[Ticket]:
+    def close_ticket(self, db: Session, *, ticket_id: int) -> Optional[Ticket]:
         """Close a resolved ticket"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket:
@@ -224,9 +217,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         db.refresh(ticket)
         return ticket
 
-    def reopen_ticket(
-        self, db: Session, *, ticket_id: int
-    ) -> Optional[Ticket]:
+    def reopen_ticket(self, db: Session, *, ticket_id: int) -> Optional[Ticket]:
         """Reopen a closed or resolved ticket"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket:
@@ -251,49 +242,67 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         total = db.query(func.count(self.model.id)).scalar() or 0
 
         # Count by status
-        open_count = db.query(func.count(self.model.id)).filter(
-            self.model.status == TicketStatus.OPEN
-        ).scalar() or 0
+        open_count = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == TicketStatus.OPEN)
+            .scalar()
+            or 0
+        )
 
-        in_progress_count = db.query(func.count(self.model.id)).filter(
-            self.model.status == TicketStatus.IN_PROGRESS
-        ).scalar() or 0
+        in_progress_count = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == TicketStatus.IN_PROGRESS)
+            .scalar()
+            or 0
+        )
 
-        pending_count = db.query(func.count(self.model.id)).filter(
-            self.model.status == TicketStatus.PENDING
-        ).scalar() or 0
+        pending_count = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == TicketStatus.PENDING)
+            .scalar()
+            or 0
+        )
 
-        resolved_count = db.query(func.count(self.model.id)).filter(
-            self.model.status == TicketStatus.RESOLVED
-        ).scalar() or 0
+        resolved_count = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == TicketStatus.RESOLVED)
+            .scalar()
+            or 0
+        )
 
-        closed_count = db.query(func.count(self.model.id)).filter(
-            self.model.status == TicketStatus.CLOSED
-        ).scalar() or 0
+        closed_count = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == TicketStatus.CLOSED)
+            .scalar()
+            or 0
+        )
 
         # Count by category
         by_category = {}
         for category in TicketCategory:
-            count = db.query(func.count(self.model.id)).filter(
-                self.model.category == category
-            ).scalar() or 0
+            count = (
+                db.query(func.count(self.model.id)).filter(self.model.category == category).scalar()
+                or 0
+            )
             by_category[category.value] = count
 
         # Count by priority
         by_priority = {}
         for priority in TicketPriority:
-            count = db.query(func.count(self.model.id)).filter(
-                self.model.priority == priority
-            ).scalar() or 0
+            count = (
+                db.query(func.count(self.model.id)).filter(self.model.priority == priority).scalar()
+                or 0
+            )
             by_priority[priority.value] = count
 
         # Calculate average resolution time
-        resolved_tickets = db.query(self.model).filter(
-            and_(
-                self.model.status == TicketStatus.RESOLVED,
-                self.model.resolved_at.isnot(None)
+        resolved_tickets = (
+            db.query(self.model)
+            .filter(
+                and_(self.model.status == TicketStatus.RESOLVED, self.model.resolved_at.isnot(None))
             )
-        ).all()
+            .all()
+        )
 
         avg_resolution_time = 0.0
         if resolved_tickets:
@@ -306,23 +315,29 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         # Count by escalation
         by_escalation = {}
         for level in EscalationLevel:
-            count = db.query(func.count(self.model.id)).filter(
-                self.model.escalation_level == level
-            ).scalar() or 0
+            count = (
+                db.query(func.count(self.model.id))
+                .filter(self.model.escalation_level == level)
+                .scalar()
+                or 0
+            )
             by_escalation[level.value] = count
 
-        escalated_count = db.query(func.count(self.model.id)).filter(
-            self.model.escalation_level != EscalationLevel.NONE
-        ).scalar() or 0
+        escalated_count = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.escalation_level != EscalationLevel.NONE)
+            .scalar()
+            or 0
+        )
 
-        merged_count = db.query(func.count(self.model.id)).filter(
-            self.model.is_merged == True
-        ).scalar() or 0
+        merged_count = (
+            db.query(func.count(self.model.id)).filter(self.model.is_merged == True).scalar() or 0
+        )
 
         # Calculate average first response time
-        tickets_with_response = db.query(self.model).filter(
-            self.model.first_response_at.isnot(None)
-        ).all()
+        tickets_with_response = (
+            db.query(self.model).filter(self.model.first_response_at.isnot(None)).all()
+        )
 
         avg_first_response_minutes = 0.0
         if tickets_with_response:
@@ -333,9 +348,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
             avg_first_response_minutes = total_minutes / len(tickets_with_response)
 
         # Calculate SLA compliance rate
-        tickets_with_sla = db.query(self.model).filter(
-            self.model.sla_due_at.isnot(None)
-        ).all()
+        tickets_with_sla = db.query(self.model).filter(self.model.sla_due_at.isnot(None)).all()
 
         sla_compliance_rate = 0.0
         if tickets_with_sla:
@@ -356,13 +369,11 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
             "avg_first_response_minutes": round(avg_first_response_minutes, 2),
             "sla_compliance_rate": round(sla_compliance_rate, 2),
             "escalated_count": escalated_count,
-            "merged_count": merged_count
+            "merged_count": merged_count,
         }
 
     # SLA Management
-    def set_sla(
-        self, db: Session, *, ticket_id: int, sla_hours: int
-    ) -> Optional[Ticket]:
+    def set_sla(self, db: Session, *, ticket_id: int, sla_hours: int) -> Optional[Ticket]:
         """Set SLA deadline for a ticket"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket:
@@ -373,9 +384,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         db.refresh(ticket)
         return ticket
 
-    def record_first_response(
-        self, db: Session, *, ticket_id: int
-    ) -> Optional[Ticket]:
+    def record_first_response(self, db: Session, *, ticket_id: int) -> Optional[Ticket]:
         """Record first response time for a ticket"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket or ticket.first_response_at:
@@ -386,9 +395,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         db.refresh(ticket)
         return ticket
 
-    def check_sla_breach(
-        self, db: Session, *, ticket_id: int
-    ) -> Optional[Ticket]:
+    def check_sla_breach(self, db: Session, *, ticket_id: int) -> Optional[Ticket]:
         """Check and update SLA breach status"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket or not ticket.sla_due_at:
@@ -426,11 +433,9 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
                     self.model.sla_due_at.isnot(None),
                     self.model.sla_breached == False,
                     self.model.sla_due_at <= threshold_time,
-                    self.model.status.in_([
-                        TicketStatus.OPEN,
-                        TicketStatus.IN_PROGRESS,
-                        TicketStatus.WAITING
-                    ])
+                    self.model.status.in_(
+                        [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING]
+                    ),
                 )
             )
             .order_by(self.model.sla_due_at)
@@ -441,8 +446,14 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
 
     # Escalation Management
     def escalate_ticket(
-        self, db: Session, *, ticket_id: int, escalation_level: EscalationLevel,
-        reason: str, escalated_by: int, assign_to: Optional[int] = None
+        self,
+        db: Session,
+        *,
+        ticket_id: int,
+        escalation_level: EscalationLevel,
+        reason: str,
+        escalated_by: int,
+        assign_to: Optional[int] = None,
     ) -> Optional[Ticket]:
         """Escalate a ticket to a higher level"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
@@ -462,27 +473,22 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         return ticket
 
     def get_escalated_tickets(
-        self, db: Session, *, level: Optional[EscalationLevel] = None,
-        skip: int = 0, limit: int = 100
+        self,
+        db: Session,
+        *,
+        level: Optional[EscalationLevel] = None,
+        skip: int = 0,
+        limit: int = 100,
     ) -> List[Ticket]:
         """Get escalated tickets, optionally filtered by level"""
-        query = db.query(self.model).filter(
-            self.model.escalation_level != EscalationLevel.NONE
-        )
+        query = db.query(self.model).filter(self.model.escalation_level != EscalationLevel.NONE)
 
         if level:
             query = query.filter(self.model.escalation_level == level)
 
-        return (
-            query.order_by(self.model.escalated_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.escalated_at.desc()).offset(skip).limit(limit).all()
 
-    def de_escalate_ticket(
-        self, db: Session, *, ticket_id: int
-    ) -> Optional[Ticket]:
+    def de_escalate_ticket(self, db: Session, *, ticket_id: int) -> Optional[Ticket]:
         """Remove escalation from a ticket"""
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket:
@@ -522,26 +528,20 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         db.refresh(target_ticket)
         return target_ticket
 
-    def get_merged_tickets(
-        self, db: Session, *, target_ticket_id: int
-    ) -> List[Ticket]:
+    def get_merged_tickets(self, db: Session, *, target_ticket_id: int) -> List[Ticket]:
         """Get all tickets merged into a target ticket"""
-        return (
-            db.query(self.model)
-            .filter(self.model.merged_into_id == target_ticket_id)
-            .all()
-        )
+        return db.query(self.model).filter(self.model.merged_into_id == target_ticket_id).all()
 
     # Bulk Operations
-    def bulk_assign(
-        self, db: Session, *, ticket_ids: List[int], assigned_to: int
-    ) -> int:
+    def bulk_assign(self, db: Session, *, ticket_ids: List[int], assigned_to: int) -> int:
         """Assign multiple tickets to a user"""
-        result = db.query(self.model).filter(
-            self.model.id.in_(ticket_ids)
-        ).update(
-            {"assigned_to": assigned_to, "status": TicketStatus.IN_PROGRESS},
-            synchronize_session=False
+        result = (
+            db.query(self.model)
+            .filter(self.model.id.in_(ticket_ids))
+            .update(
+                {"assigned_to": assigned_to, "status": TicketStatus.IN_PROGRESS},
+                synchronize_session=False,
+            )
         )
         db.commit()
         return result
@@ -556,9 +556,11 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         elif status == TicketStatus.RESOLVED:
             update_data["resolved_at"] = datetime.now(timezone.utc)
 
-        result = db.query(self.model).filter(
-            self.model.id.in_(ticket_ids)
-        ).update(update_data, synchronize_session=False)
+        result = (
+            db.query(self.model)
+            .filter(self.model.id.in_(ticket_ids))
+            .update(update_data, synchronize_session=False)
+        )
         db.commit()
         return result
 
@@ -566,32 +568,34 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         self, db: Session, *, ticket_ids: List[int], priority: TicketPriority
     ) -> int:
         """Change priority of multiple tickets"""
-        result = db.query(self.model).filter(
-            self.model.id.in_(ticket_ids)
-        ).update({"priority": priority}, synchronize_session=False)
+        result = (
+            db.query(self.model)
+            .filter(self.model.id.in_(ticket_ids))
+            .update({"priority": priority}, synchronize_session=False)
+        )
         db.commit()
         return result
 
-    def bulk_close(
-        self, db: Session, *, ticket_ids: List[int]
-    ) -> int:
+    def bulk_close(self, db: Session, *, ticket_ids: List[int]) -> int:
         """Close multiple tickets"""
-        result = db.query(self.model).filter(
-            self.model.id.in_(ticket_ids)
-        ).update({
-            "status": TicketStatus.CLOSED,
-            "closed_at": datetime.now(timezone.utc)
-        }, synchronize_session=False)
+        result = (
+            db.query(self.model)
+            .filter(self.model.id.in_(ticket_ids))
+            .update(
+                {"status": TicketStatus.CLOSED, "closed_at": datetime.now(timezone.utc)},
+                synchronize_session=False,
+            )
+        )
         db.commit()
         return result
 
-    def bulk_delete(
-        self, db: Session, *, ticket_ids: List[int]
-    ) -> int:
+    def bulk_delete(self, db: Session, *, ticket_ids: List[int]) -> int:
         """Delete multiple tickets"""
-        result = db.query(self.model).filter(
-            self.model.id.in_(ticket_ids)
-        ).delete(synchronize_session=False)
+        result = (
+            db.query(self.model)
+            .filter(self.model.id.in_(ticket_ids))
+            .delete(synchronize_session=False)
+        )
         db.commit()
         return result
 
@@ -607,7 +611,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
                     self.model.subject.ilike(f"%{query}%"),
                     self.model.description.ilike(f"%{query}%"),
                     self.model.ticket_id.ilike(f"%{query}%"),
-                    self.model.tags.ilike(f"%{query}%")
+                    self.model.tags.ilike(f"%{query}%"),
                 )
             )
             .order_by(self.model.created_at.desc())
@@ -637,9 +641,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         """Alias for get_by_assigned_user"""
         return self.get_by_assigned_user(db, user_id=user_id, skip=skip, limit=limit)
 
-    def create_with_user(
-        self, db: Session, *, obj_in: TicketCreate, user_id: int
-    ) -> Ticket:
+    def create_with_user(self, db: Session, *, obj_in: TicketCreate, user_id: int) -> Ticket:
         """Alias for create with created_by parameter"""
         return self.create(db, obj_in=obj_in, created_by=user_id)
 

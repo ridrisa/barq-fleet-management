@@ -1,8 +1,10 @@
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum, Text, DateTime
+import enum
+
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class ApprovalStatus(str, enum.Enum):
@@ -15,6 +17,7 @@ class ApprovalStatus(str, enum.Enum):
 
 class ApprovalChain(TenantMixin, BaseModel):
     """Approval chain template for workflows"""
+
     __tablename__ = "approval_chains"
 
     name = Column(String, nullable=False)
@@ -29,12 +32,15 @@ class ApprovalChain(TenantMixin, BaseModel):
 
     # Relationships
     workflow_template = relationship("WorkflowTemplate", back_populates="approval_chains")
-    approvers = relationship("ApprovalChainApprover", back_populates="approval_chain", cascade="all, delete-orphan")
+    approvers = relationship(
+        "ApprovalChainApprover", back_populates="approval_chain", cascade="all, delete-orphan"
+    )
     approval_requests = relationship("ApprovalRequest", back_populates="approval_chain")
 
 
 class ApprovalChainApprover(TenantMixin, BaseModel):
     """Approvers in an approval chain with level hierarchy"""
+
     __tablename__ = "approval_chain_approvers"
 
     approval_chain_id = Column(Integer, ForeignKey("approval_chains.id"), nullable=False)
@@ -52,6 +58,7 @@ class ApprovalChainApprover(TenantMixin, BaseModel):
 
 class ApprovalRequest(TenantMixin, BaseModel):
     """Individual approval requests for workflow instances"""
+
     __tablename__ = "approval_requests"
 
     workflow_instance_id = Column(Integer, ForeignKey("workflow_instances.id"), nullable=False)

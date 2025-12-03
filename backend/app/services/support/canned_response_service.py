@@ -1,11 +1,13 @@
 """Canned Response Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from app.services.base import CRUDBase
+from typing import Dict, List, Optional
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.support import CannedResponse
 from app.schemas.support import CannedResponseCreate, CannedResponseUpdate
+from app.services.base import CRUDBase
 
 
 class CannedResponseService(CRUDBase[CannedResponse, CannedResponseCreate, CannedResponseUpdate]):
@@ -16,7 +18,7 @@ class CannedResponseService(CRUDBase[CannedResponse, CannedResponseCreate, Canne
     ) -> CannedResponse:
         """Create a new canned response"""
         obj_in_data = obj_in.model_dump()
-        obj_in_data['created_by'] = created_by
+        obj_in_data["created_by"] = created_by
 
         db_obj = self.model(**obj_in_data)
         db.add(db_obj)
@@ -51,10 +53,7 @@ class CannedResponseService(CRUDBase[CannedResponse, CannedResponseCreate, Canne
         """Get all public and active canned responses"""
         return (
             db.query(self.model)
-            .filter(
-                self.model.is_active == True,
-                self.model.is_public == True
-            )
+            .filter(self.model.is_active == True, self.model.is_public == True)
             .order_by(self.model.category, self.model.title)
             .offset(skip)
             .limit(limit)
@@ -67,10 +66,7 @@ class CannedResponseService(CRUDBase[CannedResponse, CannedResponseCreate, Canne
         """Get canned responses by category"""
         return (
             db.query(self.model)
-            .filter(
-                self.model.is_active == True,
-                self.model.category == category
-            )
+            .filter(self.model.is_active == True, self.model.category == category)
             .order_by(self.model.title)
             .offset(skip)
             .limit(limit)
@@ -80,10 +76,7 @@ class CannedResponseService(CRUDBase[CannedResponse, CannedResponseCreate, Canne
     def get_categories(self, db: Session) -> Dict[str, int]:
         """Get list of categories with counts"""
         result = (
-            db.query(
-                self.model.category,
-                func.count(self.model.id).label('count')
-            )
+            db.query(self.model.category, func.count(self.model.id).label("count"))
             .filter(self.model.is_active == True)
             .group_by(self.model.category)
             .all()
@@ -99,10 +92,10 @@ class CannedResponseService(CRUDBase[CannedResponse, CannedResponseCreate, Canne
             .filter(
                 self.model.is_active == True,
                 (
-                    self.model.title.ilike(f"%{query}%") |
-                    self.model.content.ilike(f"%{query}%") |
-                    self.model.shortcut.ilike(f"%{query}%")
-                )
+                    self.model.title.ilike(f"%{query}%")
+                    | self.model.content.ilike(f"%{query}%")
+                    | self.model.shortcut.ilike(f"%{query}%")
+                ),
             )
             .order_by(self.model.usage_count.desc())
             .offset(skip)
@@ -139,9 +132,7 @@ class CannedResponseService(CRUDBase[CannedResponse, CannedResponseCreate, Canne
 
         return content
 
-    def get_top_used(
-        self, db: Session, *, limit: int = 10
-    ) -> List[CannedResponse]:
+    def get_top_used(self, db: Session, *, limit: int = 10) -> List[CannedResponse]:
         """Get most used canned responses"""
         return (
             db.query(self.model)

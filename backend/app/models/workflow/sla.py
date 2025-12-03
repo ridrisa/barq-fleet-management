@@ -1,8 +1,10 @@
-from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum, JSON, Text, DateTime
+import enum
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class SLAStatus(str, enum.Enum):
@@ -22,6 +24,7 @@ class SLAPriority(str, enum.Enum):
 
 class WorkflowSLA(TenantMixin, BaseModel):
     """SLA definitions for workflow templates"""
+
     __tablename__ = "workflow_slas"
 
     name = Column(String, nullable=False)
@@ -54,6 +57,7 @@ class WorkflowSLA(TenantMixin, BaseModel):
 
 class WorkflowSLAInstance(TenantMixin, BaseModel):
     """SLA tracking for individual workflow instances"""
+
     __tablename__ = "workflow_sla_instances"
 
     workflow_instance_id = Column(Integer, ForeignKey("workflow_instances.id"), nullable=False)
@@ -91,10 +95,13 @@ class WorkflowSLAInstance(TenantMixin, BaseModel):
 
 class SLAEvent(TenantMixin, BaseModel):
     """Event log for SLA tracking"""
+
     __tablename__ = "sla_events"
 
     sla_instance_id = Column(Integer, ForeignKey("workflow_sla_instances.id"), nullable=False)
-    event_type = Column(String, nullable=False)  # started, warning, breached, paused, resumed, completed
+    event_type = Column(
+        String, nullable=False
+    )  # started, warning, breached, paused, resumed, completed
     event_time = Column(DateTime, nullable=False)
     triggered_by_id = Column(Integer, ForeignKey("users.id"))
     details = Column(JSON)

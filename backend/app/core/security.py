@@ -21,19 +21,19 @@ from typing import Any, Dict, Optional, Tuple
 
 import bcrypt
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, InvalidHash
-from jose import jwt, JWTError
+from argon2.exceptions import InvalidHash, VerifyMismatchError
+from jose import JWTError, jwt
 
 from app.config.settings import settings
 from app.core.security_config import security_config
 
 # Initialize Argon2 password hasher with secure defaults
 ph = PasswordHasher(
-    time_cost=3,        # Number of iterations
-    memory_cost=65536,   # Memory usage in KiB (64 MB)
-    parallelism=4,       # Number of parallel threads
-    hash_len=32,         # Length of the hash in bytes
-    salt_len=16,         # Length of random salt in bytes
+    time_cost=3,  # Number of iterations
+    memory_cost=65536,  # Memory usage in KiB (64 MB)
+    parallelism=4,  # Number of parallel threads
+    hash_len=32,  # Length of the hash in bytes
+    salt_len=16,  # Length of random salt in bytes
 )
 
 
@@ -50,11 +50,36 @@ class PasswordValidator:
 
     # Common passwords list (top 100 most common - in production, use larger list)
     COMMON_PASSWORDS = {
-        "password", "123456", "123456789", "12345678", "12345", "1234567",
-        "password1", "123123", "1234567890", "000000", "qwerty", "abc123",
-        "password123", "admin", "letmein", "welcome", "monkey", "dragon",
-        "master", "sunshine", "princess", "football", "shadow", "michael",
-        "superman", "696969", "batman", "trustno1", "jordan", "jennifer"
+        "password",
+        "123456",
+        "123456789",
+        "12345678",
+        "12345",
+        "1234567",
+        "password1",
+        "123123",
+        "1234567890",
+        "000000",
+        "qwerty",
+        "abc123",
+        "password123",
+        "admin",
+        "letmein",
+        "welcome",
+        "monkey",
+        "dragon",
+        "master",
+        "sunshine",
+        "princess",
+        "football",
+        "shadow",
+        "michael",
+        "superman",
+        "696969",
+        "batman",
+        "trustno1",
+        "jordan",
+        "jennifer",
     }
 
     @staticmethod
@@ -93,13 +118,19 @@ class PasswordValidator:
         if policy.require_special:
             special_regex = f"[{re.escape(policy.special_chars)}]"
             if not re.search(special_regex, password):
-                return False, f"Password must contain at least one special character ({policy.special_chars})"
+                return (
+                    False,
+                    f"Password must contain at least one special character ({policy.special_chars})",
+                )
 
         # Repeated characters check
         if policy.max_repeated_chars > 0:
             pattern = r"(.)\1{" + str(policy.max_repeated_chars) + ",}"
             if re.search(pattern, password):
-                return False, f"Password must not contain more than {policy.max_repeated_chars} repeated characters"
+                return (
+                    False,
+                    f"Password must not contain more than {policy.max_repeated_chars} repeated characters",
+                )
 
         # Common password check
         if policy.prevent_common_passwords:
@@ -170,10 +201,7 @@ class PasswordHasher:
                 ph.verify(hash_value, plain_password)
                 return True
             elif algo == "bcrypt":
-                return bcrypt.checkpw(
-                    plain_password.encode("utf-8"),
-                    hash_value.encode("utf-8")
-                )
+                return bcrypt.checkpw(plain_password.encode("utf-8"), hash_value.encode("utf-8"))
             else:
                 return False
 
@@ -227,7 +255,7 @@ class TokenManager:
         data: Dict[str, Any],
         expires_delta: Optional[timedelta] = None,
         organization_id: Optional[int] = None,
-        organization_role: Optional[str] = None
+        organization_role: Optional[str] = None,
     ) -> str:
         """
         Create JWT access token with standard claims and optional organization context.
@@ -259,14 +287,16 @@ class TokenManager:
             )
 
         # Add standard JWT claims
-        to_encode.update({
-            "exp": expire,
-            "iat": datetime.utcnow(),
-            "nbf": datetime.utcnow(),
-            "iss": security_config.token.issuer,
-            "aud": security_config.token.audience,
-            "jti": secrets.token_urlsafe(32),  # Unique token ID
-        })
+        to_encode.update(
+            {
+                "exp": expire,
+                "iat": datetime.utcnow(),
+                "nbf": datetime.utcnow(),
+                "iss": security_config.token.issuer,
+                "aud": security_config.token.audience,
+                "jti": secrets.token_urlsafe(32),  # Unique token ID
+            }
+        )
 
         # Add multi-tenant organization context if provided
         if organization_id is not None:
@@ -276,9 +306,7 @@ class TokenManager:
 
         # Encode token
         encoded_jwt = jwt.encode(
-            to_encode,
-            settings.SECRET_KEY,
-            algorithm=security_config.token.algorithm
+            to_encode, settings.SECRET_KEY, algorithm=security_config.token.algorithm
         )
 
         return encoded_jwt
@@ -288,7 +316,7 @@ class TokenManager:
         user_id: int,
         organization_id: int,
         organization_role: str,
-        expires_delta: Optional[timedelta] = None
+        expires_delta: Optional[timedelta] = None,
     ) -> str:
         """
         Create JWT access token with full multi-tenant context.
@@ -308,7 +336,7 @@ class TokenManager:
             data={"sub": str(user_id)},
             expires_delta=expires_delta,
             organization_id=organization_id,
-            organization_role=organization_role
+            organization_role=organization_role,
         )
 
     @staticmethod
@@ -323,9 +351,7 @@ class TokenManager:
             Tuple of (token, token_id)
         """
         token_id = secrets.token_urlsafe(32)
-        expire = datetime.utcnow() + timedelta(
-            days=security_config.token.refresh_token_expire_days
-        )
+        expire = datetime.utcnow() + timedelta(days=security_config.token.refresh_token_expire_days)
 
         payload = {
             "sub": str(user_id),
@@ -336,11 +362,7 @@ class TokenManager:
             "iss": security_config.token.issuer,
         }
 
-        token = jwt.encode(
-            payload,
-            settings.SECRET_KEY,
-            algorithm=security_config.token.algorithm
-        )
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm=security_config.token.algorithm)
 
         return token, token_id
 
@@ -366,7 +388,7 @@ class TokenManager:
                 algorithms=[security_config.token.algorithm],
                 issuer=security_config.token.issuer,
                 audience=security_config.token.audience if token_type == "access" else None,
-                leeway=security_config.token.leeway_seconds
+                leeway=security_config.token.leeway_seconds,
             )
 
             # Verify token type for refresh tokens
@@ -433,12 +455,9 @@ class BruteForceProtector:
         cls._failed_attempts[identifier].append(now)
 
         # Clean old attempts (outside lockout window)
-        window_start = now - timedelta(
-            minutes=security_config.brute_force.lockout_duration_minutes
-        )
+        window_start = now - timedelta(minutes=security_config.brute_force.lockout_duration_minutes)
         cls._failed_attempts[identifier] = [
-            attempt for attempt in cls._failed_attempts[identifier]
-            if attempt > window_start
+            attempt for attempt in cls._failed_attempts[identifier] if attempt > window_start
         ]
 
         # Check if lockout threshold exceeded

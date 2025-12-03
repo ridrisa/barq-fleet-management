@@ -1,10 +1,11 @@
 """Organization service for multi-tenant operations"""
 
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from typing import Any, Dict, Optional
+
 from fastapi import HTTPException, status
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.models.tenant.organization import Organization, SubscriptionPlan, SubscriptionStatus
 from app.models.tenant.organization_user import OrganizationUser
@@ -23,11 +24,7 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         super().__init__(Organization)
 
     def create_organization(
-        self,
-        db: Session,
-        *,
-        obj_in: OrganizationCreate,
-        trial_days: int = 14
+        self, db: Session, *, obj_in: OrganizationCreate, trial_days: int = 14
     ) -> Organization:
         """
         Create a new organization with default trial period
@@ -37,20 +34,22 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
             trial_days: Number of days for trial period (default: 14)
         """
         # Check if organization name or slug already exists
-        existing = db.query(Organization).filter(
-            (Organization.name == obj_in.name) | (Organization.slug == obj_in.slug)
-        ).first()
+        existing = (
+            db.query(Organization)
+            .filter((Organization.name == obj_in.name) | (Organization.slug == obj_in.slug))
+            .first()
+        )
 
         if existing:
             if existing.name == obj_in.name:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Organization with this name already exists"
+                    detail="Organization with this name already exists",
                 )
             if existing.slug == obj_in.slug:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Organization with this slug already exists"
+                    detail="Organization with this slug already exists",
                 )
 
         # Set trial end date
@@ -77,8 +76,7 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         org = self.get(db, organization_id)
         if not org:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
             )
 
         org.is_active = True
@@ -92,8 +90,7 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         org = self.get(db, organization_id)
         if not org:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
             )
 
         org.is_active = False
@@ -103,10 +100,7 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         return org
 
     def upgrade_plan(
-        self,
-        db: Session,
-        organization_id: int,
-        upgrade_data: SubscriptionUpgrade
+        self, db: Session, organization_id: int, upgrade_data: SubscriptionUpgrade
     ) -> Organization:
         """
         Upgrade organization subscription plan
@@ -118,8 +112,7 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         org = self.get(db, organization_id)
         if not org:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
             )
 
         # Update subscription plan
@@ -151,10 +144,14 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         if not org:
             return False
 
-        current_user_count = db.query(func.count(OrganizationUser.id)).filter(
-            OrganizationUser.organization_id == organization_id,
-            OrganizationUser.is_active == True
-        ).scalar()
+        current_user_count = (
+            db.query(func.count(OrganizationUser.id))
+            .filter(
+                OrganizationUser.organization_id == organization_id,
+                OrganizationUser.is_active == True,
+            )
+            .scalar()
+        )
 
         return current_user_count < org.max_users
 
@@ -192,14 +189,17 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         org = self.get(db, organization_id)
         if not org:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
             )
 
-        user_count = db.query(func.count(OrganizationUser.id)).filter(
-            OrganizationUser.organization_id == organization_id,
-            OrganizationUser.is_active == True
-        ).scalar()
+        user_count = (
+            db.query(func.count(OrganizationUser.id))
+            .filter(
+                OrganizationUser.organization_id == organization_id,
+                OrganizationUser.is_active == True,
+            )
+            .scalar()
+        )
 
         # These would be populated by actual counts from other modules
         courier_count = 0
@@ -218,17 +218,13 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         }
 
     def update_settings(
-        self,
-        db: Session,
-        organization_id: int,
-        settings: Dict[str, Any]
+        self, db: Session, organization_id: int, settings: Dict[str, Any]
     ) -> Organization:
         """Update organization settings"""
         org = self.get(db, organization_id)
         if not org:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
             )
 
         # Merge with existing settings

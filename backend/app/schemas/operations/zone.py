@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ZoneStatus(str, Enum):
@@ -72,6 +73,7 @@ class ZoneResponse(ZoneBase):
 
 class ZoneMetrics(BaseModel):
     """Zone performance metrics"""
+
     zone_id: int
     zone_code: str
     zone_name: str

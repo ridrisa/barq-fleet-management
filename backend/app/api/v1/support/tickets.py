@@ -1,24 +1,42 @@
 """Support Tickets API Routes"""
+
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_current_user, get_db
+from app.models.support import EscalationLevel, TicketCategory, TicketPriority, TicketStatus
 from app.models.user import User
-from app.models.support import TicketCategory, TicketPriority, TicketStatus, EscalationLevel
 from app.schemas.support import (
-    TicketCreate, TicketCreateFromTemplate, TicketUpdate, TicketResponse, TicketList,
-    TicketAssign, TicketResolve, TicketEscalate, TicketMerge, TicketBulkAction,
-    TicketSLAConfig, TicketStatistics, TicketWithRelations,
-    TicketReplyCreate, TicketReplyResponse,
-    TicketTemplateCreate, TicketTemplateUpdate, TicketTemplateResponse,
-    CannedResponseCreate, CannedResponseUpdate, CannedResponseResponse
+    CannedResponseCreate,
+    CannedResponseResponse,
+    CannedResponseUpdate,
+    TicketAssign,
+    TicketBulkAction,
+    TicketCreate,
+    TicketCreateFromTemplate,
+    TicketEscalate,
+    TicketList,
+    TicketMerge,
+    TicketReplyCreate,
+    TicketReplyResponse,
+    TicketResolve,
+    TicketResponse,
+    TicketSLAConfig,
+    TicketStatistics,
+    TicketTemplateCreate,
+    TicketTemplateResponse,
+    TicketTemplateUpdate,
+    TicketUpdate,
+    TicketWithRelations,
 )
 from app.services.support import (
-    ticket_service, ticket_reply_service,
-    ticket_template_service, canned_response_service
+    canned_response_service,
+    ticket_reply_service,
+    ticket_service,
+    ticket_template_service,
 )
-
 
 router = APIRouter()
 
@@ -124,10 +142,7 @@ def get_ticket(
     """Get ticket by ID"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     return ticket
 
 
@@ -141,10 +156,7 @@ def update_ticket(
     """Update ticket"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     return ticket_service.update(db, db_obj=ticket, obj_in=ticket_in)
 
 
@@ -157,10 +169,7 @@ def delete_ticket(
     """Delete ticket"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     ticket_service.remove(db, id=ticket_id)
 
 
@@ -174,15 +183,8 @@ def assign_ticket(
     """Assign ticket to a user"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
-    return ticket_service.assign_ticket(
-        db,
-        ticket_id=ticket_id,
-        user_id=assign_data.assigned_to
-    )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    return ticket_service.assign_ticket(db, ticket_id=ticket_id, user_id=assign_data.assigned_to)
 
 
 @router.post("/{ticket_id}/resolve", response_model=TicketResponse)
@@ -195,14 +197,9 @@ def resolve_ticket(
     """Mark ticket as resolved"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     return ticket_service.resolve_ticket(
-        db,
-        ticket_id=ticket_id,
-        resolution=resolve_data.resolution
+        db, ticket_id=ticket_id, resolution=resolve_data.resolution
     )
 
 
@@ -215,10 +212,7 @@ def close_ticket(
     """Close ticket"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     return ticket_service.close_ticket(db, ticket_id=ticket_id)
 
 
@@ -231,10 +225,7 @@ def reopen_ticket(
     """Reopen a closed ticket"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     return ticket_service.reopen_ticket(db, ticket_id=ticket_id)
 
 
@@ -249,19 +240,13 @@ def get_ticket_replies(
     """Get all replies for a ticket"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
-    return ticket_reply_service.get_by_ticket(
-        db,
-        ticket_id=ticket_id,
-        skip=skip,
-        limit=limit
-    )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
+    return ticket_reply_service.get_by_ticket(db, ticket_id=ticket_id, skip=skip, limit=limit)
 
 
-@router.post("/{ticket_id}/replies", response_model=TicketReplyResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{ticket_id}/replies", response_model=TicketReplyResponse, status_code=status.HTTP_201_CREATED
+)
 def create_ticket_reply(
     ticket_id: int,
     reply_in: TicketReplyCreate,
@@ -271,10 +256,7 @@ def create_ticket_reply(
     """Add a reply to a ticket"""
     ticket = ticket_service.get(db, id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
 
     # Record first response if this is the first reply
     ticket_service.record_first_response(db, ticket_id=ticket_id)
@@ -288,6 +270,7 @@ def create_ticket_reply(
 # SLA Management Endpoints
 # =============================================================================
 
+
 @router.post("/{ticket_id}/sla", response_model=TicketResponse)
 def set_ticket_sla(
     ticket_id: int,
@@ -298,10 +281,7 @@ def set_ticket_sla(
     """Set SLA deadline for a ticket"""
     ticket = ticket_service.set_sla(db, ticket_id=ticket_id, sla_hours=sla_config.sla_hours)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     return ticket
 
 
@@ -334,6 +314,7 @@ def get_sla_at_risk_tickets(
 # Escalation Endpoints
 # =============================================================================
 
+
 @router.post("/{ticket_id}/escalate", response_model=TicketResponse)
 def escalate_ticket(
     ticket_id: int,
@@ -348,13 +329,10 @@ def escalate_ticket(
         escalation_level=escalate_data.escalation_level,
         reason=escalate_data.reason,
         escalated_by=current_user.id,
-        assign_to=escalate_data.assign_to
+        assign_to=escalate_data.assign_to,
     )
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     return ticket
 
 
@@ -367,10 +345,7 @@ def de_escalate_ticket(
     """Remove escalation from a ticket"""
     ticket = ticket_service.de_escalate_ticket(db, ticket_id=ticket_id)
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found")
     return ticket
 
 
@@ -390,6 +365,7 @@ def get_escalated_tickets(
 # Merge Endpoints
 # =============================================================================
 
+
 @router.post("/merge", response_model=TicketResponse)
 def merge_tickets(
     merge_data: TicketMerge,
@@ -400,13 +376,10 @@ def merge_tickets(
     target_ticket = ticket_service.merge_tickets(
         db,
         source_ticket_ids=merge_data.source_ticket_ids,
-        target_ticket_id=merge_data.target_ticket_id
+        target_ticket_id=merge_data.target_ticket_id,
     )
     if not target_ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Target ticket not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target ticket not found")
 
     # Add merge note as a reply if provided
     if merge_data.merge_note:
@@ -416,8 +389,8 @@ def merge_tickets(
                 "ticket_id": target_ticket.id,
                 "message": f"Merged tickets: {merge_data.source_ticket_ids}\n\n{merge_data.merge_note}",
                 "is_internal": True,
-                "user_id": current_user.id
-            }
+                "user_id": current_user.id,
+            },
         )
 
     return target_ticket
@@ -436,6 +409,7 @@ def get_merged_tickets(
 # =============================================================================
 # Bulk Operations Endpoints
 # =============================================================================
+
 
 @router.post("/bulk", status_code=status.HTTP_200_OK)
 def bulk_ticket_action(
@@ -475,13 +449,14 @@ def bulk_ticket_action(
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid action: {action}. Supported actions: assign, change_status, change_priority, close, delete"
+            detail=f"Invalid action: {action}. Supported actions: assign, change_status, change_priority, close, delete",
         )
 
 
 # =============================================================================
 # Search and Filter Endpoints
 # =============================================================================
+
 
 @router.get("/search", response_model=List[TicketList])
 def search_tickets(
@@ -522,6 +497,7 @@ def get_tickets_by_department(
 # Template Endpoints
 # =============================================================================
 
+
 @router.get("/templates", response_model=List[TicketTemplateResponse])
 def get_ticket_templates(
     db: Session = Depends(get_db),
@@ -536,7 +512,9 @@ def get_ticket_templates(
     return ticket_template_service.get_multi(db, skip=skip, limit=limit)
 
 
-@router.post("/templates", response_model=TicketTemplateResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/templates", response_model=TicketTemplateResponse, status_code=status.HTTP_201_CREATED
+)
 def create_ticket_template(
     template_in: TicketTemplateCreate,
     db: Session = Depends(get_db),
@@ -547,8 +525,7 @@ def create_ticket_template(
     existing = ticket_template_service.get_by_name(db, name=template_in.name)
     if existing:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Template with this name already exists"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Template with this name already exists"
         )
     return ticket_template_service.create_template(
         db, obj_in=template_in, created_by=current_user.id
@@ -564,10 +541,7 @@ def get_ticket_template(
     """Get a ticket template by ID"""
     template = ticket_template_service.get(db, id=template_id)
     if not template:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Template not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     return template
 
 
@@ -581,10 +555,7 @@ def update_ticket_template(
     """Update a ticket template"""
     template = ticket_template_service.get(db, id=template_id)
     if not template:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Template not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     return ticket_template_service.update(db, db_obj=template, obj_in=template_in)
 
 
@@ -597,10 +568,7 @@ def delete_ticket_template(
     """Delete a ticket template"""
     template = ticket_template_service.get(db, id=template_id)
     if not template:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Template not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     ticket_template_service.delete(db, id=template_id)
 
 
@@ -613,31 +581,29 @@ def create_ticket_from_template(
     """Create a ticket from a template"""
     overrides = {}
     if template_data.subject:
-        overrides['subject'] = template_data.subject
+        overrides["subject"] = template_data.subject
     if template_data.description:
-        overrides['description'] = template_data.description
+        overrides["description"] = template_data.description
     if template_data.courier_id:
-        overrides['courier_id'] = template_data.courier_id
+        overrides["courier_id"] = template_data.courier_id
     if template_data.custom_fields:
-        overrides['custom_fields'] = template_data.custom_fields
+        overrides["custom_fields"] = template_data.custom_fields
 
     ticket = ticket_template_service.create_ticket_from_template(
         db,
         template_id=template_data.template_id,
         created_by=current_user.id,
-        overrides=overrides if overrides else None
+        overrides=overrides if overrides else None,
     )
     if not ticket:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Template not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
     return ticket
 
 
 # =============================================================================
 # Canned Response Endpoints
 # =============================================================================
+
 
 @router.get("/canned-responses", response_model=List[CannedResponseResponse])
 def get_canned_responses(
@@ -655,7 +621,9 @@ def get_canned_responses(
     return canned_response_service.get_active_responses(db, skip=skip, limit=limit)
 
 
-@router.post("/canned-responses", response_model=CannedResponseResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/canned-responses", response_model=CannedResponseResponse, status_code=status.HTTP_201_CREATED
+)
 def create_canned_response(
     response_in: CannedResponseCreate,
     db: Session = Depends(get_db),
@@ -668,7 +636,7 @@ def create_canned_response(
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Canned response with this shortcut already exists"
+                detail="Canned response with this shortcut already exists",
             )
     return canned_response_service.create_response(
         db, obj_in=response_in, created_by=current_user.id
@@ -706,8 +674,7 @@ def get_canned_response(
     response = canned_response_service.get(db, id=response_id)
     if not response:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Canned response not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Canned response not found"
         )
     return response
 
@@ -723,8 +690,7 @@ def update_canned_response(
     response = canned_response_service.get(db, id=response_id)
     if not response:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Canned response not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Canned response not found"
         )
     return canned_response_service.update(db, db_obj=response, obj_in=response_in)
 
@@ -739,8 +705,7 @@ def delete_canned_response(
     response = canned_response_service.get(db, id=response_id)
     if not response:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Canned response not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Canned response not found"
         )
     canned_response_service.delete(db, id=response_id)
 
@@ -755,7 +720,6 @@ def use_canned_response(
     response = canned_response_service.increment_usage(db, response_id=response_id)
     if not response:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Canned response not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Canned response not found"
         )
     return {"content": response.content}

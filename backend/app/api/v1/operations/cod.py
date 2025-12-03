@@ -1,17 +1,17 @@
 """COD Management API Routes"""
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
-from sqlalchemy.orm import Session
+
 from datetime import date
+from typing import List, Optional
 
-from app.core.dependencies import get_db, get_current_user
-from app.models.user import User
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_organization, get_current_user, get_db
 from app.models.operations.cod import CODStatus
-from app.schemas.operations import (
-    CODCreate, CODUpdate, CODResponse
-)
+from app.models.tenant.organization import Organization
+from app.models.user import User
+from app.schemas.operations import CODCreate, CODResponse, CODUpdate
 from app.services.operations import cod_service
-
 
 router = APIRouter()
 
@@ -26,6 +26,7 @@ def get_cod_transactions(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """
     Get list of COD transactions with filtering
@@ -38,7 +39,7 @@ def get_cod_transactions(
     # Filter by status
     if status_filter:
         return cod_service.get_by_status(
-            db, status=status_filter, skip=skip, limit=limit
+            db, status=status_filter, skip=skip, limit=limit, organization_id=current_org.id
         )
 
     # Filter by date range
@@ -49,16 +50,17 @@ def get_cod_transactions(
             end_date=end_date,
             courier_id=courier_id,
             skip=skip,
-            limit=limit
+            limit=limit,
+            organization_id=current_org.id,
         )
 
     # Filter by courier
     if courier_id:
         return cod_service.get_by_courier(
-            db, courier_id=courier_id, skip=skip, limit=limit
+            db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
         )
 
-    return cod_service.get_multi(db, skip=skip, limit=limit)
+    return cod_service.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
 
 
 @router.post("/", response_model=CODResponse, status_code=status.HTTP_201_CREATED)
@@ -66,9 +68,10 @@ def create_cod_transaction(
     cod_in: CODCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Create new COD transaction"""
-    return cod_service.create(db, obj_in=cod_in)
+    return cod_service.create(db, obj_in=cod_in, organization_id=current_org.id)
 
 
 @router.get("/pending", response_model=List[CODResponse])
@@ -78,10 +81,11 @@ def get_pending_cod(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get pending COD transactions"""
     return cod_service.get_pending(
-        db, courier_id=courier_id, skip=skip, limit=limit
+        db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
     )
 
 
@@ -92,13 +96,15 @@ def get_cod_statistics(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get COD statistics"""
     return cod_service.get_statistics(
         db,
         courier_id=courier_id,
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
+        organization_id=current_org.id,
     )
 
 
@@ -107,9 +113,12 @@ def get_courier_cod_balance(
     courier_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get courier's COD balance"""
-    return cod_service.get_courier_balance(db, courier_id=courier_id)
+    return cod_service.get_courier_balance(
+        db, courier_id=courier_id, organization_id=current_org.id
+    )
 
 
 @router.get("/{cod_id}", response_model=CODResponse)
@@ -117,10 +126,11 @@ def get_cod_transaction(
     cod_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get COD transaction by ID"""
     cod = cod_service.get(db, id=cod_id)
-    if not cod:
+    if not cod or cod.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="COD transaction not found")
     return cod
 
@@ -131,10 +141,11 @@ def update_cod_transaction(
     cod_in: CODUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Update COD transaction"""
     cod = cod_service.get(db, id=cod_id)
-    if not cod:
+    if not cod or cod.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="COD transaction not found")
 
     return cod_service.update(db, db_obj=cod, obj_in=cod_in)
@@ -145,10 +156,11 @@ def delete_cod_transaction(
     cod_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Delete COD transaction"""
     cod = cod_service.get(db, id=cod_id)
-    if not cod:
+    if not cod or cod.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="COD transaction not found")
 
     cod_service.delete(db, id=cod_id)
@@ -162,13 +174,16 @@ def mark_cod_as_collected(
     notes: Optional[str] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Mark COD as collected"""
+    # Verify COD belongs to organization
+    existing = cod_service.get(db, id=cod_id)
+    if not existing or existing.organization_id != current_org.id:
+        raise HTTPException(status_code=404, detail="COD transaction not found")
+
     cod = cod_service.mark_as_collected(
-        db,
-        cod_id=cod_id,
-        reference_number=reference_number,
-        notes=notes
+        db, cod_id=cod_id, reference_number=reference_number, notes=notes
     )
     if not cod:
         raise HTTPException(status_code=404, detail="COD transaction not found")
@@ -183,14 +198,16 @@ def mark_cod_as_deposited(
     notes: Optional[str] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Mark COD as deposited"""
+    # Verify COD belongs to organization
+    existing = cod_service.get(db, id=cod_id)
+    if not existing or existing.organization_id != current_org.id:
+        raise HTTPException(status_code=404, detail="COD transaction not found")
+
     cod = cod_service.mark_as_deposited(
-        db,
-        cod_id=cod_id,
-        deposit_date=deposit_date,
-        reference_number=reference_number,
-        notes=notes
+        db, cod_id=cod_id, deposit_date=deposit_date, reference_number=reference_number, notes=notes
     )
     if not cod:
         raise HTTPException(status_code=404, detail="COD transaction not found")
@@ -203,11 +220,15 @@ def mark_cod_as_reconciled(
     notes: Optional[str] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Mark COD as reconciled"""
-    cod = cod_service.mark_as_reconciled(
-        db, cod_id=cod_id, notes=notes
-    )
+    # Verify COD belongs to organization
+    existing = cod_service.get(db, id=cod_id)
+    if not existing or existing.organization_id != current_org.id:
+        raise HTTPException(status_code=404, detail="COD transaction not found")
+
+    cod = cod_service.mark_as_reconciled(db, cod_id=cod_id, notes=notes)
     if not cod:
         raise HTTPException(status_code=404, detail="COD transaction not found")
     return cod
@@ -220,17 +241,21 @@ def bulk_deposit_cod(
     reference_number: Optional[str] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Mark multiple COD transactions as deposited"""
+    # Verify all CODs belong to organization
+    for cod_id in cod_ids:
+        existing = cod_service.get(db, id=cod_id)
+        if not existing or existing.organization_id != current_org.id:
+            raise HTTPException(status_code=404, detail=f"COD transaction {cod_id} not found")
+
     updated_count = cod_service.bulk_deposit(
-        db,
-        cod_ids=cod_ids,
-        deposit_date=deposit_date,
-        reference_number=reference_number
+        db, cod_ids=cod_ids, deposit_date=deposit_date, reference_number=reference_number
     )
     return {
         "message": f"Successfully deposited {updated_count} COD transactions",
-        "updated_count": updated_count
+        "updated_count": updated_count,
     }
 
 
@@ -241,11 +266,13 @@ def settle_courier_cod(
     reference_number: Optional[str] = Body(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Settle all pending and collected COD for a courier"""
     return cod_service.settle_courier_cod(
         db,
         courier_id=courier_id,
         deposit_date=deposit_date,
-        reference_number=reference_number
+        reference_number=reference_number,
+        organization_id=current_org.id,
     )

@@ -6,8 +6,8 @@ from app.models.tenant.organization import (
     SubscriptionStatus,
 )
 from app.models.tenant.organization_user import (
-    OrganizationUser,
     OrganizationRole,
+    OrganizationUser,
 )
 
 __all__ = [

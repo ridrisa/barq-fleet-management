@@ -1,13 +1,15 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import date, datetime, time
 from decimal import Decimal
+from typing import Optional
 
-from app.models.fleet import AccidentSeverity, AccidentType, FaultStatus, AccidentStatus
+from pydantic import BaseModel, Field
+
+from app.models.fleet import AccidentSeverity, AccidentStatus, AccidentType, FaultStatus
 
 
 class AccidentLogBase(BaseModel):
     """Base accident log schema"""
+
     vehicle_id: int
     courier_id: Optional[int] = None
 
@@ -110,11 +112,13 @@ class AccidentLogBase(BaseModel):
 
 class AccidentLogCreate(AccidentLogBase):
     """Schema for creating accident log"""
+
     pass
 
 
 class AccidentLogUpdate(BaseModel):
     """Schema for updating accident log"""
+
     status: Optional[AccidentStatus] = None
     fault_status: Optional[FaultStatus] = None
     actual_repair_cost: Optional[Decimal] = Field(None, ge=0)
@@ -129,6 +133,7 @@ class AccidentLogUpdate(BaseModel):
 
 class AccidentLogResponse(AccidentLogBase):
     """Schema for accident log response"""
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -144,6 +149,7 @@ class AccidentLogResponse(AccidentLogBase):
 
 class AccidentLogList(BaseModel):
     """Minimal schema for list views"""
+
     id: int
     vehicle_id: int
     courier_id: Optional[int] = None

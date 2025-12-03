@@ -1,14 +1,20 @@
 """Report Model - Generated reports management"""
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Text, Enum as SQLEnum, Index
+
+import enum
+
+from sqlalchemy import Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class ReportType(str, enum.Enum):
     """Report types"""
+
     COURIER_PERFORMANCE = "courier_performance"
     FLEET_UTILIZATION = "fleet_utilization"
     DELIVERY_ANALYTICS = "delivery_analytics"
@@ -21,6 +27,7 @@ class ReportType(str, enum.Enum):
 
 class ReportStatus(str, enum.Enum):
     """Report generation status"""
+
     PENDING = "pending"
     GENERATING = "generating"
     COMPLETED = "completed"
@@ -30,6 +37,7 @@ class ReportStatus(str, enum.Enum):
 
 class ReportFormat(str, enum.Enum):
     """Report output format"""
+
     PDF = "pdf"
     EXCEL = "excel"
     CSV = "csv"
@@ -54,10 +62,14 @@ class Report(TenantMixin, BaseModel):
     format = Column(SQLEnum(ReportFormat), default=ReportFormat.PDF, nullable=False)
 
     # Parameters and filters
-    parameters = Column(JSONB, nullable=True, comment="Report parameters (date range, filters, etc.)")
+    parameters = Column(
+        JSONB, nullable=True, comment="Report parameters (date range, filters, etc.)"
+    )
 
     # Timestamps
-    generated_at = Column(DateTime(timezone=True), nullable=True, comment="When report was generated")
+    generated_at = Column(
+        DateTime(timezone=True), nullable=True, comment="When report was generated"
+    )
     scheduled_at = Column(DateTime(timezone=True), nullable=True, comment="For scheduled reports")
 
     # Storage
@@ -65,7 +77,9 @@ class Report(TenantMixin, BaseModel):
     file_size_bytes = Column(Integer, nullable=True, comment="File size in bytes")
 
     # User tracking
-    generated_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    generated_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Error tracking
     error_message = Column(Text, nullable=True, comment="Error message if generation failed")
@@ -75,9 +89,9 @@ class Report(TenantMixin, BaseModel):
 
     # Indexes
     __table_args__ = (
-        Index('idx_report_type_status', 'report_type', 'status'),
-        Index('idx_report_generated_at', 'generated_at'),
-        Index('idx_report_user', 'generated_by_user_id', 'generated_at'),
+        Index("idx_report_type_status", "report_type", "status"),
+        Index("idx_report_generated_at", "generated_at"),
+        Index("idx_report_user", "generated_by_user_id", "generated_at"),
     )
 
     def __repr__(self):

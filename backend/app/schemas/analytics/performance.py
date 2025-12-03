@@ -1,12 +1,15 @@
-from pydantic import BaseModel, Field, model_validator, ConfigDict
-from typing import Optional, List
-from datetime import date as DateType, datetime
+from datetime import date as DateType
+from datetime import datetime
 from decimal import Decimal
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 # Base schema with common fields
 class PerformanceBase(BaseModel):
     """Base performance schema with common fields"""
+
     model_config = ConfigDict(from_attributes=True)
 
     courier_id: int = Field(..., gt=0, description="Courier ID")
@@ -27,25 +30,27 @@ class PerformanceBase(BaseModel):
 
     notes: Optional[str] = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_delivery_counts(self):
         """Validate that delivery counts don't exceed completed orders"""
         if self.on_time_deliveries > self.orders_completed:
-            raise ValueError('On-time deliveries cannot exceed orders completed')
+            raise ValueError("On-time deliveries cannot exceed orders completed")
         if self.late_deliveries > self.orders_completed:
-            raise ValueError('Late deliveries cannot exceed orders completed')
+            raise ValueError("Late deliveries cannot exceed orders completed")
         return self
 
 
 # Schema for creating performance data
 class PerformanceCreate(PerformanceBase):
     """Schema for creating new performance record"""
+
     pass
 
 
 # Schema for updating performance data
 class PerformanceUpdate(BaseModel):
     """Schema for updating performance record - all fields optional"""
+
     courier_id: Optional[int] = Field(None, gt=0)
     date: Optional[DateType] = None
 
@@ -68,6 +73,7 @@ class PerformanceUpdate(BaseModel):
 # Schema for performance response
 class PerformanceResponse(PerformanceBase):
     """Schema for performance response with database fields"""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -85,6 +91,7 @@ class PerformanceResponse(PerformanceBase):
 # Schema for performance list (minimal fields)
 class PerformanceList(BaseModel):
     """Minimal performance schema for list views"""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -100,6 +107,7 @@ class PerformanceList(BaseModel):
 # Schema for performance statistics
 class PerformanceStats(BaseModel):
     """Aggregated performance statistics"""
+
     courier_id: int
     period_start: DateType
     period_end: DateType
@@ -124,6 +132,7 @@ class PerformanceStats(BaseModel):
 # Schema for top performers
 class TopPerformer(BaseModel):
     """Top performer summary"""
+
     courier_id: int
     courier_barq_id: str
     courier_name: str
@@ -140,6 +149,7 @@ class TopPerformer(BaseModel):
 # Schema for performance trends
 class PerformanceTrend(BaseModel):
     """Performance trend over time"""
+
     date: DateType
     orders_completed: int
     revenue_generated: float
@@ -150,6 +160,7 @@ class PerformanceTrend(BaseModel):
 # Schema for courier comparison
 class CourierComparison(BaseModel):
     """Compare multiple couriers"""
+
     courier_id: int
     courier_barq_id: str
     courier_name: str
@@ -169,18 +180,20 @@ class CourierComparison(BaseModel):
 # Schema for date range query
 class DateRangeQuery(BaseModel):
     """Date range filter"""
+
     start_date: DateType
     end_date: DateType
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_date_range(self):
         """Validate that end_date is after start_date"""
         if self.end_date < self.start_date:
-            raise ValueError('end_date must be after start_date')
+            raise ValueError("end_date must be after start_date")
         return self
 
 
 # Schema for bulk performance data
 class PerformanceBulkCreate(BaseModel):
     """Schema for bulk creating performance records"""
+
     records: List[PerformanceCreate] = Field(..., min_length=1, max_length=1000)

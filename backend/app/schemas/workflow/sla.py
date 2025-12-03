@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SLAStatus(str, Enum):
@@ -27,7 +28,9 @@ class WorkflowSLABase(BaseModel):
     priority: SLAPriority = SLAPriority.MEDIUM
     response_time: Optional[int] = Field(None, ge=1, description="Response time in minutes")
     resolution_time: int = Field(..., ge=1, description="Resolution time in minutes")
-    warning_threshold: Optional[int] = Field(None, ge=1, le=100, description="Warning threshold percentage")
+    warning_threshold: Optional[int] = Field(
+        None, ge=1, le=100, description="Warning threshold percentage"
+    )
     use_business_hours: bool = False
     business_hours_start: Optional[str] = Field(None, pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
     business_hours_end: Optional[str] = Field(None, pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$")
@@ -142,5 +145,6 @@ class SLAEventResponse(SLAEventBase):
 # Action Schemas
 class SLAActionRequest(BaseModel):
     """Request to pause/resume SLA"""
+
     action: str = Field(..., pattern="^(pause|resume)$")
     notes: Optional[str] = None

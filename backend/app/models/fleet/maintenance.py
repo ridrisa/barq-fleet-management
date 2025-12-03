@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text, Numeric, Boolean, Enum as SQLEnum
+import enum
+
+from sqlalchemy import Boolean, Column, Date, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class MaintenanceType(str, enum.Enum):
     """Type of maintenance service"""
+
     ROUTINE = "routine"  # Regular scheduled service
     PREVENTIVE = "preventive"  # Preventive maintenance
     CORRECTIVE = "corrective"  # Fix an issue
@@ -16,6 +21,7 @@ class MaintenanceType(str, enum.Enum):
 
 class MaintenanceStatus(str, enum.Enum):
     """Maintenance record status"""
+
     SCHEDULED = "scheduled"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -24,6 +30,7 @@ class MaintenanceStatus(str, enum.Enum):
 
 class ServiceProvider(str, enum.Enum):
     """Where maintenance was performed"""
+
     IN_HOUSE = "in_house"
     AUTHORIZED_DEALER = "authorized_dealer"
     THIRD_PARTY = "third_party"
@@ -35,11 +42,15 @@ class VehicleMaintenance(TenantMixin, BaseModel):
     __tablename__ = "vehicle_maintenance"
 
     # Foreign Key
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
+    vehicle_id = Column(
+        Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # Maintenance Details
     maintenance_type = Column(SQLEnum(MaintenanceType), nullable=False, index=True)
-    status = Column(SQLEnum(MaintenanceStatus), default=MaintenanceStatus.SCHEDULED, nullable=False, index=True)
+    status = Column(
+        SQLEnum(MaintenanceStatus), default=MaintenanceStatus.SCHEDULED, nullable=False, index=True
+    )
     service_provider = Column(SQLEnum(ServiceProvider), default=ServiceProvider.THIRD_PARTY)
 
     # Dates
@@ -117,6 +128,7 @@ class VehicleMaintenance(TenantMixin, BaseModel):
     def is_overdue(self) -> bool:
         """Check if scheduled maintenance is overdue"""
         from datetime import date
+
         if self.status == MaintenanceStatus.SCHEDULED and self.scheduled_date:
             return self.scheduled_date < date.today()
         return False

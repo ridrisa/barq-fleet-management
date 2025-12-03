@@ -8,24 +8,26 @@ Production-grade FastAPI application with:
 - Health checks
 - CORS configuration
 """
+
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Callable, Coroutine
 
 from fastapi import FastAPI, Request
+from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from strawberry.fastapi import GraphQLRouter
 
 from app.api.api import api_router
 from app.config.settings import settings
-from app.core.exceptions import AppException, get_exception_handlers
-from strawberry.fastapi import GraphQLRouter
-from app.graphql import schema
 from app.core.database import get_db
+from app.core.exceptions import AppException, get_exception_handlers
 from app.core.logging import (
     RequestLogger,
     get_logger,
     setup_logging,
 )
+from app.graphql import schema
 from app.middleware.performance import setup_performance_middleware
 from app.version import __version__, get_version_info
 
@@ -89,7 +91,9 @@ def create_app() -> FastAPI:
 
     # Request logging middleware
     @app.middleware("http")
-    async def log_requests(request: Request, call_next):
+    async def log_requests(
+        request: Request, call_next: Callable[[Request], Coroutine[Any, Any, Response]]
+    ) -> Response:
         """Log all requests with correlation IDs."""
         return await RequestLogger.log_request(request, call_next)
 
@@ -136,7 +140,7 @@ def create_app() -> FastAPI:
     app.include_router(api_router, prefix=settings.API_V1_STR)
 
     # GraphQL endpoint with context for database session
-    async def get_context():
+    async def get_context() -> dict[str, Any]:
         db = next(get_db())
         try:
             return {"db": db}
@@ -151,7 +155,7 @@ def create_app() -> FastAPI:
 
     # Root endpoint
     @app.get("/", tags=["root"])
-    def root():
+    def root() -> dict[str, str]:
         """Root endpoint with API information."""
         return {
             "message": "BARQ Fleet Management API",
@@ -162,7 +166,7 @@ def create_app() -> FastAPI:
 
     # Basic health check (for load balancer)
     @app.get("/health", tags=["health"])
-    def health_check():
+    def health_check() -> dict[str, str]:
         """Basic health check endpoint."""
         return {
             "status": "healthy",
@@ -172,7 +176,7 @@ def create_app() -> FastAPI:
 
     # Version endpoint
     @app.get("/version", tags=["info"])
-    def version_info():
+    def version_info() -> dict[str, Any]:
         """Get detailed version information."""
         return get_version_info()
 

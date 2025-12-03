@@ -1,24 +1,21 @@
 """Route Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
-from datetime import date
 
-from app.services.base import CRUDBase
+from datetime import date
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
 from app.models.operations.route import Route
 from app.schemas.operations.route import RouteCreate, RouteUpdate
+from app.services.base import CRUDBase
 
 
 class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
     """Service for route management operations"""
 
     def get_by_courier(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
     ) -> List[Route]:
         """
         Get routes for a specific courier
@@ -42,12 +39,7 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         )
 
     def get_by_date(
-        self,
-        db: Session,
-        *,
-        route_date: date,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, route_date: date, skip: int = 0, limit: int = 100
     ) -> List[Route]:
         """
         Get routes for a specific date
@@ -78,7 +70,7 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         end_date: date,
         courier_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Route]:
         """
         Get routes within a date range
@@ -95,28 +87,16 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
             List of route records
         """
         query = db.query(self.model).filter(
-            and_(
-                self.model.date >= start_date,
-                self.model.date <= end_date
-            )
+            and_(self.model.date >= start_date, self.model.date <= end_date)
         )
 
         if courier_id:
             query = query.filter(self.model.courier_id == courier_id)
 
-        return (
-            query.order_by(self.model.date.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.date.desc()).offset(skip).limit(limit).all()
 
     def get_route_for_courier_date(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        route_date: date
+        self, db: Session, *, courier_id: int, route_date: date
     ) -> Optional[Route]:
         """
         Get route for a specific courier on a specific date
@@ -131,21 +111,12 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         """
         return (
             db.query(self.model)
-            .filter(
-                and_(
-                    self.model.courier_id == courier_id,
-                    self.model.date == route_date
-                )
-            )
+            .filter(and_(self.model.courier_id == courier_id, self.model.date == route_date))
             .first()
         )
 
     def optimize_route(
-        self,
-        db: Session,
-        *,
-        route_id: int,
-        optimized_waypoints: List[Dict]
+        self, db: Session, *, route_id: int, optimized_waypoints: List[Dict]
     ) -> Optional[Route]:
         """
         Update route with optimized waypoints
@@ -163,10 +134,7 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
             return None
 
         # Calculate total distance from waypoints if provided
-        total_distance = sum(
-            waypoint.get("distance", 0)
-            for waypoint in optimized_waypoints
-        )
+        total_distance = sum(waypoint.get("distance", 0) for waypoint in optimized_waypoints)
 
         # Calculate estimated time (assuming average speed)
         # Example: 30 km/h average speed
@@ -175,7 +143,7 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         update_data = {
             "waypoints": optimized_waypoints,
             "total_distance": total_distance,
-            "estimated_time": estimated_time
+            "estimated_time": estimated_time,
         }
 
         return self.update(db, db_obj=route, obj_in=update_data)
@@ -186,7 +154,7 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         *,
         courier_id: Optional[int] = None,
         start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        end_date: Optional[date] = None,
     ) -> Dict:
         """
         Get route statistics
@@ -216,10 +184,7 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         total_time = sum(route.estimated_time or 0 for route in routes)
 
         # Count waypoints
-        total_waypoints = sum(
-            len(route.waypoints) if route.waypoints else 0
-            for route in routes
-        )
+        total_waypoints = sum(len(route.waypoints) if route.waypoints else 0 for route in routes)
 
         return {
             "total_routes": total_routes,
@@ -227,17 +192,13 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
             "total_estimated_time_minutes": total_time,
             "total_waypoints": total_waypoints,
             "average_distance_per_route": total_distance / total_routes if total_routes > 0 else 0,
-            "average_waypoints_per_route": total_waypoints / total_routes if total_routes > 0 else 0,
-            "average_time_per_route": total_time / total_routes if total_routes > 0 else 0
+            "average_waypoints_per_route": (
+                total_waypoints / total_routes if total_routes > 0 else 0
+            ),
+            "average_time_per_route": total_time / total_routes if total_routes > 0 else 0,
         }
 
-    def add_waypoint(
-        self,
-        db: Session,
-        *,
-        route_id: int,
-        waypoint: Dict
-    ) -> Optional[Route]:
+    def add_waypoint(self, db: Session, *, route_id: int, waypoint: Dict) -> Optional[Route]:
         """
         Add a waypoint to a route
 
@@ -257,26 +218,19 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         current_waypoints.append(waypoint)
 
         # Recalculate totals
-        total_distance = sum(
-            wp.get("distance", 0)
-            for wp in current_waypoints
-        )
+        total_distance = sum(wp.get("distance", 0) for wp in current_waypoints)
         estimated_time = int((total_distance / 30) * 60) if total_distance > 0 else 0
 
         update_data = {
             "waypoints": current_waypoints,
             "total_distance": total_distance,
-            "estimated_time": estimated_time
+            "estimated_time": estimated_time,
         }
 
         return self.update(db, db_obj=route, obj_in=update_data)
 
     def remove_waypoint(
-        self,
-        db: Session,
-        *,
-        route_id: int,
-        waypoint_index: int
+        self, db: Session, *, route_id: int, waypoint_index: int
     ) -> Optional[Route]:
         """
         Remove a waypoint from a route
@@ -300,27 +254,19 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         current_waypoints.pop(waypoint_index)
 
         # Recalculate totals
-        total_distance = sum(
-            wp.get("distance", 0)
-            for wp in current_waypoints
-        )
+        total_distance = sum(wp.get("distance", 0) for wp in current_waypoints)
         estimated_time = int((total_distance / 30) * 60) if total_distance > 0 else 0
 
         update_data = {
             "waypoints": current_waypoints,
             "total_distance": total_distance,
-            "estimated_time": estimated_time
+            "estimated_time": estimated_time,
         }
 
         return self.update(db, db_obj=route, obj_in=update_data)
 
     def get_upcoming_routes(
-        self,
-        db: Session,
-        *,
-        courier_id: Optional[int] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> List[Route]:
         """
         Get upcoming routes (today and future)
@@ -334,19 +280,12 @@ class RouteService(CRUDBase[Route, RouteCreate, RouteUpdate]):
         Returns:
             List of upcoming route records
         """
-        query = db.query(self.model).filter(
-            self.model.date >= date.today()
-        )
+        query = db.query(self.model).filter(self.model.date >= date.today())
 
         if courier_id:
             query = query.filter(self.model.courier_id == courier_id)
 
-        return (
-            query.order_by(self.model.date.asc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.date.asc()).offset(skip).limit(limit).all()
 
 
 route_service = RouteService(Route)

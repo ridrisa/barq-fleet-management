@@ -1,7 +1,9 @@
 """Integration Model for Third-Party Services"""
+
 import enum
-from sqlalchemy import Column, Integer, String, Boolean, Text, JSON, DateTime
 from datetime import datetime
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
 
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
@@ -9,6 +11,7 @@ from app.models.mixins import TenantMixin
 
 class IntegrationType(str, enum.Enum):
     """Types of integrations"""
+
     PAYMENT_GATEWAY = "payment_gateway"
     SMS_PROVIDER = "sms_provider"
     EMAIL_PROVIDER = "email_provider"
@@ -24,6 +27,7 @@ class IntegrationType(str, enum.Enum):
 
 class IntegrationStatus(str, enum.Enum):
     """Integration status"""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     ERROR = "error"
@@ -45,6 +49,7 @@ class Integration(TenantMixin, BaseModel):
     - Cloud storage (AWS S3, Google Cloud Storage)
     - Analytics platforms
     """
+
     __tablename__ = "integrations"
 
     # Basic information
@@ -59,7 +64,9 @@ class Integration(TenantMixin, BaseModel):
 
     # Configuration
     config = Column(JSON, default=dict, nullable=False)  # Integration-specific configuration
-    credentials = Column(JSON, default=dict, nullable=True)  # Encrypted credentials (API keys, tokens)
+    credentials = Column(
+        JSON, default=dict, nullable=True
+    )  # Encrypted credentials (API keys, tokens)
 
     # Endpoints and URLs
     base_url = Column(String(500), nullable=True)
@@ -90,7 +97,9 @@ class Integration(TenantMixin, BaseModel):
     extra_data = Column(JSON, default=dict, nullable=True)
 
     def __repr__(self):
-        return f"<Integration(name={self.name}, type={self.integration_type}, status={self.status})>"
+        return (
+            f"<Integration(name={self.name}, type={self.integration_type}, status={self.status})>"
+        )
 
     def is_healthy(self) -> bool:
         """Check if integration is healthy"""

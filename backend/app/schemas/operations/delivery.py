@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import date, datetime
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class DeliveryStatus(str, Enum):
     PENDING = "pending"
@@ -9,6 +11,7 @@ class DeliveryStatus(str, Enum):
     DELIVERED = "delivered"
     FAILED = "failed"
     RETURNED = "returned"
+
 
 class DeliveryBase(BaseModel):
     tracking_number: str = Field(..., min_length=5, max_length=50)
@@ -19,8 +22,10 @@ class DeliveryBase(BaseModel):
     customer_phone: Optional[str] = None
     notes: Optional[str] = None
 
+
 class DeliveryCreate(DeliveryBase):
     pass
+
 
 class DeliveryUpdate(BaseModel):
     courier_id: Optional[int] = None
@@ -31,6 +36,7 @@ class DeliveryUpdate(BaseModel):
     status: Optional[DeliveryStatus] = None
     delivered_at: Optional[datetime] = None
     notes: Optional[str] = None
+
 
 class DeliveryResponse(DeliveryBase):
     id: int

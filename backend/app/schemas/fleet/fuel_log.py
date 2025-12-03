@@ -1,11 +1,13 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class FuelLogBase(BaseModel):
     """Base fuel log schema"""
+
     vehicle_id: int
     courier_id: Optional[int] = None
     fuel_date: date
@@ -22,11 +24,13 @@ class FuelLogBase(BaseModel):
 
 class FuelLogCreate(FuelLogBase):
     """Schema for creating fuel log"""
+
     pass
 
 
 class FuelLogUpdate(BaseModel):
     """Schema for updating fuel log"""
+
     fuel_date: Optional[date] = None
     odometer_reading: Optional[Decimal] = Field(None, ge=0)
     fuel_quantity: Optional[Decimal] = Field(None, ge=0)
@@ -41,6 +45,7 @@ class FuelLogUpdate(BaseModel):
 
 class FuelLogResponse(FuelLogBase):
     """Schema for fuel log response"""
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -51,6 +56,7 @@ class FuelLogResponse(FuelLogBase):
 
 class FuelLogSummary(BaseModel):
     """Fuel consumption summary"""
+
     total_fuel_quantity: Decimal
     total_fuel_cost: Decimal
     average_cost_per_liter: Decimal

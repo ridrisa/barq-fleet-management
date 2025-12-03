@@ -3,17 +3,20 @@
 Service for sending email notifications using SendGrid or SMTP.
 Supports template-based emails for various system events.
 """
-from typing import List, Dict, Optional, Any
+
+import logging
 from datetime import datetime
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, EmailStr
-import logging
 
 # Email sending library - using SendGrid as an example
 # Install: pip install sendgrid
 try:
     from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail, Email, To, Content
+    from sendgrid.helpers.mail import Content, Email, Mail, To
+
     SENDGRID_AVAILABLE = True
 except ImportError:
     SENDGRID_AVAILABLE = False
@@ -22,6 +25,7 @@ except ImportError:
 
 class EmailRecipient(BaseModel):
     """Email recipient model"""
+
     email: EmailStr
     name: Optional[str] = None
 
@@ -68,7 +72,7 @@ class EmailNotificationService:
         self,
         sendgrid_api_key: Optional[str] = None,
         from_email: str = "noreply@barqfleet.com",
-        from_name: str = "BARQ Fleet Management"
+        from_name: str = "BARQ Fleet Management",
     ):
         """
         Initialize email notification service
@@ -98,7 +102,7 @@ class EmailNotificationService:
         plain_content: Optional[str] = None,
         cc: Optional[List[EmailRecipient]] = None,
         bcc: Optional[List[EmailRecipient]] = None,
-        attachments: Optional[List[Dict]] = None
+        attachments: Optional[List[Dict]] = None,
     ) -> bool:
         """
         Send a single email
@@ -123,7 +127,7 @@ class EmailNotificationService:
                     to_emails=To(to.email, to.name),
                     subject=subject,
                     plain_text_content=Content("text/plain", plain_content or html_content),
-                    html_content=Content("text/html", html_content)
+                    html_content=Content("text/html", html_content),
                 )
 
                 response = self.sg_client.send(message)
@@ -150,7 +154,7 @@ class EmailNotificationService:
         leave_type: str,
         start_date: str,
         end_date: str,
-        days: int
+        days: int,
     ) -> bool:
         """
         Send leave approval notification
@@ -188,7 +192,7 @@ class EmailNotificationService:
         return self.send_email(
             to=EmailRecipient(email=to_email, name=courier_name),
             subject=subject,
-            html_content=html_content
+            html_content=html_content,
         )
 
     def send_leave_rejection_notification(
@@ -198,7 +202,7 @@ class EmailNotificationService:
         leave_type: str,
         start_date: str,
         end_date: str,
-        reason: Optional[str] = None
+        reason: Optional[str] = None,
     ) -> bool:
         """
         Send leave rejection notification
@@ -235,7 +239,7 @@ class EmailNotificationService:
         return self.send_email(
             to=EmailRecipient(email=to_email, name=courier_name),
             subject=subject,
-            html_content=html_content
+            html_content=html_content,
         )
 
     def send_salary_payment_notification(
@@ -245,7 +249,7 @@ class EmailNotificationService:
         month: int,
         year: int,
         net_salary: Decimal,
-        payment_date: str
+        payment_date: str,
     ) -> bool:
         """
         Send salary payment notification
@@ -282,7 +286,7 @@ class EmailNotificationService:
         return self.send_email(
             to=EmailRecipient(email=to_email, name=courier_name),
             subject=subject,
-            html_content=html_content
+            html_content=html_content,
         )
 
     def send_document_expiry_alert(
@@ -292,7 +296,7 @@ class EmailNotificationService:
         document_type: str,
         document_number: str,
         expiry_date: str,
-        days_until_expiry: int
+        days_until_expiry: int,
     ) -> bool:
         """
         Send document expiry alert
@@ -333,7 +337,7 @@ class EmailNotificationService:
         return self.send_email(
             to=EmailRecipient(email=to_email, name=courier_name),
             subject=subject,
-            html_content=html_content
+            html_content=html_content,
         )
 
     def send_loan_approval_notification(
@@ -342,7 +346,7 @@ class EmailNotificationService:
         courier_name: str,
         loan_amount: Decimal,
         monthly_deduction: Decimal,
-        approval_date: str
+        approval_date: str,
     ) -> bool:
         """
         Send loan approval notification
@@ -379,15 +383,11 @@ class EmailNotificationService:
         return self.send_email(
             to=EmailRecipient(email=to_email, name=courier_name),
             subject=subject,
-            html_content=html_content
+            html_content=html_content,
         )
 
     def send_welcome_email(
-        self,
-        to_email: str,
-        courier_name: str,
-        employee_id: str,
-        start_date: str
+        self, to_email: str, courier_name: str, employee_id: str, start_date: str
     ) -> bool:
         """
         Send welcome email to new employee
@@ -422,14 +422,11 @@ class EmailNotificationService:
         return self.send_email(
             to=EmailRecipient(email=to_email, name=courier_name),
             subject=subject,
-            html_content=html_content
+            html_content=html_content,
         )
 
     def send_bulk_notification(
-        self,
-        recipients: List[EmailRecipient],
-        subject: str,
-        html_content: str
+        self, recipients: List[EmailRecipient], subject: str, html_content: str
     ) -> Dict[str, int]:
         """
         Send bulk emails to multiple recipients
@@ -447,11 +444,7 @@ class EmailNotificationService:
 
         for recipient in recipients:
             try:
-                if self.send_email(
-                    to=recipient,
-                    subject=subject,
-                    html_content=html_content
-                ):
+                if self.send_email(to=recipient, subject=subject, html_content=html_content):
                     success_count += 1
                 else:
                     failure_count += 1
@@ -459,11 +452,7 @@ class EmailNotificationService:
                 self.logger.error(f"Failed to send to {recipient.email}: {str(e)}")
                 failure_count += 1
 
-        return {
-            "total": len(recipients),
-            "success": success_count,
-            "failure": failure_count
-        }
+        return {"total": len(recipients), "success": success_count, "failure": failure_count}
 
 
 # Singleton instance (configure with settings)

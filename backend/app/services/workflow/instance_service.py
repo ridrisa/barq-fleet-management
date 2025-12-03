@@ -1,12 +1,14 @@
 """Workflow Instance Service"""
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from datetime import date
 
-from app.services.base import CRUDBase
+from datetime import date
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.models.workflow.instance import WorkflowInstance, WorkflowStatus
 from app.schemas.workflow import WorkflowInstanceCreate, WorkflowInstanceUpdate
+from app.services.base import CRUDBase
 
 
 class InstanceService(CRUDBase[WorkflowInstance, WorkflowInstanceCreate, WorkflowInstanceUpdate]):
@@ -51,9 +53,7 @@ class InstanceService(CRUDBase[WorkflowInstance, WorkflowInstanceCreate, Workflo
             .all()
         )
 
-    def start_workflow(
-        self, db: Session, *, instance_id: int
-    ) -> Optional[WorkflowInstance]:
+    def start_workflow(self, db: Session, *, instance_id: int) -> Optional[WorkflowInstance]:
         """Start a workflow instance"""
         instance = db.query(self.model).filter(self.model.id == instance_id).first()
         if not instance:
@@ -68,11 +68,7 @@ class InstanceService(CRUDBase[WorkflowInstance, WorkflowInstanceCreate, Workflo
         return instance
 
     def complete_step(
-        self,
-        db: Session,
-        *,
-        instance_id: int,
-        step_data: Optional[Dict[str, Any]] = None
+        self, db: Session, *, instance_id: int, step_data: Optional[Dict[str, Any]] = None
     ) -> Optional[WorkflowInstance]:
         """Complete current step and move to next"""
         instance = db.query(self.model).filter(self.model.id == instance_id).first()
@@ -157,9 +153,7 @@ class InstanceService(CRUDBase[WorkflowInstance, WorkflowInstanceCreate, Workflo
         db.refresh(instance)
         return instance
 
-    def submit_for_approval(
-        self, db: Session, *, instance_id: int
-    ) -> Optional[WorkflowInstance]:
+    def submit_for_approval(self, db: Session, *, instance_id: int) -> Optional[WorkflowInstance]:
         """Submit workflow instance for approval"""
         instance = db.query(self.model).filter(self.model.id == instance_id).first()
         if not instance:
@@ -175,33 +169,47 @@ class InstanceService(CRUDBase[WorkflowInstance, WorkflowInstanceCreate, Workflo
         """Get workflow instance statistics"""
         total = db.query(func.count(self.model.id)).scalar()
 
-        draft = db.query(func.count(self.model.id)).filter(
-            self.model.status == WorkflowStatus.DRAFT
-        ).scalar()
+        draft = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == WorkflowStatus.DRAFT)
+            .scalar()
+        )
 
-        in_progress = db.query(func.count(self.model.id)).filter(
-            self.model.status == WorkflowStatus.IN_PROGRESS
-        ).scalar()
+        in_progress = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == WorkflowStatus.IN_PROGRESS)
+            .scalar()
+        )
 
-        pending_approval = db.query(func.count(self.model.id)).filter(
-            self.model.status == WorkflowStatus.PENDING_APPROVAL
-        ).scalar()
+        pending_approval = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == WorkflowStatus.PENDING_APPROVAL)
+            .scalar()
+        )
 
-        approved = db.query(func.count(self.model.id)).filter(
-            self.model.status == WorkflowStatus.APPROVED
-        ).scalar()
+        approved = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == WorkflowStatus.APPROVED)
+            .scalar()
+        )
 
-        completed = db.query(func.count(self.model.id)).filter(
-            self.model.status == WorkflowStatus.COMPLETED
-        ).scalar()
+        completed = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == WorkflowStatus.COMPLETED)
+            .scalar()
+        )
 
-        rejected = db.query(func.count(self.model.id)).filter(
-            self.model.status == WorkflowStatus.REJECTED
-        ).scalar()
+        rejected = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == WorkflowStatus.REJECTED)
+            .scalar()
+        )
 
-        cancelled = db.query(func.count(self.model.id)).filter(
-            self.model.status == WorkflowStatus.CANCELLED
-        ).scalar()
+        cancelled = (
+            db.query(func.count(self.model.id))
+            .filter(self.model.status == WorkflowStatus.CANCELLED)
+            .scalar()
+        )
 
         return {
             "total": total or 0,
@@ -211,7 +219,7 @@ class InstanceService(CRUDBase[WorkflowInstance, WorkflowInstanceCreate, Workflo
             "approved": approved or 0,
             "completed": completed or 0,
             "rejected": rejected or 0,
-            "cancelled": cancelled or 0
+            "cancelled": cancelled or 0,
         }
 
 

@@ -1,13 +1,13 @@
 from app.crud.base import CRUDBase
 from app.models.workflow.automation import (
-    WorkflowAutomation,
     AutomationExecutionLog,
+    WorkflowAutomation,
 )
 from app.schemas.workflow.automation import (
-    WorkflowAutomationCreate,
-    WorkflowAutomationUpdate,
     AutomationExecutionLogCreate,
     AutomationExecutionLogUpdate,
+    WorkflowAutomationCreate,
+    WorkflowAutomationUpdate,
 )
 
 workflow_automation = CRUDBase[

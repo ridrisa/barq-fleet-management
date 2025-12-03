@@ -1,11 +1,14 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from app.models.workflow.history import WorkflowHistoryEventType
 
 
 class WorkflowHistoryBase(BaseModel):
     """Base schema for workflow history"""
+
     event_type: WorkflowHistoryEventType
     description: str = Field(..., min_length=1, max_length=1000)
     actor_type: str = "user"
@@ -17,6 +20,7 @@ class WorkflowHistoryBase(BaseModel):
 
 class WorkflowHistoryCreate(WorkflowHistoryBase):
     """Schema for creating a workflow history entry"""
+
     workflow_instance_id: int
     actor_id: Optional[int] = None
     event_time: datetime
@@ -26,6 +30,7 @@ class WorkflowHistoryCreate(WorkflowHistoryBase):
 
 class WorkflowHistoryResponse(WorkflowHistoryBase):
     """Schema for workflow history response"""
+
     id: int
     workflow_instance_id: int
     actor_id: Optional[int] = None
@@ -39,12 +44,14 @@ class WorkflowHistoryResponse(WorkflowHistoryBase):
 
 class WorkflowHistoryWithActor(WorkflowHistoryResponse):
     """Extended schema with actor details"""
+
     actor_name: Optional[str] = None
     actor_email: Optional[str] = None
 
 
 class WorkflowStepHistoryBase(BaseModel):
     """Base schema for workflow step history"""
+
     step_index: int
     step_name: str
     status: str
@@ -56,6 +63,7 @@ class WorkflowStepHistoryBase(BaseModel):
 
 class WorkflowStepHistoryCreate(WorkflowStepHistoryBase):
     """Schema for creating workflow step history"""
+
     workflow_instance_id: int
     started_at: datetime
     completed_at: Optional[datetime] = None
@@ -66,6 +74,7 @@ class WorkflowStepHistoryCreate(WorkflowStepHistoryBase):
 
 class WorkflowStepHistoryResponse(WorkflowStepHistoryBase):
     """Schema for workflow step history response"""
+
     id: int
     workflow_instance_id: int
     started_at: datetime
@@ -80,6 +89,7 @@ class WorkflowStepHistoryResponse(WorkflowStepHistoryBase):
 
 class WorkflowTimelineResponse(BaseModel):
     """Complete timeline view of workflow history"""
+
     workflow_instance_id: int
     workflow_name: str
     started_at: Optional[datetime] = None

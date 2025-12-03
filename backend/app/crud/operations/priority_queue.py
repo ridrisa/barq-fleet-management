@@ -1,14 +1,20 @@
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
+
 from app.crud.base import CRUDBase
 from app.models.operations.priority_queue import PriorityQueueEntry, QueuePriority, QueueStatus
 from app.schemas.operations.priority_queue import PriorityQueueEntryCreate, PriorityQueueEntryUpdate
 
 
-class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCreate, PriorityQueueEntryUpdate]):
-    def create_with_number(self, db: Session, *, obj_in: PriorityQueueEntryCreate) -> PriorityQueueEntry:
+class CRUDPriorityQueueEntry(
+    CRUDBase[PriorityQueueEntry, PriorityQueueEntryCreate, PriorityQueueEntryUpdate]
+):
+    def create_with_number(
+        self, db: Session, *, obj_in: PriorityQueueEntryCreate
+    ) -> PriorityQueueEntry:
         """Create queue entry with auto-generated number and calculated priority"""
         last_entry = db.query(PriorityQueueEntry).order_by(PriorityQueueEntry.id.desc()).first()
         next_number = 1 if not last_entry else last_entry.id + 1
@@ -17,25 +23,24 @@ class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCrea
         # Calculate total priority score
         obj_in_data = obj_in.model_dump()
         total_score = (
-            obj_in_data.get('base_priority_score', 0) +
-            obj_in_data.get('time_factor_score', 0) +
-            obj_in_data.get('customer_tier_score', 0) +
-            obj_in_data.get('sla_factor_score', 0)
+            obj_in_data.get("base_priority_score", 0)
+            + obj_in_data.get("time_factor_score", 0)
+            + obj_in_data.get("customer_tier_score", 0)
+            + obj_in_data.get("sla_factor_score", 0)
         )
-        obj_in_data['total_priority_score'] = total_score
+        obj_in_data["total_priority_score"] = total_score
 
         # Calculate warning threshold
-        if obj_in_data.get('sla_deadline'):
+        if obj_in_data.get("sla_deadline"):
             from datetime import timedelta
-            buffer_minutes = obj_in_data.get('sla_buffer_minutes', 30)
-            obj_in_data['warning_threshold'] = (
-                obj_in_data['sla_deadline'] - timedelta(minutes=buffer_minutes)
+
+            buffer_minutes = obj_in_data.get("sla_buffer_minutes", 30)
+            obj_in_data["warning_threshold"] = obj_in_data["sla_deadline"] - timedelta(
+                minutes=buffer_minutes
             )
 
         db_obj = PriorityQueueEntry(
-            **obj_in_data,
-            queue_number=queue_number,
-            queued_at=datetime.utcnow()
+            **obj_in_data, queue_number=queue_number, queued_at=datetime.utcnow()
         )
         db.add(db_obj)
         db.commit()
@@ -48,24 +53,29 @@ class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCrea
 
     def get_by_number(self, db: Session, *, queue_number: str) -> Optional[PriorityQueueEntry]:
         """Get queue entry by number"""
-        return db.query(PriorityQueueEntry).filter(
-            PriorityQueueEntry.queue_number == queue_number
-        ).first()
+        return (
+            db.query(PriorityQueueEntry)
+            .filter(PriorityQueueEntry.queue_number == queue_number)
+            .first()
+        )
 
     def get_by_delivery(self, db: Session, *, delivery_id: int) -> Optional[PriorityQueueEntry]:
         """Get queue entry for delivery"""
-        return db.query(PriorityQueueEntry).filter(
-            PriorityQueueEntry.delivery_id == delivery_id
-        ).first()
+        return (
+            db.query(PriorityQueueEntry)
+            .filter(PriorityQueueEntry.delivery_id == delivery_id)
+            .first()
+        )
 
-    def get_queued(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[PriorityQueueEntry]:
+    def get_queued(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[PriorityQueueEntry]:
         """Get all queued entries ordered by priority"""
         return (
             db.query(PriorityQueueEntry)
             .filter(PriorityQueueEntry.status == QueueStatus.QUEUED)
             .order_by(
-                PriorityQueueEntry.total_priority_score.desc(),
-                PriorityQueueEntry.queued_at.asc()
+                PriorityQueueEntry.total_priority_score.desc(), PriorityQueueEntry.queued_at.asc()
             )
             .offset(skip)
             .limit(limit)
@@ -80,7 +90,7 @@ class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCrea
             db.query(PriorityQueueEntry)
             .filter(
                 PriorityQueueEntry.priority == priority,
-                PriorityQueueEntry.status == QueueStatus.QUEUED
+                PriorityQueueEntry.status == QueueStatus.QUEUED,
             )
             .order_by(PriorityQueueEntry.total_priority_score.desc())
             .offset(skip)
@@ -94,7 +104,7 @@ class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCrea
             db.query(PriorityQueueEntry)
             .filter(
                 PriorityQueueEntry.status == QueueStatus.QUEUED,
-                PriorityQueueEntry.priority.in_([QueuePriority.CRITICAL, QueuePriority.URGENT])
+                PriorityQueueEntry.priority.in_([QueuePriority.CRITICAL, QueuePriority.URGENT]),
             )
             .order_by(PriorityQueueEntry.total_priority_score.desc())
             .all()
@@ -107,7 +117,7 @@ class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCrea
             db.query(PriorityQueueEntry)
             .filter(
                 PriorityQueueEntry.status == QueueStatus.QUEUED,
-                PriorityQueueEntry.warning_threshold <= now
+                PriorityQueueEntry.warning_threshold <= now,
             )
             .order_by(PriorityQueueEntry.sla_deadline.asc())
             .all()
@@ -121,7 +131,7 @@ class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCrea
             db.query(PriorityQueueEntry)
             .filter(
                 PriorityQueueEntry.required_zone_id == zone_id,
-                PriorityQueueEntry.status == QueueStatus.QUEUED
+                PriorityQueueEntry.status == QueueStatus.QUEUED,
             )
             .order_by(PriorityQueueEntry.total_priority_score.desc())
             .offset(skip)
@@ -216,7 +226,9 @@ class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCrea
             db.refresh(entry)
         return entry
 
-    def increment_assignment_attempt(self, db: Session, *, entry_id: int) -> Optional[PriorityQueueEntry]:
+    def increment_assignment_attempt(
+        self, db: Session, *, entry_id: int
+    ) -> Optional[PriorityQueueEntry]:
         """Increment assignment attempt counter"""
         entry = self.get(db, id=entry_id)
         if entry:
@@ -232,8 +244,7 @@ class CRUDPriorityQueueEntry(CRUDBase[PriorityQueueEntry, PriorityQueueEntryCrea
             db.query(PriorityQueueEntry)
             .filter(PriorityQueueEntry.status == QueueStatus.QUEUED)
             .order_by(
-                PriorityQueueEntry.total_priority_score.desc(),
-                PriorityQueueEntry.queued_at.asc()
+                PriorityQueueEntry.total_priority_score.desc(), PriorityQueueEntry.queued_at.asc()
             )
             .all()
         )

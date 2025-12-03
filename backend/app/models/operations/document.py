@@ -2,15 +2,21 @@
 Operations Document Model
 For storing operational procedures, policies, training materials, and reports.
 """
-from sqlalchemy import Column, String, Integer, Text, Enum as SQLEnum, ForeignKey
+
+import enum
+
+from sqlalchemy import Column
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class DocumentCategory(str, enum.Enum):
     """Document categories for operations"""
+
     PROCEDURES = "Procedures"
     POLICIES = "Policies"
     TRAINING = "Training"
@@ -26,7 +32,9 @@ class OperationsDocument(TenantMixin, BaseModel):
     __tablename__ = "operations_documents"
 
     # Document identification
-    doc_number = Column(String(50), unique=True, index=True, comment="Document number e.g. DOC-00001")
+    doc_number = Column(
+        String(50), unique=True, index=True, comment="Document number e.g. DOC-00001"
+    )
     doc_name = Column(String(255), nullable=False, comment="Document title/name")
 
     # Categorization
@@ -70,7 +78,7 @@ class OperationsDocument(TenantMixin, BaseModel):
             return "0 Bytes"
 
         size = self.file_size
-        for unit in ['Bytes', 'KB', 'MB', 'GB']:
+        for unit in ["Bytes", "KB", "MB", "GB"]:
             if size < 1024:
                 return f"{size:.1f} {unit}"
             size /= 1024

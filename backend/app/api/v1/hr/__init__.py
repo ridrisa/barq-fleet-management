@@ -1,12 +1,13 @@
 """HR Management API routes"""
 
 from fastapi import APIRouter
+
 from app.api.v1.hr import (
-    leave,
+    asset,
     attendance,
+    leave,
     loan,
     salary,
-    asset,
 )
 
 # Create main HR router

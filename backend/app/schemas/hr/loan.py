@@ -1,13 +1,16 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class LoanStatus(str, Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
+
 
 class LoanBase(BaseModel):
     courier_id: int = Field(..., description="Courier ID")
@@ -15,14 +18,17 @@ class LoanBase(BaseModel):
     monthly_deduction: Decimal = Field(..., ge=0, decimal_places=2)
     start_date: date
 
+
 class LoanCreate(LoanBase):
     pass
+
 
 class LoanUpdate(BaseModel):
     amount: Optional[Decimal] = Field(None, ge=0)
     outstanding_balance: Optional[Decimal] = Field(None, ge=0)
     monthly_deduction: Optional[Decimal] = Field(None, ge=0)
     status: Optional[LoanStatus] = None
+
 
 class LoanResponse(LoanBase):
     id: int

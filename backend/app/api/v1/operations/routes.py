@@ -1,12 +1,20 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from app.crud.operations import route as crud_route
-from app.schemas.operations.route import (
-    RouteCreate, RouteUpdate, RouteResponse, RouteOptimize, RouteAssign, RouteMetrics
-)
+
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_organization, get_current_user
+from app.crud.operations import route as crud_route
+from app.models.tenant.organization import Organization
+from app.schemas.operations.route import (
+    RouteAssign,
+    RouteCreate,
+    RouteMetrics,
+    RouteOptimize,
+    RouteResponse,
+    RouteUpdate,
+)
 
 router = APIRouter()
 
@@ -18,10 +26,11 @@ def list_routes(
     courier_id: int = Query(None, description="Filter by courier"),
     zone_id: int = Query(None, description="Filter by zone"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """List all routes with optional filters"""
-    routes = crud_route.get_multi(db, skip=skip, limit=limit)
+    routes = crud_route.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
     return routes
 
 
@@ -29,15 +38,13 @@ def list_routes(
 def get_route(
     route_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific route by ID"""
     route = crud_route.get(db, id=route_id)
-    if not route:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Route not found"
-        )
+    if not route or route.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
     return route
 
 
@@ -45,7 +52,8 @@ def get_route(
 def create_route(
     route_in: RouteCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Create a new route
 
@@ -59,7 +67,7 @@ def create_route(
     # TODO: Calculate distance and duration from waypoints
     # TODO: Link delivery_ids to route
 
-    route = crud_route.create(db, obj_in=route_in)
+    route = crud_route.create(db, obj_in=route_in, organization_id=current_org.id)
     return route
 
 
@@ -68,15 +76,13 @@ def update_route(
     route_id: int,
     route_in: RouteUpdate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Update a route"""
     route = crud_route.get(db, id=route_id)
-    if not route:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Route not found"
-        )
+    if not route or route.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
     route = crud_route.update(db, db_obj=route, obj_in=route_in)
     return route
 
@@ -85,15 +91,13 @@ def update_route(
 def delete_route(
     route_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a route"""
     route = crud_route.get(db, id=route_id)
-    if not route:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Route not found"
-        )
+    if not route or route.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
     crud_route.remove(db, id=route_id)
     return None
 
@@ -102,7 +106,8 @@ def delete_route(
 def optimize_route(
     optimize_in: RouteOptimize,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Optimize route for multiple deliveries
 
@@ -120,7 +125,7 @@ def optimize_route(
     # For now, return a placeholder
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Route optimization algorithm to be implemented"
+        detail="Route optimization algorithm to be implemented",
     )
 
 
@@ -129,7 +134,8 @@ def assign_route(
     route_id: int,
     assign_in: RouteAssign,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Assign route to a courier
 
@@ -140,19 +146,13 @@ def assign_route(
     - Schedules start time
     """
     route = crud_route.get(db, id=route_id)
-    if not route:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Route not found"
-        )
+    if not route or route.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
 
     # TODO: Validate courier availability
     # TODO: Check courier capacity
 
-    route_update = RouteUpdate(
-        courier_id=assign_in.courier_id,
-        status="assigned"
-    )
+    route_update = RouteUpdate(courier_id=assign_in.courier_id, status="assigned")
     route = crud_route.update(db, db_obj=route, obj_in=route_update)
     return route
 
@@ -161,7 +161,8 @@ def assign_route(
 def get_route_metrics(
     route_id: int,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
 ):
     """Get route performance metrics
 
@@ -173,15 +174,12 @@ def get_route_metrics(
     - Average time per delivery
     """
     route = crud_route.get(db, id=route_id)
-    if not route:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Route not found"
-        )
+    if not route or route.organization_id != current_org.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
 
     # TODO: Calculate metrics from route data and deliveries
     # For now, return placeholder
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Route metrics calculation to be implemented"
+        detail="Route metrics calculation to be implemented",
     )

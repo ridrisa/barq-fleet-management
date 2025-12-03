@@ -1,15 +1,16 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Body
+
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.crud.workflow import approval_chain, approval_request
 from app.schemas.workflow import (
-    ApprovalChainCreate,
-    ApprovalChainUpdate,
-    ApprovalChainResponse,
-    ApprovalRequestResponse,
     ApprovalActionRequest,
+    ApprovalChainCreate,
+    ApprovalChainResponse,
+    ApprovalChainUpdate,
+    ApprovalRequestResponse,
 )
 from app.services.workflow.approval_service import WorkflowApprovalService
 
@@ -127,9 +128,7 @@ def process_approval_action(
         )
     elif action.action == "delegate":
         if not action.delegate_to_id:
-            raise HTTPException(
-                status_code=400, detail="delegate_to_id required for delegation"
-            )
+            raise HTTPException(status_code=400, detail="delegate_to_id required for delegation")
         request = approval_service.delegate_request(
             request_id=request_id,
             approver_id=approver_id,

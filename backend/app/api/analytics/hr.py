@@ -2,6 +2,7 @@
 
 Workforce metrics, attendance patterns, performance distribution, and HR analytics.
 """
+
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -13,7 +14,7 @@ from app.schemas.analytics.common import (
     TrendDataPoint,
     TopPerformerItem,
     DistributionBucket,
-    PeriodType
+    PeriodType,
 )
 
 
@@ -34,31 +35,23 @@ def get_workforce_metrics(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "headcount": {
             "total_employees": 0,
             "active": 0,
             "on_leave": 0,
             "suspended": 0,
             "new_hires": 0,
-            "terminations": 0
+            "terminations": 0,
         },
         "by_department": [],
         "by_role": [],
-        "by_employment_type": {
-            "full_time": 0,
-            "part_time": 0,
-            "contract": 0,
-            "temporary": 0
-        },
+        "by_employment_type": {"full_time": 0, "part_time": 0, "contract": 0, "temporary": 0},
         "demographics": {
             "average_age": 0.0,
             "average_tenure_months": 0.0,
-            "gender_distribution": {}
-        }
+            "gender_distribution": {},
+        },
     }
 
 
@@ -76,21 +69,18 @@ def get_turnover_analysis(
         start_date = end_date - timedelta(days=365)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "turnover_rate": 0.0,
             "voluntary_turnover_rate": 0.0,
             "involuntary_turnover_rate": 0.0,
             "total_separations": 0,
-            "average_tenure_of_leavers": 0.0
+            "average_tenure_of_leavers": 0.0,
         },
         "by_department": [],
         "by_reason": {},
         "trends": [],
-        "retention_rate": 0.0
+        "retention_rate": 0.0,
     }
 
 
@@ -109,26 +99,19 @@ def get_attendance_patterns(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "attendance_rate": 0.0,
             "total_working_days": 0,
             "total_present": 0,
             "total_absent": 0,
             "total_late": 0,
-            "average_late_minutes": 0.0
+            "average_late_minutes": 0.0,
         },
         "by_employee": [],
         "by_department": [],
         "trends": [],
-        "patterns": {
-            "most_absent_day": "",
-            "most_late_day": "",
-            "peak_absence_hours": []
-        }
+        "patterns": {"most_absent_day": "", "most_late_day": "", "peak_absence_hours": []},
     }
 
 
@@ -146,28 +129,25 @@ def get_leave_utilization(
         start_date = end_date - timedelta(days=365)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_leave_days": 0.0,
             "average_leave_per_employee": 0.0,
             "leave_utilization_rate": 0.0,
             "pending_requests": 0,
             "approved_requests": 0,
-            "rejected_requests": 0
+            "rejected_requests": 0,
         },
         "by_leave_type": {
             "annual": 0.0,
             "sick": 0.0,
             "emergency": 0.0,
             "unpaid": 0.0,
-            "other": 0.0
+            "other": 0.0,
         },
         "by_department": [],
         "trends": [],
-        "seasonal_patterns": []
+        "seasonal_patterns": [],
     }
 
 
@@ -183,21 +163,18 @@ def get_salary_distribution(
             "average_salary": 0.0,
             "median_salary": 0.0,
             "highest_salary": 0.0,
-            "lowest_salary": 0.0
+            "lowest_salary": 0.0,
         },
         "distribution": [
             {"range": "0-5000", "count": 0, "percentage": 0.0},
             {"range": "5001-10000", "count": 0, "percentage": 0.0},
             {"range": "10001-15000", "count": 0, "percentage": 0.0},
             {"range": "15001-20000", "count": 0, "percentage": 0.0},
-            {"range": "20001+", "count": 0, "percentage": 0.0}
+            {"range": "20001+", "count": 0, "percentage": 0.0},
         ],
         "by_department": [],
         "by_role": [],
-        "pay_equity_analysis": {
-            "gender_pay_gap": 0.0,
-            "department_variations": []
-        }
+        "pay_equity_analysis": {"gender_pay_gap": 0.0, "department_variations": []},
     }
 
 
@@ -215,24 +192,13 @@ def get_performance_distribution(
         start_date = end_date - timedelta(days=90)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
-        "summary": {
-            "average_performance_score": 0.0,
-            "total_evaluated": 0
-        },
-        "distribution": {
-            "excellent": 0,
-            "good": 0,
-            "average": 0,
-            "poor": 0
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
+        "summary": {"average_performance_score": 0.0, "total_evaluated": 0},
+        "distribution": {"excellent": 0, "good": 0, "average": 0, "poor": 0},
         "by_department": [],
         "by_role": [],
         "top_performers": [],
-        "improvement_needed": []
+        "improvement_needed": [],
     }
 
 
@@ -250,23 +216,20 @@ def get_training_completion(
         start_date = end_date - timedelta(days=90)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_trainings": 0,
             "completed_trainings": 0,
             "in_progress": 0,
             "not_started": 0,
             "completion_rate": 0.0,
-            "average_completion_time": 0.0
+            "average_completion_time": 0.0,
         },
         "by_training_type": [],
         "by_department": [],
         "by_employee": [],
         "upcoming_trainings": [],
-        "overdue_trainings": []
+        "overdue_trainings": [],
     }
 
 
@@ -284,15 +247,12 @@ def get_overtime_analysis(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_overtime_hours": 0.0,
             "average_overtime_per_employee": 0.0,
             "total_overtime_cost": 0.0,
-            "employees_with_overtime": 0
+            "employees_with_overtime": 0,
         },
         "by_employee": [],
         "by_department": [],
@@ -300,8 +260,8 @@ def get_overtime_analysis(
         "cost_analysis": {
             "regular_hours_cost": 0.0,
             "overtime_cost": 0.0,
-            "overtime_percentage": 0.0
-        }
+            "overtime_percentage": 0.0,
+        },
     }
 
 
@@ -319,22 +279,16 @@ def get_productivity_metrics(
         start_date = end_date - timedelta(days=30)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "average_deliveries_per_courier": 0.0,
             "average_revenue_per_employee": 0.0,
-            "efficiency_score": 0.0
+            "efficiency_score": 0.0,
         },
         "by_department": [],
         "by_employee_type": [],
         "trends": [],
-        "benchmarks": {
-            "target_deliveries": 0.0,
-            "actual_vs_target": 0.0
-        }
+        "benchmarks": {"target_deliveries": 0.0, "actual_vs_target": 0.0},
     }
 
 
@@ -352,16 +306,13 @@ def get_recruitment_metrics(
         start_date = end_date - timedelta(days=90)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "summary": {
             "total_positions": 0,
             "filled_positions": 0,
             "open_positions": 0,
             "average_time_to_hire": 0.0,
-            "offer_acceptance_rate": 0.0
+            "offer_acceptance_rate": 0.0,
         },
         "by_department": [],
         "by_position_type": [],
@@ -370,6 +321,6 @@ def get_recruitment_metrics(
             "applications_received": 0,
             "interviews_scheduled": 0,
             "offers_made": 0,
-            "offers_accepted": 0
-        }
+            "offers_accepted": 0,
+        },
     }

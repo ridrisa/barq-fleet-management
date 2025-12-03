@@ -1,5 +1,6 @@
-from sqlalchemy import Column, String, Integer, Date, ForeignKey, Numeric, Text
+from sqlalchemy import Column, Date, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 
@@ -10,28 +11,42 @@ class PerformanceData(TenantMixin, BaseModel):
     __tablename__ = "performance_data"
 
     # Core Fields
-    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="CASCADE"), nullable=False, index=True)
+    courier_id = Column(
+        Integer, ForeignKey("couriers.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     date = Column(Date, nullable=False, index=True, comment="Performance date")
 
     # Order Metrics
     orders_completed = Column(Integer, default=0, nullable=False, comment="Total orders completed")
-    orders_failed = Column(Integer, default=0, nullable=False, comment="Total orders failed/cancelled")
+    orders_failed = Column(
+        Integer, default=0, nullable=False, comment="Total orders failed/cancelled"
+    )
     on_time_deliveries = Column(Integer, default=0, nullable=False, comment="Deliveries on time")
     late_deliveries = Column(Integer, default=0, nullable=False, comment="Deliveries late")
 
     # Distance & Revenue
-    distance_covered_km = Column(Numeric(10, 2), default=0.0, nullable=False, comment="Distance covered in KM")
-    revenue_generated = Column(Numeric(12, 2), default=0.0, nullable=False, comment="Revenue generated (SAR)")
-    cod_collected = Column(Numeric(12, 2), default=0.0, nullable=False, comment="Cash on Delivery collected (SAR)")
+    distance_covered_km = Column(
+        Numeric(10, 2), default=0.0, nullable=False, comment="Distance covered in KM"
+    )
+    revenue_generated = Column(
+        Numeric(12, 2), default=0.0, nullable=False, comment="Revenue generated (SAR)"
+    )
+    cod_collected = Column(
+        Numeric(12, 2), default=0.0, nullable=False, comment="Cash on Delivery collected (SAR)"
+    )
 
     # Quality Metrics
-    average_rating = Column(Numeric(3, 2), default=0.0, nullable=False, comment="Average customer rating (0-5)")
+    average_rating = Column(
+        Numeric(3, 2), default=0.0, nullable=False, comment="Average customer rating (0-5)"
+    )
 
     # Time Metrics
     working_hours = Column(Numeric(5, 2), default=0.0, nullable=False, comment="Working hours")
 
     # Performance Score (Calculated)
-    efficiency_score = Column(Numeric(5, 2), default=0.0, nullable=False, comment="Efficiency score (0-100)")
+    efficiency_score = Column(
+        Numeric(5, 2), default=0.0, nullable=False, comment="Efficiency score (0-100)"
+    )
 
     # Additional Notes
     notes = Column(Text, nullable=True, comment="Additional notes")

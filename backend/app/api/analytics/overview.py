@@ -2,6 +2,7 @@
 
 System-wide KPIs, real-time metrics dashboard, and high-level analytics.
 """
+
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -17,12 +18,12 @@ from app.schemas.analytics.common import (
     PeriodType,
     TrendDirection,
     TopPerformerItem,
-    AlertItem
+    AlertItem,
 )
 from app.utils.analytics import (
     calculate_percentage_change,
     get_date_range_comparison,
-    calculate_moving_average
+    calculate_moving_average,
 )
 
 
@@ -52,7 +53,7 @@ def get_dashboard_overview(
                 "unit": "deliveries",
                 "change_percentage": 0.0,
                 "trend": TrendDirection.STABLE,
-                "color": "blue"
+                "color": "blue",
             },
             {
                 "title": "Active Couriers",
@@ -61,7 +62,7 @@ def get_dashboard_overview(
                 "unit": "couriers",
                 "change_percentage": 0.0,
                 "trend": TrendDirection.STABLE,
-                "color": "green"
+                "color": "green",
             },
             {
                 "title": "Revenue Today",
@@ -70,7 +71,7 @@ def get_dashboard_overview(
                 "unit": "SAR",
                 "change_percentage": 0.0,
                 "trend": TrendDirection.STABLE,
-                "color": "purple"
+                "color": "purple",
             },
             {
                 "title": "On-Time Delivery Rate",
@@ -80,8 +81,8 @@ def get_dashboard_overview(
                 "target": 95.0,
                 "progress": 0.0,
                 "trend": TrendDirection.STABLE,
-                "color": "orange"
-            }
+                "color": "orange",
+            },
         ],
         "quick_stats": {
             "pending_deliveries": 0,
@@ -91,9 +92,9 @@ def get_dashboard_overview(
             "vehicles_in_use": 0,
             "vehicles_idle": 0,
             "vehicles_maintenance": 0,
-            "average_delivery_time": 0
+            "average_delivery_time": 0,
         },
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -126,7 +127,7 @@ def get_system_kpis(
             formatted_value="0",
             unit="deliveries",
             change_percentage=0.0,
-            trend=TrendDirection.STABLE
+            trend=TrendDirection.STABLE,
         ),
         KPICard(
             title="Success Rate",
@@ -136,7 +137,7 @@ def get_system_kpis(
             target=95.0,
             progress=0.0,
             change_percentage=0.0,
-            trend=TrendDirection.STABLE
+            trend=TrendDirection.STABLE,
         ),
         KPICard(
             title="Total Revenue",
@@ -144,7 +145,7 @@ def get_system_kpis(
             formatted_value="0 SAR",
             unit="SAR",
             change_percentage=0.0,
-            trend=TrendDirection.UP
+            trend=TrendDirection.UP,
         ),
         KPICard(
             title="Average Rating",
@@ -154,8 +155,8 @@ def get_system_kpis(
             target=4.5,
             progress=0.0,
             change_percentage=0.0,
-            trend=TrendDirection.STABLE
-        )
+            trend=TrendDirection.STABLE,
+        ),
     ]
 
     return kpis
@@ -191,9 +192,7 @@ def get_metric_trends(
     while current_date <= end_date:
         trends.append(
             TrendDataPoint(
-                period=current_date.isoformat(),
-                value=0.0,
-                label=current_date.strftime("%Y-%m-%d")
+                period=current_date.isoformat(), value=0.0, label=current_date.strftime("%Y-%m-%d")
             )
         )
 
@@ -237,7 +236,7 @@ def get_top_performers(
                 name=f"Performer {i + 1}",
                 value=100.0 - (i * 10),
                 metric_name=metric,
-                details={"additional_info": "placeholder"}
+                details={"additional_info": "placeholder"},
             )
         )
 
@@ -267,7 +266,7 @@ def get_critical_alerts(
             "message": "Only 3 couriers available in Zone A",
             "timestamp": datetime.now(),
             "resource_type": "courier",
-            "is_resolved": False
+            "is_resolved": False,
         },
         {
             "id": 2,
@@ -276,8 +275,8 @@ def get_critical_alerts(
             "message": "Average delivery time increased by 25%",
             "timestamp": datetime.now(),
             "resource_type": "delivery",
-            "is_resolved": False
-        }
+            "is_resolved": False,
+        },
     ]
 
     for alert_data in sample_alerts:
@@ -335,7 +334,7 @@ def get_period_comparison(
         change_percentage=change_percentage,
         change_absolute=change_absolute,
         trend=trend,
-        is_improvement=is_improvement
+        is_improvement=is_improvement,
     )
 
 
@@ -356,37 +355,37 @@ def get_analytics_summary(
         "period": {
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
-            "days": (end_date - start_date).days
+            "days": (end_date - start_date).days,
         },
         "operations": {
             "total_deliveries": 0,
             "successful_deliveries": 0,
             "failed_deliveries": 0,
             "success_rate": 0.0,
-            "average_delivery_time": 0.0
+            "average_delivery_time": 0.0,
         },
         "fleet": {
             "total_vehicles": 0,
             "active_vehicles": 0,
             "utilization_rate": 0.0,
-            "total_distance_km": 0.0
+            "total_distance_km": 0.0,
         },
         "workforce": {
             "total_couriers": 0,
             "active_couriers": 0,
             "average_deliveries_per_courier": 0.0,
-            "average_rating": 0.0
+            "average_rating": 0.0,
         },
         "financial": {
             "total_revenue": 0.0,
             "total_costs": 0.0,
             "profit": 0.0,
-            "profit_margin": 0.0
+            "profit_margin": 0.0,
         },
         "customer": {
             "total_customers": 0,
             "new_customers": 0,
             "average_rating": 0.0,
-            "complaint_rate": 0.0
-        }
+            "complaint_rate": 0.0,
+        },
     }

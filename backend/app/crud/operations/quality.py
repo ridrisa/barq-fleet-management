@@ -1,15 +1,21 @@
+from datetime import date, datetime
 from typing import List, Optional
-from datetime import datetime, date
-from sqlalchemy.orm import Session
+
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.crud.base import CRUDBase
 from app.models.operations.quality import (
-    QualityMetric, QualityInspection,
-    QualityMetricType, InspectionStatus
+    InspectionStatus,
+    QualityInspection,
+    QualityMetric,
+    QualityMetricType,
 )
 from app.schemas.operations.quality import (
-    QualityMetricCreate, QualityMetricUpdate,
-    QualityInspectionCreate, QualityInspectionUpdate
+    QualityInspectionCreate,
+    QualityInspectionUpdate,
+    QualityMetricCreate,
+    QualityMetricUpdate,
 )
 
 
@@ -39,8 +45,12 @@ class CRUDQualityMetric(CRUDBase[QualityMetric, QualityMetricCreate, QualityMetr
         )
 
 
-class CRUDQualityInspection(CRUDBase[QualityInspection, QualityInspectionCreate, QualityInspectionUpdate]):
-    def create_with_number(self, db: Session, *, obj_in: QualityInspectionCreate) -> QualityInspection:
+class CRUDQualityInspection(
+    CRUDBase[QualityInspection, QualityInspectionCreate, QualityInspectionUpdate]
+):
+    def create_with_number(
+        self, db: Session, *, obj_in: QualityInspectionCreate
+    ) -> QualityInspection:
         """Create inspection with auto-generated number"""
         last_inspection = db.query(QualityInspection).order_by(QualityInspection.id.desc()).first()
         next_number = 1 if not last_inspection else last_inspection.id + 1
@@ -55,9 +65,11 @@ class CRUDQualityInspection(CRUDBase[QualityInspection, QualityInspectionCreate,
 
     def get_by_number(self, db: Session, *, inspection_number: str) -> Optional[QualityInspection]:
         """Get inspection by number"""
-        return db.query(QualityInspection).filter(
-            QualityInspection.inspection_number == inspection_number
-        ).first()
+        return (
+            db.query(QualityInspection)
+            .filter(QualityInspection.inspection_number == inspection_number)
+            .first()
+        )
 
     def get_by_courier(
         self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
@@ -91,7 +103,7 @@ class CRUDQualityInspection(CRUDBase[QualityInspection, QualityInspectionCreate,
             db.query(QualityInspection)
             .filter(
                 QualityInspection.scheduled_date == target_date,
-                QualityInspection.status == InspectionStatus.SCHEDULED
+                QualityInspection.status == InspectionStatus.SCHEDULED,
             )
             .all()
         )
@@ -102,7 +114,7 @@ class CRUDQualityInspection(CRUDBase[QualityInspection, QualityInspectionCreate,
             db.query(QualityInspection)
             .filter(
                 QualityInspection.requires_followup == True,
-                QualityInspection.followup_completed == False
+                QualityInspection.followup_completed == False,
             )
             .all()
         )

@@ -1,14 +1,18 @@
 """
 Operations Document Schemas
 """
-from pydantic import BaseModel, Field
-from typing import Optional
+
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
 from app.models.operations.document import DocumentCategory
 
 
 class OperationsDocumentBase(BaseModel):
     """Base schema for operations documents"""
+
     doc_name: str = Field(..., max_length=255, description="Document title")
     category: Optional[DocumentCategory] = DocumentCategory.OTHER
     file_name: Optional[str] = Field(None, max_length=255)
@@ -24,12 +28,14 @@ class OperationsDocumentBase(BaseModel):
 
 class OperationsDocumentCreate(OperationsDocumentBase):
     """Schema for creating operations document"""
+
     uploaded_by: Optional[str] = Field(None, max_length=200)
     uploader_email: Optional[str] = Field(None, max_length=200)
 
 
 class OperationsDocumentUpdate(BaseModel):
     """Schema for updating operations document"""
+
     doc_name: Optional[str] = Field(None, max_length=255)
     category: Optional[DocumentCategory] = None
     file_name: Optional[str] = Field(None, max_length=255)
@@ -45,6 +51,7 @@ class OperationsDocumentUpdate(BaseModel):
 
 class OperationsDocumentResponse(OperationsDocumentBase):
     """Schema for operations document response"""
+
     id: int
     doc_number: Optional[str] = None
     uploaded_by: Optional[str] = None

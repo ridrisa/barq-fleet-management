@@ -7,16 +7,18 @@ Provides analytics and insights for fleet operations:
 - Courier performance metrics
 - Vehicle assignment patterns
 """
-from typing import Dict, List, Optional, Any
+
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, case, extract
+from typing import Any, Dict, List, Optional
 
-from app.models.fleet.vehicle import Vehicle, VehicleStatus
-from app.models.fleet.courier import Courier, CourierStatus
+from sqlalchemy import and_, case, extract, func, or_
+from sqlalchemy.orm import Session
+
 from app.models.fleet.assignment import CourierVehicleAssignment as Assignment
+from app.models.fleet.courier import Courier, CourierStatus
 from app.models.fleet.maintenance import VehicleMaintenance as Maintenance
+from app.models.fleet.vehicle import Vehicle, VehicleStatus
 from app.models.operations.delivery import Delivery, DeliveryStatus
 
 
@@ -32,11 +34,7 @@ class FleetAnalyticsService:
     """
 
     def get_vehicle_utilization(
-        self,
-        db: Session,
-        start_date: date,
-        end_date: date,
-        vehicle_id: Optional[int] = None
+        self, db: Session, start_date: date, end_date: date, vehicle_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Calculate vehicle utilization rate
@@ -59,10 +57,7 @@ class FleetAnalyticsService:
         query = query.filter(
             and_(
                 Assignment.start_date <= end_date,
-                or_(
-                    Assignment.end_date >= start_date,
-                    Assignment.end_date.is_(None)
-                )
+                or_(Assignment.end_date >= start_date, Assignment.end_date.is_(None)),
             )
         )
 
@@ -88,12 +83,12 @@ class FleetAnalyticsService:
                 "period": {
                     "start_date": start_date.isoformat(),
                     "end_date": end_date.isoformat(),
-                    "total_days": total_days
+                    "total_days": total_days,
                 },
                 "assigned_days": len(assigned_days),
                 "idle_days": total_days - len(assigned_days),
                 "utilization_rate": round(utilization_rate, 2),
-                "total_assignments": len(assignments)
+                "total_assignments": len(assignments),
             }
 
         else:
@@ -117,10 +112,14 @@ class FleetAnalyticsService:
                     "vehicle_id": vehicle.id,
                     "license_plate": vehicle.license_plate,
                     "assigned_days": len(assigned_days),
-                    "utilization_rate": round(utilization, 2)
+                    "utilization_rate": round(utilization, 2),
                 }
 
-            avg_utilization = sum(v["utilization_rate"] for v in vehicle_utilization.values()) / total_vehicles if total_vehicles > 0 else 0
+            avg_utilization = (
+                sum(v["utilization_rate"] for v in vehicle_utilization.values()) / total_vehicles
+                if total_vehicles > 0
+                else 0
+            )
 
             return {
                 "fleet_summary": {
@@ -128,19 +127,15 @@ class FleetAnalyticsService:
                     "period": {
                         "start_date": start_date.isoformat(),
                         "end_date": end_date.isoformat(),
-                        "total_days": total_days
+                        "total_days": total_days,
                     },
-                    "average_utilization_rate": round(avg_utilization, 2)
+                    "average_utilization_rate": round(avg_utilization, 2),
                 },
-                "vehicles": list(vehicle_utilization.values())
+                "vehicles": list(vehicle_utilization.values()),
             }
 
     def get_maintenance_costs(
-        self,
-        db: Session,
-        start_date: date,
-        end_date: date,
-        vehicle_id: Optional[int] = None
+        self, db: Session, start_date: date, end_date: date, vehicle_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Analyze maintenance costs
@@ -156,8 +151,7 @@ class FleetAnalyticsService:
         """
         query = db.query(Maintenance).filter(
             and_(
-                Maintenance.maintenance_date >= start_date,
-                Maintenance.maintenance_date <= end_date
+                Maintenance.maintenance_date >= start_date, Maintenance.maintenance_date <= end_date
             )
         )
 
@@ -181,32 +175,25 @@ class FleetAnalyticsService:
                 cost_by_type[m_type]["total_cost"] += maintenance.cost
 
         return {
-            "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            },
+            "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
             "vehicle_id": vehicle_id,
             "summary": {
                 "total_maintenances": len(maintenances),
                 "total_cost": float(total_cost),
-                "average_cost": float(avg_cost)
+                "average_cost": float(avg_cost),
             },
             "by_type": {
                 k: {
                     "count": v["count"],
                     "total_cost": float(v["total_cost"]),
-                    "average_cost": float(v["total_cost"] / v["count"]) if v["count"] > 0 else 0
+                    "average_cost": float(v["total_cost"] / v["count"]) if v["count"] > 0 else 0,
                 }
                 for k, v in cost_by_type.items()
-            }
+            },
         }
 
     def get_courier_performance(
-        self,
-        db: Session,
-        start_date: date,
-        end_date: date,
-        courier_id: Optional[int] = None
+        self, db: Session, start_date: date, end_date: date, courier_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Analyze courier performance based on deliveries
@@ -223,17 +210,13 @@ class FleetAnalyticsService:
         query = db.query(Delivery).filter(
             and_(
                 Delivery.created_at >= datetime.combine(start_date, datetime.min.time()),
-                Delivery.created_at <= datetime.combine(end_date, datetime.max.time())
+                Delivery.created_at <= datetime.combine(end_date, datetime.max.time()),
             )
         )
 
         if courier_id:
             # Get courier's vehicle assignments
-            assignments = (
-                db.query(Assignment)
-                .filter(Assignment.courier_id == courier_id)
-                .all()
-            )
+            assignments = db.query(Assignment).filter(Assignment.courier_id == courier_id).all()
             vehicle_ids = [a.vehicle_id for a in assignments]
 
             if vehicle_ids:
@@ -251,10 +234,7 @@ class FleetAnalyticsService:
         success_rate = (completed / total_deliveries * 100) if total_deliveries > 0 else 0
 
         return {
-            "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            },
+            "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
             "courier_id": courier_id,
             "summary": {
                 "total_deliveries": total_deliveries,
@@ -262,14 +242,11 @@ class FleetAnalyticsService:
                 "failed": failed,
                 "pending": pending,
                 "in_transit": in_transit,
-                "success_rate": round(success_rate, 2)
-            }
+                "success_rate": round(success_rate, 2),
+            },
         }
 
-    def get_fleet_status_summary(
-        self,
-        db: Session
-    ) -> Dict[str, Any]:
+    def get_fleet_status_summary(self, db: Session) -> Dict[str, Any]:
         """
         Get current fleet status summary
 
@@ -281,12 +258,7 @@ class FleetAnalyticsService:
         """
         # Vehicles by status
         vehicle_stats = (
-            db.query(
-                Vehicle.status,
-                func.count(Vehicle.id)
-            )
-            .group_by(Vehicle.status)
-            .all()
+            db.query(Vehicle.status, func.count(Vehicle.id)).group_by(Vehicle.status).all()
         )
 
         vehicles_by_status = {}
@@ -297,12 +269,7 @@ class FleetAnalyticsService:
 
         # Couriers by status
         courier_stats = (
-            db.query(
-                Courier.status,
-                func.count(Courier.id)
-            )
-            .group_by(Courier.status)
-            .all()
+            db.query(Courier.status, func.count(Courier.id)).group_by(Courier.status).all()
         )
 
         couriers_by_status = {}
@@ -314,28 +281,15 @@ class FleetAnalyticsService:
         # Active assignments
         active_assignments = (
             db.query(func.count(Assignment.id))
-            .filter(
-                or_(
-                    Assignment.end_date.is_(None),
-                    Assignment.end_date >= date.today()
-                )
-            )
+            .filter(or_(Assignment.end_date.is_(None), Assignment.end_date >= date.today()))
             .scalar()
         )
 
         return {
-            "vehicles": {
-                "total": total_vehicles,
-                "by_status": vehicles_by_status
-            },
-            "couriers": {
-                "total": total_couriers,
-                "by_status": couriers_by_status
-            },
-            "assignments": {
-                "active": active_assignments
-            },
-            "timestamp": datetime.utcnow().isoformat()
+            "vehicles": {"total": total_vehicles, "by_status": vehicles_by_status},
+            "couriers": {"total": total_couriers, "by_status": couriers_by_status},
+            "assignments": {"active": active_assignments},
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
 

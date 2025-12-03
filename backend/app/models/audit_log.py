@@ -1,14 +1,17 @@
 """Audit Log Model"""
+
 import enum
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey, Enum
-from sqlalchemy.orm import relationship
 from datetime import datetime
+
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
 
 
 class AuditAction(str, enum.Enum):
     """Audit action types"""
+
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
@@ -33,6 +36,7 @@ class AuditLog(BaseModel):
     - What changed (old_values, new_values)
     - Additional context (metadata)
     """
+
     __tablename__ = "audit_logs"
 
     # Who

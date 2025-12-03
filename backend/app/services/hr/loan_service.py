@@ -1,25 +1,22 @@
 """Loan Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
+
 from datetime import date
 from decimal import Decimal
+from typing import Dict, List, Optional
 
-from app.services.base import CRUDBase
+from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
+
 from app.models.hr.loan import Loan, LoanStatus
 from app.schemas.hr.loan import LoanCreate, LoanUpdate
+from app.services.base import CRUDBase
 
 
 class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
     """Service for loan management operations"""
 
     def get_by_courier(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
     ) -> List[Loan]:
         """
         Get all loans for a courier
@@ -43,12 +40,7 @@ class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
         )
 
     def get_active_loans(
-        self,
-        db: Session,
-        *,
-        courier_id: Optional[int] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: Optional[int] = None, skip: int = 0, limit: int = 100
     ) -> List[Loan]:
         """
         Get active loans, optionally filtered by courier
@@ -67,20 +59,9 @@ class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
         if courier_id:
             query = query.filter(self.model.courier_id == courier_id)
 
-        return (
-            query.order_by(self.model.start_date.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.start_date.desc()).offset(skip).limit(limit).all()
 
-    def make_payment(
-        self,
-        db: Session,
-        *,
-        loan_id: int,
-        payment_amount: Decimal
-    ) -> Optional[Loan]:
+    def make_payment(self, db: Session, *, loan_id: int, payment_amount: Decimal) -> Optional[Loan]:
         """
         Process a payment towards a loan
 
@@ -111,13 +92,7 @@ class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
         db.refresh(loan)
         return loan
 
-    def approve_loan(
-        self,
-        db: Session,
-        *,
-        loan_id: int,
-        approved_by: int
-    ) -> Optional[Loan]:
+    def approve_loan(self, db: Session, *, loan_id: int, approved_by: int) -> Optional[Loan]:
         """
         Approve a loan application
 
@@ -144,12 +119,7 @@ class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
         db.refresh(loan)
         return loan
 
-    def cancel_loan(
-        self,
-        db: Session,
-        *,
-        loan_id: int
-    ) -> Optional[Loan]:
+    def cancel_loan(self, db: Session, *, loan_id: int) -> Optional[Loan]:
         """
         Cancel a loan
 
@@ -171,12 +141,7 @@ class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
         db.refresh(loan)
         return loan
 
-    def get_statistics(
-        self,
-        db: Session,
-        *,
-        courier_id: Optional[int] = None
-    ) -> Dict:
+    def get_statistics(self, db: Session, *, courier_id: Optional[int] = None) -> Dict:
         """
         Get loan statistics, optionally filtered by courier
 
@@ -203,8 +168,7 @@ class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
 
         total_amount_disbursed = sum(loan.amount for loan in all_loans)
         total_outstanding = sum(
-            loan.outstanding_balance for loan in all_loans
-            if loan.status == LoanStatus.ACTIVE
+            loan.outstanding_balance for loan in all_loans if loan.status == LoanStatus.ACTIVE
         )
         total_repaid = total_amount_disbursed - total_outstanding
 
@@ -216,17 +180,14 @@ class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
             "total_amount_disbursed": float(total_amount_disbursed),
             "total_outstanding_balance": float(total_outstanding),
             "total_amount_repaid": float(total_repaid),
-            "repayment_rate": round(
-                (float(total_repaid) / float(total_amount_disbursed) * 100), 2
-            ) if total_amount_disbursed > 0 else 0
+            "repayment_rate": (
+                round((float(total_repaid) / float(total_amount_disbursed) * 100), 2)
+                if total_amount_disbursed > 0
+                else 0
+            ),
         }
 
-    def get_monthly_deduction(
-        self,
-        db: Session,
-        *,
-        courier_id: int
-    ) -> Decimal:
+    def get_monthly_deduction(self, db: Session, *, courier_id: int) -> Decimal:
         """
         Get total monthly loan deduction for a courier
 
@@ -240,10 +201,7 @@ class LoanService(CRUDBase[Loan, LoanCreate, LoanUpdate]):
         active_loans = (
             db.query(self.model)
             .filter(
-                and_(
-                    self.model.courier_id == courier_id,
-                    self.model.status == LoanStatus.ACTIVE
-                )
+                and_(self.model.courier_id == courier_id, self.model.status == LoanStatus.ACTIVE)
             )
             .all()
         )

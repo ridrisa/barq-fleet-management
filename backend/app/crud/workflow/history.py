@@ -6,4 +6,6 @@ from app.schemas.workflow.history import (
 )
 
 workflow_history = CRUDBase[WorkflowHistory, WorkflowHistoryCreate, dict](WorkflowHistory)
-workflow_step_history = CRUDBase[WorkflowStepHistory, WorkflowStepHistoryCreate, dict](WorkflowStepHistory)
+workflow_step_history = CRUDBase[WorkflowStepHistory, WorkflowStepHistoryCreate, dict](
+    WorkflowStepHistory
+)

@@ -1,13 +1,19 @@
 """KPI Model - Key Performance Indicators tracking"""
-from sqlalchemy import Column, String, Numeric, DateTime, Boolean, Text, Enum as SQLEnum, Index
+
+import enum
+
+from sqlalchemy import Boolean, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import Index, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class KPIPeriod(str, enum.Enum):
     """KPI measurement period"""
+
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -17,6 +23,7 @@ class KPIPeriod(str, enum.Enum):
 
 class KPITrend(str, enum.Enum):
     """KPI trend direction"""
+
     UP = "up"
     DOWN = "down"
     STABLE = "stable"
@@ -34,7 +41,12 @@ class KPI(TenantMixin, BaseModel):
     name = Column(String(255), nullable=False, index=True, comment="KPI name")
     code = Column(String(100), unique=True, nullable=False, index=True, comment="Unique KPI code")
     description = Column(Text, nullable=True, comment="KPI description")
-    category = Column(String(100), nullable=False, index=True, comment="KPI category (e.g., 'operations', 'hr', 'finance')")
+    category = Column(
+        String(100),
+        nullable=False,
+        index=True,
+        comment="KPI category (e.g., 'operations', 'hr', 'finance')",
+    )
 
     # Current value
     current_value = Column(Numeric(20, 4), nullable=True, comment="Current KPI value")
@@ -55,7 +67,9 @@ class KPI(TenantMixin, BaseModel):
     period_end = Column(DateTime(timezone=True), nullable=True, comment="Period end date")
 
     # Calculation details
-    calculation_formula = Column(Text, nullable=True, comment="Formula or query for calculating KPI")
+    calculation_formula = Column(
+        Text, nullable=True, comment="Formula or query for calculating KPI"
+    )
     unit = Column(String(50), nullable=True, comment="Unit of measurement (%, SAR, count, etc.)")
 
     # Status
@@ -69,8 +83,8 @@ class KPI(TenantMixin, BaseModel):
 
     # Indexes
     __table_args__ = (
-        Index('idx_kpi_category_active', 'category', 'is_active'),
-        Index('idx_kpi_period_dates', 'period', 'period_start', 'period_end'),
+        Index("idx_kpi_category_active", "category", "is_active"),
+        Index("idx_kpi_period_dates", "period", "period_start", "period_end"),
     )
 
     def __repr__(self):

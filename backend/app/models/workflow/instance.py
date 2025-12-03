@@ -1,8 +1,11 @@
-from sqlalchemy import Column, String, Integer, Date, ForeignKey, Enum, JSON, Text
+import enum
+
+from sqlalchemy import JSON, Column, Date, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
+
 
 class WorkflowStatus(str, enum.Enum):
     DRAFT = "draft"
@@ -13,12 +16,16 @@ class WorkflowStatus(str, enum.Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
+
 class WorkflowInstance(TenantMixin, BaseModel):
     __tablename__ = "workflow_instances"
 
     template_id = Column(Integer, ForeignKey("workflow_templates.id"), nullable=False)
     initiated_by = Column(Integer, ForeignKey("users.id"), nullable=False)
-    status = Column(Enum(WorkflowStatus, values_callable=lambda x: [e.value for e in x]), default=WorkflowStatus.DRAFT)
+    status = Column(
+        Enum(WorkflowStatus, values_callable=lambda x: [e.value for e in x]),
+        default=WorkflowStatus.DRAFT,
+    )
     current_step = Column(Integer, default=0)
     data = Column(JSON)
     started_at = Column(Date)
@@ -36,11 +43,22 @@ class WorkflowInstance(TenantMixin, BaseModel):
     sla_instances = relationship("WorkflowSLAInstance", back_populates="workflow_instance")
 
     # Collaboration relationships
-    comments = relationship("WorkflowComment", back_populates="workflow_instance", cascade="all, delete-orphan")
-    attachments = relationship("WorkflowAttachment", back_populates="workflow_instance", cascade="all, delete-orphan")
+    comments = relationship(
+        "WorkflowComment", back_populates="workflow_instance", cascade="all, delete-orphan"
+    )
+    attachments = relationship(
+        "WorkflowAttachment", back_populates="workflow_instance", cascade="all, delete-orphan"
+    )
 
     # Audit trail relationships
-    history = relationship("WorkflowHistory", back_populates="workflow_instance", cascade="all, delete-orphan", order_by="WorkflowHistory.event_time")
+    history = relationship(
+        "WorkflowHistory",
+        back_populates="workflow_instance",
+        cascade="all, delete-orphan",
+        order_by="WorkflowHistory.event_time",
+    )
 
     # Notification relationships
-    notifications = relationship("WorkflowNotification", back_populates="workflow_instance", cascade="all, delete-orphan")
+    notifications = relationship(
+        "WorkflowNotification", back_populates="workflow_instance", cascade="all, delete-orphan"
+    )

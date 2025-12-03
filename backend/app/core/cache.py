@@ -2,18 +2,21 @@
 Multi-Level Caching Layer
 Redis + In-Memory caching with cache warming, invalidation, and decorators
 """
+
 from __future__ import annotations
+
+import asyncio
+import hashlib
 import json
 import logging
-import hashlib
-from typing import Any, Optional, Callable, TypeVar, Union
-from functools import wraps
 from datetime import timedelta
-import asyncio
+from functools import wraps
+from typing import Any, Callable, Optional, TypeVar, Union
 
 try:
     import redis
     from redis.connection import ConnectionPool
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -24,7 +27,7 @@ from app.core.performance_config import performance_config
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class InMemoryCache:
@@ -239,8 +242,7 @@ class RedisCache:
                 "keyspace_hits": info.get("keyspace_hits", 0),
                 "keyspace_misses": info.get("keyspace_misses", 0),
                 "hit_rate": self._calculate_hit_rate(
-                    info.get("keyspace_hits", 0),
-                    info.get("keyspace_misses", 0)
+                    info.get("keyspace_hits", 0), info.get("keyspace_misses", 0)
                 ),
             }
         except Exception as e:
@@ -273,10 +275,11 @@ class CacheManager:
         config = performance_config.cache
 
         # Level 1: In-memory cache
-        self.memory_cache = InMemoryCache(
-            max_size=config.memory_cache_size,
-            default_ttl=config.memory_cache_ttl
-        ) if config.enable_memory_cache else None
+        self.memory_cache = (
+            InMemoryCache(max_size=config.memory_cache_size, default_ttl=config.memory_cache_ttl)
+            if config.enable_memory_cache
+            else None
+        )
 
         # Level 2: Redis cache
         self.redis_cache = RedisCache()
@@ -340,13 +343,7 @@ class CacheManager:
         logger.debug(f"Cache miss: {cache_key}")
         return None
 
-    def set(
-        self,
-        namespace: str,
-        key: str,
-        value: Any,
-        ttl: Optional[int] = None
-    ) -> None:
+    def set(self, namespace: str, key: str, value: Any, ttl: Optional[int] = None) -> None:
         """
         Set value in cache (both L1 and L2)
 
@@ -438,9 +435,7 @@ cache_manager = CacheManager()
 
 # Cache decorators
 def cached(
-    namespace: str,
-    ttl: Optional[int] = None,
-    key_func: Optional[Callable[..., str]] = None
+    namespace: str, ttl: Optional[int] = None, key_func: Optional[Callable[..., str]] = None
 ):
     """
     Decorator to cache function results
@@ -459,6 +454,7 @@ def cached(
         def get_user(user_id: str):
             return db.query(User).filter(User.id == user_id).first()
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args, **kwargs) -> T:
@@ -484,6 +480,7 @@ def cached(
             return result
 
         return wrapper
+
     return decorator
 
 

@@ -20,6 +20,7 @@ load_dotenv()
 
 class SecurityLevel(Enum):
     """Security level enumeration for different environments"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -28,6 +29,7 @@ class SecurityLevel(Enum):
 
 class HashAlgorithm(Enum):
     """Supported password hashing algorithms"""
+
     ARGON2 = "argon2"
     BCRYPT = "bcrypt"
     SCRYPT = "scrypt"
@@ -36,6 +38,7 @@ class HashAlgorithm(Enum):
 @dataclass
 class PasswordPolicy:
     """Password policy configuration"""
+
     min_length: int = 12
     max_length: int = 128
     require_uppercase: bool = True
@@ -51,6 +54,7 @@ class PasswordPolicy:
 @dataclass
 class TokenConfig:
     """JWT token configuration"""
+
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
     algorithm: str = "HS256"
@@ -62,6 +66,7 @@ class TokenConfig:
 @dataclass
 class RateLimitConfig:
     """Rate limiting configuration"""
+
     enabled: bool = True
     default_limit: str = "100/minute"
     auth_limit: str = "5/minute"
@@ -72,6 +77,7 @@ class RateLimitConfig:
 @dataclass
 class SessionConfig:
     """Session management configuration"""
+
     session_lifetime_hours: int = 24
     max_concurrent_sessions: int = 3
     session_renewal_threshold_minutes: int = 30
@@ -82,6 +88,7 @@ class SessionConfig:
 @dataclass
 class BruteForceProtection:
     """Brute force protection configuration"""
+
     enabled: bool = True
     max_attempts: int = 5
     lockout_duration_minutes: int = 30
@@ -93,6 +100,7 @@ class BruteForceProtection:
 @dataclass
 class EncryptionConfig:
     """Encryption configuration"""
+
     algorithm: str = "AES-256-GCM"
     key_rotation_days: int = 90
     enable_field_encryption: bool = True
@@ -106,13 +114,14 @@ class EncryptionConfig:
                 "iban",
                 "tax_number",
                 "driving_license",
-                "passport_number"
+                "passport_number",
             ]
 
 
 @dataclass
 class AuditConfig:
     """Audit logging configuration"""
+
     enabled: bool = True
     log_authentication: bool = True
     log_authorization: bool = True
@@ -126,6 +135,7 @@ class AuditConfig:
 @dataclass
 class CORSConfig:
     """CORS configuration"""
+
     allow_origins: List[str] = None
     allow_credentials: bool = True
     allow_methods: List[str] = None

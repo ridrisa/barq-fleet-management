@@ -2,14 +2,16 @@
 Performance Configuration Module
 Centralized performance tuning settings for BARQ Fleet Management
 """
+
 import os
-from typing import Optional
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
 class DatabaseConfig:
     """Database performance configuration"""
+
     # Connection pool settings
     pool_size: int = int(os.getenv("DB_POOL_SIZE", "20"))
     max_overflow: int = int(os.getenv("DB_MAX_OVERFLOW", "40"))
@@ -23,7 +25,13 @@ class DatabaseConfig:
 
     # Read replica support
     enable_read_replicas: bool = os.getenv("DB_READ_REPLICAS_ENABLED", "false").lower() == "true"
-    read_replica_urls: list[str] = field(default_factory=lambda: os.getenv("DB_READ_REPLICA_URLS", "").split(",") if os.getenv("DB_READ_REPLICA_URLS") else [])
+    read_replica_urls: list[str] = field(
+        default_factory=lambda: (
+            os.getenv("DB_READ_REPLICA_URLS", "").split(",")
+            if os.getenv("DB_READ_REPLICA_URLS")
+            else []
+        )
+    )
 
     # Lazy loading configuration
     lazy_loading: bool = True
@@ -33,6 +41,7 @@ class DatabaseConfig:
 @dataclass
 class CacheConfig:
     """Caching layer configuration"""
+
     # Redis connection
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     redis_max_connections: int = int(os.getenv("REDIS_MAX_CONNECTIONS", "50"))
@@ -60,6 +69,7 @@ class CacheConfig:
 @dataclass
 class APIConfig:
     """API performance configuration"""
+
     # Compression
     enable_compression: bool = True
     compression_level: int = 6
@@ -86,6 +96,7 @@ class APIConfig:
 @dataclass
 class BackgroundJobsConfig:
     """Background jobs configuration (Celery)"""
+
     broker_url: str = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
     result_backend: str = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
 
@@ -112,6 +123,7 @@ class BackgroundJobsConfig:
 @dataclass
 class FileHandlingConfig:
     """File handling performance configuration"""
+
     # Upload settings
     chunk_size: int = int(os.getenv("FILE_CHUNK_SIZE", "8192"))  # 8KB
     max_file_size: int = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # 10MB
@@ -134,6 +146,7 @@ class FileHandlingConfig:
 @dataclass
 class MonitoringConfig:
     """Monitoring and profiling configuration"""
+
     # Request profiling
     enable_profiling: bool = os.getenv("PROFILING_ENABLED", "false").lower() == "true"
     profile_slow_queries: bool = True
@@ -158,6 +171,7 @@ class MonitoringConfig:
 @dataclass
 class MemoryConfig:
     """Memory optimization configuration"""
+
     # Object pooling
     enable_object_pooling: bool = True
     pool_max_size: int = int(os.getenv("OBJECT_POOL_SIZE", "100"))
@@ -178,6 +192,7 @@ class MemoryConfig:
 @dataclass
 class PerformanceThresholds:
     """Performance monitoring thresholds and alerts"""
+
     # API response times (milliseconds)
     api_response_p50: float = 50.0
     api_response_p95: float = 100.0
@@ -273,6 +288,7 @@ performance_config = PerformanceConfig()
 _warnings = performance_config.validate_config()
 if _warnings:
     import logging
+
     logger = logging.getLogger(__name__)
     for warning in _warnings:
         logger.warning(f"Performance config warning: {warning}")

@@ -1,14 +1,16 @@
-from pydantic import BaseModel, Field, validator
-from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Optional
 
-from app.models.fleet import VehicleStatus, VehicleType, FuelType, OwnershipType
+from pydantic import BaseModel, Field, validator
+
+from app.models.fleet import FuelType, OwnershipType, VehicleStatus, VehicleType
 
 
 # Base schema
 class VehicleBase(BaseModel):
     """Base vehicle schema with common fields"""
+
     plate_number: str = Field(..., min_length=1, max_length=20, description="License plate number")
     vehicle_type: VehicleType
     make: str = Field(..., min_length=1, max_length=100)
@@ -58,12 +60,14 @@ class VehicleBase(BaseModel):
 # Schema for creating a vehicle
 class VehicleCreate(VehicleBase):
     """Schema for creating a new vehicle"""
+
     pass
 
 
 # Schema for updating a vehicle
 class VehicleUpdate(BaseModel):
     """Schema for updating a vehicle - all fields optional"""
+
     plate_number: Optional[str] = Field(None, min_length=1, max_length=20)
     vehicle_type: Optional[VehicleType] = None
     make: Optional[str] = Field(None, min_length=1, max_length=100)
@@ -117,6 +121,7 @@ class VehicleUpdate(BaseModel):
 # Schema for vehicle response
 class VehicleResponse(VehicleBase):
     """Schema for vehicle response with database fields"""
+
     id: int
     total_trips: int = 0
     total_distance: Decimal = 0.0
@@ -125,7 +130,9 @@ class VehicleResponse(VehicleBase):
     updated_at: Optional[datetime] = None
 
     # Computed properties
-    is_available: bool = Field(default=True, description="Whether vehicle is available for assignment")
+    is_available: bool = Field(
+        default=True, description="Whether vehicle is available for assignment"
+    )
     is_service_due: bool = Field(default=False, description="Whether service is due")
     is_document_expired: bool = Field(default=False, description="Whether any document is expired")
     age_years: int = Field(default=0, description="Vehicle age in years")
@@ -137,6 +144,7 @@ class VehicleResponse(VehicleBase):
 # Schema for vehicle list
 class VehicleList(BaseModel):
     """Minimal vehicle schema for list views"""
+
     id: int
     plate_number: str
     vehicle_type: VehicleType
@@ -155,6 +163,7 @@ class VehicleList(BaseModel):
 # Schema for vehicle dropdown/select
 class VehicleOption(BaseModel):
     """Minimal schema for dropdown selections"""
+
     id: int
     plate_number: str
     vehicle_type: VehicleType
@@ -169,6 +178,7 @@ class VehicleOption(BaseModel):
 # Schema for vehicle statistics
 class VehicleStats(BaseModel):
     """Statistics for a vehicle"""
+
     vehicle_id: int
     plate_number: str
     total_trips: int = 0
@@ -185,6 +195,7 @@ class VehicleStats(BaseModel):
 # Schema for vehicle document status
 class VehicleDocumentStatus(BaseModel):
     """Document expiry status for a vehicle"""
+
     vehicle_id: int
     plate_number: str
     registration_expiry_date: Optional[date] = None
@@ -203,6 +214,7 @@ class VehicleDocumentStatus(BaseModel):
 # Schema for bulk operations
 class VehicleBulkUpdate(BaseModel):
     """Schema for bulk updating multiple vehicles"""
+
     vehicle_ids: list[int] = Field(..., min_items=1)
     status: Optional[VehicleStatus] = None
     assigned_to_city: Optional[str] = None

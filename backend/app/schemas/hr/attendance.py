@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import date, time
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class AttendanceStatus(str, Enum):
     PRESENT = "present"
@@ -9,6 +11,7 @@ class AttendanceStatus(str, Enum):
     LATE = "late"
     HALF_DAY = "half_day"
     ON_LEAVE = "on_leave"
+
 
 class AttendanceBase(BaseModel):
     courier_id: int = Field(..., description="Courier ID")
@@ -19,8 +22,10 @@ class AttendanceBase(BaseModel):
     hours_worked: int = Field(default=0, ge=0, le=24)
     notes: Optional[str] = None
 
+
 class AttendanceCreate(AttendanceBase):
     pass
+
 
 class AttendanceUpdate(BaseModel):
     status: Optional[AttendanceStatus] = None
@@ -28,6 +33,7 @@ class AttendanceUpdate(BaseModel):
     check_out: Optional[time] = None
     hours_worked: Optional[int] = Field(None, ge=0, le=24)
     notes: Optional[str] = None
+
 
 class AttendanceResponse(AttendanceBase):
     id: int

@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import date
 from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class LeaveType(str, Enum):
     ANNUAL = "annual"
@@ -9,11 +11,13 @@ class LeaveType(str, Enum):
     EMERGENCY = "emergency"
     UNPAID = "unpaid"
 
+
 class LeaveStatus(str, Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
     CANCELLED = "cancelled"
+
 
 class LeaveBase(BaseModel):
     courier_id: int = Field(..., description="Courier ID")
@@ -23,8 +27,10 @@ class LeaveBase(BaseModel):
     days: int = Field(..., ge=1)
     reason: Optional[str] = None
 
+
 class LeaveCreate(LeaveBase):
     pass
+
 
 class LeaveUpdate(BaseModel):
     leave_type: Optional[LeaveType] = None
@@ -34,6 +40,7 @@ class LeaveUpdate(BaseModel):
     reason: Optional[str] = None
     status: Optional[LeaveStatus] = None
     approved_by: Optional[int] = None
+
 
 class LeaveResponse(LeaveBase):
     id: int

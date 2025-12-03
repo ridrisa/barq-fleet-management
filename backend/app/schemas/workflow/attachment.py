@@ -1,11 +1,14 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 from app.models.workflow.attachment import AttachmentType
 
 
 class WorkflowAttachmentBase(BaseModel):
     """Base schema for workflow attachments"""
+
     file_name: str = Field(..., min_length=1, max_length=255)
     file_path: str
     file_size: Optional[int] = Field(None, ge=0)
@@ -17,12 +20,14 @@ class WorkflowAttachmentBase(BaseModel):
 
 class WorkflowAttachmentCreate(WorkflowAttachmentBase):
     """Schema for creating a workflow attachment"""
+
     workflow_instance_id: int
     uploaded_by_id: int
 
 
 class WorkflowAttachmentUpdate(BaseModel):
     """Schema for updating a workflow attachment"""
+
     file_name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     is_public: Optional[bool] = None
@@ -30,6 +35,7 @@ class WorkflowAttachmentUpdate(BaseModel):
 
 class WorkflowAttachmentResponse(WorkflowAttachmentBase):
     """Schema for workflow attachment response"""
+
     id: int
     workflow_instance_id: int
     uploaded_by_id: int
@@ -45,12 +51,14 @@ class WorkflowAttachmentResponse(WorkflowAttachmentBase):
 
 class WorkflowAttachmentWithUploader(WorkflowAttachmentResponse):
     """Extended schema with uploader details"""
+
     uploader_name: Optional[str] = None
     uploader_email: Optional[str] = None
 
 
 class AttachmentUploadRequest(BaseModel):
     """Schema for file upload request"""
+
     workflow_instance_id: int
     description: Optional[str] = None
     is_public: bool = False
@@ -58,6 +66,7 @@ class AttachmentUploadRequest(BaseModel):
 
 class AttachmentDownloadResponse(BaseModel):
     """Schema for download response"""
+
     file_url: str
     file_name: str
     file_size: int

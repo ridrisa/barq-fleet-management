@@ -1,6 +1,8 @@
 """Chat Message Model"""
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, Boolean
+
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 
@@ -19,35 +21,28 @@ class ChatMessage(TenantMixin, BaseModel):
         ForeignKey("chat_sessions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Chat session ID"
+        comment="Chat session ID",
     )
     sender_id = Column(
         Integer,
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=False,
         index=True,
-        comment="User who sent the message"
+        comment="User who sent the message",
     )
 
     # Content
-    message = Column(
-        Text,
-        nullable=False,
-        comment="Message content"
-    )
+    message = Column(Text, nullable=False, comment="Message content")
 
     # Message Type
     is_agent = Column(
         Boolean,
         default=False,
         nullable=False,
-        comment="Whether message is from agent (True) or customer (False)"
+        comment="Whether message is from agent (True) or customer (False)",
     )
     is_system = Column(
-        Boolean,
-        default=False,
-        nullable=False,
-        comment="Whether message is a system message"
+        Boolean, default=False, nullable=False, comment="Whether message is a system message"
     )
 
     # Relationships

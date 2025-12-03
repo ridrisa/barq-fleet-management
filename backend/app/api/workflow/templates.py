@@ -1,4 +1,5 @@
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -6,8 +7,8 @@ from app.core.dependencies import get_db
 from app.crud.workflow import workflow_template
 from app.schemas.workflow import (
     WorkflowTemplateCreate,
-    WorkflowTemplateUpdate,
     WorkflowTemplateResponse,
+    WorkflowTemplateUpdate,
 )
 
 router = APIRouter()
@@ -116,9 +117,7 @@ def activate_workflow_template(
     if not template:
         raise HTTPException(status_code=404, detail="Workflow template not found")
 
-    template = workflow_template.update(
-        db, db_obj=template, obj_in={"is_active": True}
-    )
+    template = workflow_template.update(db, db_obj=template, obj_in={"is_active": True})
     return template
 
 
@@ -132,7 +131,5 @@ def deactivate_workflow_template(
     if not template:
         raise HTTPException(status_code=404, detail="Workflow template not found")
 
-    template = workflow_template.update(
-        db, db_obj=template, obj_in={"is_active": False}
-    )
+    template = workflow_template.update(db, db_obj=template, obj_in={"is_active": False})
     return template

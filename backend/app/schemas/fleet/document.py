@@ -1,11 +1,14 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import date, datetime
-from app.models.fleet.document import DocumentType, DocumentEntity
+from typing import Optional
+
+from pydantic import BaseModel, Field
+
+from app.models.fleet.document import DocumentEntity, DocumentType
 
 
 class DocumentBase(BaseModel):
     """Base document schema"""
+
     entity_type: DocumentEntity
     entity_id: int
     document_type: DocumentType
@@ -22,11 +25,13 @@ class DocumentBase(BaseModel):
 
 class DocumentCreate(DocumentBase):
     """Schema for creating document"""
+
     pass
 
 
 class DocumentUpdate(BaseModel):
     """Schema for updating document"""
+
     document_type: Optional[DocumentType] = None
     document_number: Optional[str] = Field(None, max_length=100)
     document_name: Optional[str] = Field(None, max_length=200)
@@ -41,6 +46,7 @@ class DocumentUpdate(BaseModel):
 
 class DocumentResponse(DocumentBase):
     """Schema for document response"""
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None

@@ -14,24 +14,26 @@ Author: BARQ Security Team
 Last Updated: 2025-12-02
 """
 
-import re
 import mimetypes
-from datetime import datetime, date
-from typing import Any, Dict, List, Optional, Union
+import re
+from datetime import date, datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import bleach
-from email_validator import validate_email, EmailNotValidError
+from email_validator import EmailNotValidError, validate_email
 from pydantic import validator
 
 
 class SanitizationError(ValueError):
     """Raised when input sanitization fails"""
+
     pass
 
 
 class ValidationError(ValueError):
     """Raised when input validation fails"""
+
     pass
 
 
@@ -43,9 +45,9 @@ class InputSanitizer:
     """
 
     # Allowed HTML tags for rich text (very restrictive)
-    ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li']
-    ALLOWED_ATTRIBUTES = {'a': ['href', 'title']}
-    ALLOWED_PROTOCOLS = ['http', 'https', 'mailto']
+    ALLOWED_TAGS = ["p", "br", "strong", "em", "u", "a", "ul", "ol", "li"]
+    ALLOWED_ATTRIBUTES = {"a": ["href", "title"]}
+    ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 
     @classmethod
     def sanitize_html(
@@ -53,7 +55,7 @@ class InputSanitizer:
         html_content: str,
         strip_tags: bool = False,
         allowed_tags: Optional[List[str]] = None,
-        allowed_attributes: Optional[Dict[str, List[str]]] = None
+        allowed_attributes: Optional[Dict[str, List[str]]] = None,
     ) -> str:
         """
         Sanitize HTML content to prevent XSS attacks
@@ -77,11 +79,7 @@ class InputSanitizer:
         attrs = allowed_attributes or cls.ALLOWED_ATTRIBUTES
 
         return bleach.clean(
-            html_content,
-            tags=tags,
-            attributes=attrs,
-            protocols=cls.ALLOWED_PROTOCOLS,
-            strip=True
+            html_content, tags=tags, attributes=attrs, protocols=cls.ALLOWED_PROTOCOLS, strip=True
         )
 
     @staticmethod
@@ -100,13 +98,13 @@ class InputSanitizer:
             return ""
 
         # Remove null bytes
-        value = value.replace('\x00', '')
+        value = value.replace("\x00", "")
 
         # Strip leading/trailing whitespace
         value = value.strip()
 
         # Normalize whitespace
-        value = re.sub(r'\s+', ' ', value)
+        value = re.sub(r"\s+", " ", value)
 
         # Truncate if needed
         if max_length and len(value) > max_length:
@@ -129,15 +127,26 @@ class InputSanitizer:
             SanitizationError: If identifier contains invalid characters
         """
         # Only allow alphanumeric and underscore
-        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', identifier):
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", identifier):
             raise SanitizationError(
                 f"Invalid SQL identifier: {identifier}. Only alphanumeric and underscore allowed."
             )
 
         # Prevent SQL reserved keywords (basic check)
         sql_keywords = {
-            'select', 'insert', 'update', 'delete', 'drop', 'create',
-            'alter', 'truncate', 'union', 'join', 'where', 'from', 'table'
+            "select",
+            "insert",
+            "update",
+            "delete",
+            "drop",
+            "create",
+            "alter",
+            "truncate",
+            "union",
+            "join",
+            "where",
+            "from",
+            "table",
         }
 
         if identifier.lower() in sql_keywords:
@@ -160,15 +169,15 @@ class InputSanitizer:
         filename = Path(filename).name
 
         # Remove or replace dangerous characters
-        filename = re.sub(r'[^\w\s\-\.]', '_', filename)
+        filename = re.sub(r"[^\w\s\-\.]", "_", filename)
 
         # Prevent directory traversal
-        filename = filename.replace('..', '_')
+        filename = filename.replace("..", "_")
 
         # Limit length
         if len(filename) > 255:
-            name, ext = filename.rsplit('.', 1) if '.' in filename else (filename, '')
-            filename = name[:250] + ('.' + ext if ext else '')
+            name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
+            filename = name[:250] + ("." + ext if ext else "")
 
         return filename
 
@@ -192,10 +201,7 @@ class EmailValidator:
             ValidationError: If email is invalid
         """
         try:
-            result = validate_email(
-                email,
-                check_deliverability=check_deliverability
-            )
+            result = validate_email(email, check_deliverability=check_deliverability)
 
             return {
                 "valid": True,
@@ -222,8 +228,8 @@ class PhoneValidator:
     """Phone number validation utilities (Saudi Arabia focus)"""
 
     # Saudi Arabia phone patterns
-    SAUDI_MOBILE_PATTERN = r'^(009665|9665|\+9665|05|5)(5|0|3|6|4|9|1|8|7)([0-9]{7})$'
-    SAUDI_LANDLINE_PATTERN = r'^(009661|9661|\+9661|01|1)([0-9]{7})$'
+    SAUDI_MOBILE_PATTERN = r"^(009665|9665|\+9665|05|5)(5|0|3|6|4|9|1|8|7)([0-9]{7})$"
+    SAUDI_LANDLINE_PATTERN = r"^(009661|9661|\+9661|01|1)([0-9]{7})$"
 
     @classmethod
     def validate_saudi_mobile(cls, phone: str) -> Dict[str, Any]:
@@ -237,33 +243,23 @@ class PhoneValidator:
             Dict with validation results
         """
         # Remove spaces and dashes
-        phone = re.sub(r'[\s\-]', '', phone)
+        phone = re.sub(r"[\s\-]", "", phone)
 
         if re.match(cls.SAUDI_MOBILE_PATTERN, phone):
             # Normalize to international format
             normalized = cls._normalize_saudi_mobile(phone)
-            return {
-                "valid": True,
-                "normalized": normalized,
-                "type": "mobile",
-                "country": "SA"
-            }
+            return {"valid": True, "normalized": normalized, "type": "mobile", "country": "SA"}
 
         raise ValidationError(f"Invalid Saudi mobile number: {phone}")
 
     @classmethod
     def validate_saudi_landline(cls, phone: str) -> Dict[str, Any]:
         """Validate Saudi landline number"""
-        phone = re.sub(r'[\s\-]', '', phone)
+        phone = re.sub(r"[\s\-]", "", phone)
 
         if re.match(cls.SAUDI_LANDLINE_PATTERN, phone):
             normalized = cls._normalize_saudi_landline(phone)
-            return {
-                "valid": True,
-                "normalized": normalized,
-                "type": "landline",
-                "country": "SA"
-            }
+            return {"valid": True, "normalized": normalized, "type": "landline", "country": "SA"}
 
         raise ValidationError(f"Invalid Saudi landline number: {phone}")
 
@@ -297,49 +293,47 @@ class PhoneValidator:
     def _normalize_saudi_mobile(phone: str) -> str:
         """Normalize Saudi mobile to +966 format"""
         # Extract digits only
-        digits = re.sub(r'\D', '', phone)
+        digits = re.sub(r"\D", "", phone)
 
         # Handle different formats
-        if digits.startswith('00966'):
+        if digits.startswith("00966"):
             digits = digits[2:]
-        elif digits.startswith('966'):
+        elif digits.startswith("966"):
             pass
-        elif digits.startswith('0'):
-            digits = '966' + digits[1:]
+        elif digits.startswith("0"):
+            digits = "966" + digits[1:]
         elif len(digits) == 9:
-            digits = '966' + digits
+            digits = "966" + digits
 
-        return '+' + digits
+        return "+" + digits
 
     @staticmethod
     def _normalize_saudi_landline(phone: str) -> str:
         """Normalize Saudi landline to +966 format"""
-        digits = re.sub(r'\D', '', phone)
+        digits = re.sub(r"\D", "", phone)
 
-        if digits.startswith('00966'):
+        if digits.startswith("00966"):
             digits = digits[2:]
-        elif digits.startswith('966'):
+        elif digits.startswith("966"):
             pass
-        elif digits.startswith('0'):
-            digits = '966' + digits[1:]
+        elif digits.startswith("0"):
+            digits = "966" + digits[1:]
 
-        return '+' + digits
+        return "+" + digits
 
 
 class FileValidator:
     """File upload validation utilities"""
 
     # Allowed MIME types
-    ALLOWED_IMAGE_TYPES = {
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp'
-    }
+    ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
     ALLOWED_DOCUMENT_TYPES = {
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }
 
     # Maximum file sizes (in bytes)
@@ -348,12 +342,7 @@ class FileValidator:
     MAX_GENERAL_SIZE = 20 * 1024 * 1024  # 20 MB
 
     @classmethod
-    def validate_image(
-        cls,
-        filename: str,
-        content_type: str,
-        size: int
-    ) -> Dict[str, Any]:
+    def validate_image(cls, filename: str, content_type: str, size: int) -> Dict[str, Any]:
         """
         Validate image upload
 
@@ -385,24 +374,17 @@ class FileValidator:
         expected_ext = mimetypes.guess_extension(content_type)
 
         if expected_ext and ext != expected_ext:
-            raise ValidationError(
-                f"File extension mismatch. Expected {expected_ext}, got {ext}"
-            )
+            raise ValidationError(f"File extension mismatch. Expected {expected_ext}, got {ext}")
 
         return {
             "valid": True,
             "sanitized_filename": InputSanitizer.sanitize_filename(filename),
             "content_type": content_type,
-            "size": size
+            "size": size,
         }
 
     @classmethod
-    def validate_document(
-        cls,
-        filename: str,
-        content_type: str,
-        size: int
-    ) -> Dict[str, Any]:
+    def validate_document(cls, filename: str, content_type: str, size: int) -> Dict[str, Any]:
         """Validate document upload"""
         if content_type not in cls.ALLOWED_DOCUMENT_TYPES:
             raise ValidationError(
@@ -418,7 +400,7 @@ class FileValidator:
             "valid": True,
             "sanitized_filename": InputSanitizer.sanitize_filename(filename),
             "content_type": content_type,
-            "size": size
+            "size": size,
         }
 
 
@@ -430,7 +412,7 @@ class DateTimeValidator:
         date_str: str,
         format: str = "%Y-%m-%d",
         min_date: Optional[date] = None,
-        max_date: Optional[date] = None
+        max_date: Optional[date] = None,
     ) -> date:
         """
         Validate date string
@@ -466,7 +448,7 @@ class DateTimeValidator:
         datetime_str: str,
         format: str = "%Y-%m-%d %H:%M:%S",
         min_datetime: Optional[datetime] = None,
-        max_datetime: Optional[datetime] = None
+        max_datetime: Optional[datetime] = None,
     ) -> datetime:
         """Validate datetime string"""
         try:
@@ -499,7 +481,7 @@ class DateTimeValidator:
 class NationalIDValidator:
     """Saudi National ID validation"""
 
-    NATIONAL_ID_PATTERN = r'^[12]\d{9}$'
+    NATIONAL_ID_PATTERN = r"^[12]\d{9}$"
 
     @classmethod
     def validate(cls, national_id: str) -> Dict[str, Any]:
@@ -516,27 +498,21 @@ class NationalIDValidator:
             ValidationError: If invalid
         """
         # Remove spaces and dashes
-        national_id = re.sub(r'[\s\-]', '', national_id)
+        national_id = re.sub(r"[\s\-]", "", national_id)
 
         if not re.match(cls.NATIONAL_ID_PATTERN, national_id):
-            raise ValidationError(
-                "Invalid National ID. Must be 10 digits starting with 1 or 2"
-            )
+            raise ValidationError("Invalid National ID. Must be 10 digits starting with 1 or 2")
 
         # First digit indicates nationality (1=Saudi, 2=Non-Saudi)
         nationality = "Saudi" if national_id[0] == "1" else "Non-Saudi"
 
-        return {
-            "valid": True,
-            "normalized": national_id,
-            "nationality": nationality
-        }
+        return {"valid": True, "normalized": national_id, "nationality": nationality}
 
 
 class IBANValidator:
     """IBAN validation (Saudi Arabia)"""
 
-    SAUDI_IBAN_PATTERN = r'^SA\d{22}$'
+    SAUDI_IBAN_PATTERN = r"^SA\d{22}$"
 
     @classmethod
     def validate(cls, iban: str) -> Dict[str, Any]:
@@ -553,22 +529,16 @@ class IBANValidator:
             ValidationError: If invalid
         """
         # Remove spaces
-        iban = iban.replace(' ', '').upper()
+        iban = iban.replace(" ", "").upper()
 
         if not re.match(cls.SAUDI_IBAN_PATTERN, iban):
-            raise ValidationError(
-                "Invalid Saudi IBAN. Must be SA followed by 22 digits"
-            )
+            raise ValidationError("Invalid Saudi IBAN. Must be SA followed by 22 digits")
 
         # Verify checksum (IBAN mod 97 algorithm)
         if not cls._verify_iban_checksum(iban):
             raise ValidationError("Invalid IBAN checksum")
 
-        return {
-            "valid": True,
-            "normalized": iban,
-            "country": "SA"
-        }
+        return {"valid": True, "normalized": iban, "country": "SA"}
 
     @staticmethod
     def _verify_iban_checksum(iban: str) -> bool:
@@ -577,12 +547,12 @@ class IBANValidator:
         rearranged = iban[4:] + iban[:4]
 
         # Replace letters with numbers (A=10, B=11, ..., Z=35)
-        numeric = ''
+        numeric = ""
         for char in rearranged:
             if char.isdigit():
                 numeric += char
             else:
-                numeric += str(ord(char) - ord('A') + 10)
+                numeric += str(ord(char) - ord("A") + 10)
 
         # Check if mod 97 equals 1
         return int(numeric) % 97 == 1
@@ -596,45 +566,35 @@ class CustomValidators:
         """Validate Saudi license plate format"""
         # Saudi plates: XXX 1234 (3 Arabic letters + 4 digits)
         # For now, accept alphanumeric
-        plate = plate.upper().replace(' ', '')
+        plate = plate.upper().replace(" ", "")
 
-        if not re.match(r'^[A-Z0-9]{4,8}$', plate):
+        if not re.match(r"^[A-Z0-9]{4,8}$", plate):
             raise ValidationError("Invalid license plate format")
 
-        return {
-            "valid": True,
-            "normalized": plate
-        }
+        return {"valid": True, "normalized": plate}
 
     @staticmethod
     def validate_vin(vin: str) -> Dict[str, Any]:
         """Validate Vehicle Identification Number (VIN)"""
-        vin = vin.upper().replace(' ', '')
+        vin = vin.upper().replace(" ", "")
 
         # VIN is 17 characters, excludes I, O, Q
-        if not re.match(r'^[A-HJ-NPR-Z0-9]{17}$', vin):
+        if not re.match(r"^[A-HJ-NPR-Z0-9]{17}$", vin):
             raise ValidationError("Invalid VIN format (must be 17 characters, no I/O/Q)")
 
-        return {
-            "valid": True,
-            "normalized": vin
-        }
+        return {"valid": True, "normalized": vin}
 
     @staticmethod
     def validate_postal_code(postal_code: str, country: str = "SA") -> Dict[str, Any]:
         """Validate postal code"""
-        postal_code = postal_code.replace(' ', '').replace('-', '')
+        postal_code = postal_code.replace(" ", "").replace("-", "")
 
         if country == "SA":
             # Saudi postal code: 5 digits + optional 4 digits
-            if not re.match(r'^\d{5}(\d{4})?$', postal_code):
+            if not re.match(r"^\d{5}(\d{4})?$", postal_code):
                 raise ValidationError("Invalid Saudi postal code (must be 5 or 9 digits)")
 
-        return {
-            "valid": True,
-            "normalized": postal_code,
-            "country": country
-        }
+        return {"valid": True, "normalized": postal_code, "country": country}
 
 
 # SQL Injection Prevention Helpers

@@ -1,18 +1,23 @@
 """Support Ticket Schemas"""
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
+
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 # Import enums from model
-from app.models.support import TicketCategory, TicketPriority, TicketStatus, EscalationLevel
+from app.models.support import EscalationLevel, TicketCategory, TicketPriority, TicketStatus
 
 
 class TicketBase(BaseModel):
     """Base ticket schema with common fields"""
+
     subject: str = Field(..., min_length=5, max_length=255, description="Ticket subject/title")
     description: str = Field(..., min_length=10, description="Detailed description of the issue")
     category: TicketCategory = Field(..., description="Ticket category")
-    priority: TicketPriority = Field(default=TicketPriority.MEDIUM, description="Ticket priority level")
+    priority: TicketPriority = Field(
+        default=TicketPriority.MEDIUM, description="Ticket priority level"
+    )
     courier_id: Optional[int] = Field(None, description="Related courier ID (if applicable)")
     tags: Optional[str] = Field(None, description="Comma-separated tags")
     contact_email: Optional[str] = Field(None, max_length=255, description="Contact email")
@@ -23,11 +28,13 @@ class TicketBase(BaseModel):
 
 class TicketCreate(TicketBase):
     """Schema for creating a new ticket"""
+
     template_id: Optional[int] = Field(None, description="Template to use for creation")
 
 
 class TicketCreateFromTemplate(BaseModel):
     """Schema for creating a ticket from a template"""
+
     template_id: int = Field(..., description="Template ID")
     subject: Optional[str] = Field(None, description="Override subject")
     description: Optional[str] = Field(None, description="Override description")
@@ -37,6 +44,7 @@ class TicketCreateFromTemplate(BaseModel):
 
 class TicketUpdate(BaseModel):
     """Schema for updating a ticket - all fields optional"""
+
     subject: Optional[str] = Field(None, min_length=5, max_length=255)
     description: Optional[str] = Field(None, min_length=10)
     category: Optional[TicketCategory] = None
@@ -54,16 +62,19 @@ class TicketUpdate(BaseModel):
 
 class TicketAssign(BaseModel):
     """Schema for assigning a ticket to a user"""
+
     assigned_to: int = Field(..., description="User ID to assign the ticket to")
 
 
 class TicketResolve(BaseModel):
     """Schema for resolving a ticket"""
+
     resolution: str = Field(..., min_length=10, description="Resolution details")
 
 
 class TicketEscalate(BaseModel):
     """Schema for escalating a ticket"""
+
     escalation_level: EscalationLevel = Field(..., description="New escalation level")
     reason: str = Field(..., min_length=10, description="Reason for escalation")
     assign_to: Optional[int] = Field(None, description="User to assign the escalated ticket to")
@@ -71,27 +82,37 @@ class TicketEscalate(BaseModel):
 
 class TicketMerge(BaseModel):
     """Schema for merging tickets"""
-    source_ticket_ids: List[int] = Field(..., min_length=1, description="Ticket IDs to merge into target")
+
+    source_ticket_ids: List[int] = Field(
+        ..., min_length=1, description="Ticket IDs to merge into target"
+    )
     target_ticket_id: int = Field(..., description="Target ticket ID to merge into")
     merge_note: Optional[str] = Field(None, description="Note to add about the merge")
 
 
 class TicketBulkAction(BaseModel):
     """Schema for bulk ticket operations"""
+
     ticket_ids: List[int] = Field(..., min_length=1, description="List of ticket IDs")
-    action: str = Field(..., description="Action to perform: assign, change_status, change_priority, close, delete")
+    action: str = Field(
+        ..., description="Action to perform: assign, change_status, change_priority, close, delete"
+    )
     assigned_to: Optional[int] = Field(None, description="User ID for assign action")
     status: Optional[TicketStatus] = Field(None, description="New status for change_status action")
-    priority: Optional[TicketPriority] = Field(None, description="New priority for change_priority action")
+    priority: Optional[TicketPriority] = Field(
+        None, description="New priority for change_priority action"
+    )
 
 
 class TicketSLAConfig(BaseModel):
     """Schema for setting SLA on a ticket"""
+
     sla_hours: int = Field(..., ge=1, description="SLA deadline in hours from now")
 
 
 class TicketResponse(TicketBase):
     """Schema for ticket response with database fields"""
+
     id: int
     ticket_id: str
     created_by: int
@@ -123,7 +144,9 @@ class TicketResponse(TicketBase):
     is_open: bool = Field(default=False, description="Whether ticket is open/in-progress/waiting")
     is_resolved: bool = Field(default=False, description="Whether ticket is resolved")
     is_closed: bool = Field(default=False, description="Whether ticket is closed")
-    is_high_priority: bool = Field(default=False, description="Whether ticket is high priority or urgent")
+    is_high_priority: bool = Field(
+        default=False, description="Whether ticket is high priority or urgent"
+    )
     is_escalated: bool = Field(default=False, description="Whether ticket is escalated")
     sla_status: str = Field(default="not_set", description="SLA status: active, breached, not_set")
 
@@ -133,6 +156,7 @@ class TicketResponse(TicketBase):
 
 class TicketList(BaseModel):
     """Minimal ticket schema for list views"""
+
     id: int
     ticket_id: str
     subject: str
@@ -154,6 +178,7 @@ class TicketList(BaseModel):
 
 class TicketStatistics(BaseModel):
     """Ticket statistics schema"""
+
     total: int = 0
     open: int = 0
     in_progress: int = 0
@@ -172,6 +197,7 @@ class TicketStatistics(BaseModel):
 
 class TicketWithRelations(TicketResponse):
     """Extended ticket response with related objects"""
+
     courier_name: Optional[str] = None
     creator_name: str
     assignee_name: Optional[str] = None
@@ -186,6 +212,7 @@ class TicketWithRelations(TicketResponse):
 
 class TicketAttachmentCreate(BaseModel):
     """Schema for creating ticket attachment"""
+
     ticket_id: int = Field(..., description="Parent ticket ID")
     reply_id: Optional[int] = Field(None, description="Reply ID if attachment is on a reply")
     filename: str = Field(..., max_length=255, description="Original filename")
@@ -196,6 +223,7 @@ class TicketAttachmentCreate(BaseModel):
 
 class TicketAttachmentResponse(BaseModel):
     """Schema for ticket attachment response"""
+
     id: int
     ticket_id: int
     reply_id: Optional[int] = None
@@ -214,13 +242,16 @@ class TicketAttachmentResponse(BaseModel):
 
 class TicketTemplateCreate(BaseModel):
     """Schema for creating ticket template"""
+
     name: str = Field(..., min_length=3, max_length=100, description="Template name")
     description: Optional[str] = Field(None, max_length=500, description="Template description")
     default_subject: Optional[str] = Field(None, max_length=255, description="Default subject")
     default_description: Optional[str] = Field(None, description="Default description")
     default_category: Optional[TicketCategory] = None
     default_priority: Optional[TicketPriority] = TicketPriority.MEDIUM
-    default_department: Optional[str] = Field(None, max_length=100, description="Default department")
+    default_department: Optional[str] = Field(
+        None, max_length=100, description="Default department"
+    )
     default_tags: Optional[str] = Field(None, description="Default tags")
     default_custom_fields: Optional[Dict[str, Any]] = None
     sla_hours: Optional[int] = Field(None, ge=1, description="SLA in hours")
@@ -230,6 +261,7 @@ class TicketTemplateCreate(BaseModel):
 
 class TicketTemplateUpdate(BaseModel):
     """Schema for updating ticket template"""
+
     name: Optional[str] = Field(None, min_length=3, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     default_subject: Optional[str] = Field(None, max_length=255)
@@ -246,6 +278,7 @@ class TicketTemplateUpdate(BaseModel):
 
 class TicketTemplateResponse(BaseModel):
     """Schema for ticket template response"""
+
     id: int
     name: str
     description: Optional[str] = None
@@ -269,6 +302,7 @@ class TicketTemplateResponse(BaseModel):
 
 class CannedResponseCreate(BaseModel):
     """Schema for creating canned response"""
+
     title: str = Field(..., min_length=3, max_length=100, description="Response title")
     shortcut: Optional[str] = Field(None, max_length=50, description="Keyboard shortcut")
     content: str = Field(..., min_length=5, description="Response content")
@@ -279,6 +313,7 @@ class CannedResponseCreate(BaseModel):
 
 class CannedResponseUpdate(BaseModel):
     """Schema for updating canned response"""
+
     title: Optional[str] = Field(None, min_length=3, max_length=100)
     shortcut: Optional[str] = Field(None, max_length=50)
     content: Optional[str] = Field(None, min_length=5)
@@ -289,6 +324,7 @@ class CannedResponseUpdate(BaseModel):
 
 class CannedResponseResponse(BaseModel):
     """Schema for canned response response"""
+
     id: int
     title: str
     shortcut: Optional[str] = None

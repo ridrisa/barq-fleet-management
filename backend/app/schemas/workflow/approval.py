@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ApprovalStatus(str, Enum):
@@ -112,6 +113,7 @@ class ApprovalRequestResponse(ApprovalRequestBase):
 # Action Schemas
 class ApprovalActionRequest(BaseModel):
     """Request to approve or reject"""
+
     action: str = Field(..., pattern="^(approve|reject|delegate)$")
     comments: Optional[str] = None
     delegate_to_id: Optional[int] = None
@@ -119,4 +121,5 @@ class ApprovalActionRequest(BaseModel):
 
 class ApprovalChainWithApprovers(ApprovalChainResponse):
     """Approval chain with its approvers"""
+
     approvers: List[ApprovalChainApproverResponse] = []

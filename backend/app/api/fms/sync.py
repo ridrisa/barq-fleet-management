@@ -2,9 +2,12 @@
 FMS Sync API Routes
 Provides endpoints for syncing FMS data with BARQ database.
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.orm import Session
+
 from typing import Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy.orm import Session
+
 from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.services.fms.sync import get_sync_service
@@ -29,11 +32,7 @@ async def run_sync(
     sync_service = get_sync_service(db)
     result = sync_service.sync_all_assets()
 
-    return {
-        "success": True,
-        "message": "FMS sync completed",
-        "stats": result
-    }
+    return {"success": True, "message": "FMS sync completed", "stats": result}
 
 
 @router.get("/preview")
@@ -70,7 +69,7 @@ async def preview_sync(
                 "id": courier.id,
                 "name": courier.full_name,
                 "barq_id": courier.barq_id,
-                "already_linked": courier.fms_asset_id == asset.get("Id")
+                "already_linked": courier.fms_asset_id == asset.get("Id"),
             }
 
         vehicle = sync_service.match_vehicle_by_plate(asset.get("AssetName"))
@@ -78,15 +77,12 @@ async def preview_sync(
             result["vehicle_match"] = {
                 "id": vehicle.id,
                 "plate_number": vehicle.plate_number,
-                "already_linked": vehicle.fms_asset_id == asset.get("Id")
+                "already_linked": vehicle.fms_asset_id == asset.get("Id"),
             }
 
         preview_results.append(result)
 
-    return {
-        "total_fms_assets": len(assets),
-        "preview": preview_results
-    }
+    return {"total_fms_assets": len(assets), "preview": preview_results}
 
 
 @router.get("/live-locations")
@@ -106,10 +102,7 @@ async def get_live_locations(
     sync_service = get_sync_service(db)
     locations = sync_service.get_all_couriers_live_locations()
 
-    return {
-        "count": len(locations),
-        "locations": locations
-    }
+    return {"count": len(locations), "locations": locations}
 
 
 @router.get("/courier/{courier_id}/location")
@@ -125,10 +118,7 @@ async def get_courier_location(
     location = sync_service.get_courier_live_location(courier_id)
 
     if not location:
-        raise HTTPException(
-            status_code=404,
-            detail="Courier not found or not linked to FMS"
-        )
+        raise HTTPException(status_code=404, detail="Courier not found or not linked to FMS")
 
     return location
 
@@ -159,15 +149,17 @@ async def get_sync_stats(
             "total": total_couriers,
             "linked_to_fms": linked_couriers,
             "unlinked": total_couriers - linked_couriers,
-            "link_percentage": round((linked_couriers / total_couriers * 100) if total_couriers > 0 else 0, 1)
+            "link_percentage": round(
+                (linked_couriers / total_couriers * 100) if total_couriers > 0 else 0, 1
+            ),
         },
         "vehicles": {
             "total": total_vehicles,
             "linked_to_fms": linked_vehicles,
             "unlinked": total_vehicles - linked_vehicles,
-            "link_percentage": round((linked_vehicles / total_vehicles * 100) if total_vehicles > 0 else 0, 1)
+            "link_percentage": round(
+                (linked_vehicles / total_vehicles * 100) if total_vehicles > 0 else 0, 1
+            ),
         },
-        "fms": {
-            "total_assets": len(fms_assets) if fms_assets else 0
-        }
+        "fms": {"total_assets": len(fms_assets) if fms_assets else 0},
     }

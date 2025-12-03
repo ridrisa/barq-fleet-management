@@ -1,15 +1,16 @@
 """Admin API Routes - Complete Admin Module"""
+
 from fastapi import APIRouter
 
 from app.api.v1.admin import (
-    roles,
-    permissions,
+    api_keys,
     audit_logs,
-    users,
-    monitoring,
     backups,
     integrations,
-    api_keys,
+    monitoring,
+    permissions,
+    roles,
+    users,
 )
 
 router = APIRouter()

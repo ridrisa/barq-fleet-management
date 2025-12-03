@@ -1,15 +1,21 @@
 """
 Customer Feedback Model for Operations
 """
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
+
+import enum
+
+from sqlalchemy import Boolean, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class FeedbackType(str, enum.Enum):
     """Type of feedback"""
+
     DELIVERY = "delivery"
     COURIER = "courier"
     SERVICE = "service"
@@ -20,6 +26,7 @@ class FeedbackType(str, enum.Enum):
 
 class FeedbackStatus(str, enum.Enum):
     """Feedback processing status"""
+
     PENDING = "pending"
     REVIEWED = "reviewed"
     RESPONDED = "responded"
@@ -30,6 +37,7 @@ class FeedbackStatus(str, enum.Enum):
 
 class FeedbackSentiment(str, enum.Enum):
     """Feedback sentiment analysis"""
+
     POSITIVE = "positive"
     NEUTRAL = "neutral"
     NEGATIVE = "negative"
@@ -41,21 +49,23 @@ class CustomerFeedback(TenantMixin, BaseModel):
     __tablename__ = "customer_feedbacks"
 
     # Feedback Identification
-    feedback_number = Column(String(50), unique=True, nullable=False, index=True, comment="Unique feedback ID")
+    feedback_number = Column(
+        String(50), unique=True, nullable=False, index=True, comment="Unique feedback ID"
+    )
     feedback_type = Column(
         SQLEnum(FeedbackType, values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
-        index=True
+        index=True,
     )
     status = Column(
         SQLEnum(
             FeedbackStatus,
             name="customerfeedbackstatus",
-            values_callable=lambda obj: [e.value for e in obj]
+            values_callable=lambda obj: [e.value for e in obj],
         ),
         default=FeedbackStatus.PENDING,
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Subject of Feedback
@@ -81,7 +91,7 @@ class CustomerFeedback(TenantMixin, BaseModel):
     feedback_text = Column(Text, nullable=False)
     sentiment = Column(
         SQLEnum(FeedbackSentiment, values_callable=lambda obj: [e.value for e in obj]),
-        comment="AI-analyzed sentiment"
+        comment="AI-analyzed sentiment",
     )
 
     # Categories and Tags
@@ -153,11 +163,7 @@ class CustomerFeedback(TenantMixin, BaseModel):
     @property
     def needs_attention(self) -> bool:
         """Check if feedback requires immediate attention"""
-        return (
-            self.is_negative or
-            self.is_escalated or
-            self.priority in ["high", "urgent"]
-        )
+        return self.is_negative or self.is_escalated or self.priority in ["high", "urgent"]
 
 
 class FeedbackTemplate(TenantMixin, BaseModel):
@@ -171,7 +177,7 @@ class FeedbackTemplate(TenantMixin, BaseModel):
     template_type = Column(
         SQLEnum(FeedbackType, values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
-        index=True
+        index=True,
     )
 
     # Content
@@ -181,7 +187,7 @@ class FeedbackTemplate(TenantMixin, BaseModel):
     # Usage
     sentiment_type = Column(
         SQLEnum(FeedbackSentiment, values_callable=lambda obj: [e.value for e in obj]),
-        comment="Which sentiment this template is for"
+        comment="Which sentiment this template is for",
     )
     is_active = Column(Boolean, default=True)
     usage_count = Column(Integer, default=0)

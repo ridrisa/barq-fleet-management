@@ -13,7 +13,7 @@ Last Updated: 2025-12-02
 
 import json
 from datetime import datetime, timedelta
-from typing import Optional, Set, List
+from typing import List, Optional, Set
 
 import redis
 from jose import jwt
@@ -51,10 +51,7 @@ class TokenBlacklist:
                 self._memory_storage: Set[str] = set()
             else:
                 self.redis = redis.from_url(
-                    redis_url,
-                    decode_responses=True,
-                    socket_connect_timeout=5,
-                    socket_timeout=5
+                    redis_url, decode_responses=True, socket_connect_timeout=5, socket_timeout=5
                 )
 
     def blacklist_token(self, token: str, reason: Optional[str] = None) -> bool:
@@ -77,6 +74,7 @@ class TokenBlacklist:
             if not jti:
                 # If no JTI, use token hash
                 import hashlib
+
                 jti = hashlib.sha256(token.encode()).hexdigest()[:16]
 
             # Calculate TTL (time until token expires)
@@ -93,7 +91,7 @@ class TokenBlacklist:
                 data = {
                     "jti": jti,
                     "reason": reason or "manual_revocation",
-                    "blacklisted_at": datetime.utcnow().isoformat()
+                    "blacklisted_at": datetime.utcnow().isoformat(),
                 }
                 self.redis.setex(key, ttl, json.dumps(data))
             else:
@@ -124,6 +122,7 @@ class TokenBlacklist:
 
             if not jti:
                 import hashlib
+
                 jti = hashlib.sha256(token.encode()).hexdigest()[:16]
 
             key = f"blacklist:token:{jti}"
@@ -164,7 +163,7 @@ class TokenBlacklist:
                 data = {
                     "user_id": user_id,
                     "reason": reason or "user_logout_all",
-                    "blacklisted_at": datetime.utcnow().isoformat()
+                    "blacklisted_at": datetime.utcnow().isoformat(),
                 }
                 self.redis.setex(key, ttl, json.dumps(data))
             else:
@@ -221,10 +220,7 @@ class TokenBlacklist:
             return False
 
     def track_refresh_token_family(
-        self,
-        token_id: str,
-        user_id: int,
-        parent_token_id: Optional[str] = None
+        self, token_id: str, user_id: int, parent_token_id: Optional[str] = None
     ) -> bool:
         """
         Track refresh token families for rotation detection
@@ -250,7 +246,7 @@ class TokenBlacklist:
                     "token_id": token_id,
                     "user_id": user_id,
                     "parent_token_id": parent_token_id,
-                    "created_at": datetime.utcnow().isoformat()
+                    "created_at": datetime.utcnow().isoformat(),
                 }
                 self.redis.setex(key, ttl, json.dumps(data))
 
@@ -281,8 +277,7 @@ class TokenBlacklist:
 
                     # Blacklist all tokens for this user
                     return self.blacklist_user_tokens(
-                        user_id,
-                        reason="refresh_token_replay_detected"
+                        user_id, reason="refresh_token_replay_detected"
                     )
 
             return False
@@ -306,21 +301,21 @@ class TokenBlacklist:
                 return {
                     "blacklisted_tokens": len(token_keys),
                     "blacklisted_users": len(user_keys),
-                    "storage": "redis"
+                    "storage": "redis",
                 }
             else:
                 return {
-                    "blacklisted_tokens": len([k for k in self._memory_storage if not k.startswith("user:")]),
-                    "blacklisted_users": len([k for k in self._memory_storage if k.startswith("user:")]),
-                    "storage": "memory"
+                    "blacklisted_tokens": len(
+                        [k for k in self._memory_storage if not k.startswith("user:")]
+                    ),
+                    "blacklisted_users": len(
+                        [k for k in self._memory_storage if k.startswith("user:")]
+                    ),
+                    "storage": "memory",
                 }
 
         except Exception:
-            return {
-                "blacklisted_tokens": 0,
-                "blacklisted_users": 0,
-                "storage": "unknown"
-            }
+            return {"blacklisted_tokens": 0, "blacklisted_users": 0, "storage": "unknown"}
 
 
 # Global blacklist instance

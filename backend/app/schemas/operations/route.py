@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, List, Dict, Any
 from datetime import date, datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RouteStatus(str, Enum):
@@ -24,7 +25,9 @@ class RouteBase(BaseModel):
 
 
 class RouteCreate(RouteBase):
-    delivery_ids: List[int] = Field(default_factory=list, description="Deliveries to include in route")
+    delivery_ids: List[int] = Field(
+        default_factory=list, description="Deliveries to include in route"
+    )
     optimize: bool = Field(True, description="Auto-optimize route order")
 
 
@@ -45,6 +48,7 @@ class RouteUpdate(BaseModel):
 
 class RouteOptimize(BaseModel):
     """Schema for route optimization request"""
+
     delivery_ids: List[int] = Field(..., min_items=1)
     start_location: Optional[Dict[str, float]] = Field(None, description="Starting lat/lng")
     optimize_for: str = Field("time", pattern="^(time|distance|priority)$")
@@ -52,6 +56,7 @@ class RouteOptimize(BaseModel):
 
 class RouteAssign(BaseModel):
     """Schema for assigning route to courier"""
+
     courier_id: int
     scheduled_start_time: datetime
 
@@ -79,6 +84,7 @@ class RouteResponse(RouteBase):
 
 class RouteMetrics(BaseModel):
     """Route performance metrics"""
+
     route_id: int
     route_name: str
     total_deliveries: int

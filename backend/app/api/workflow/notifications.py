@@ -1,29 +1,30 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
-from sqlalchemy.orm import Session
 from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.crud.workflow import (
-    workflow_notification_template,
-    workflow_notification,
     notification_preference,
-)
-from app.schemas.workflow import (
-    WorkflowNotificationTemplateCreate,
-    WorkflowNotificationTemplateUpdate,
-    WorkflowNotificationTemplateResponse,
-    WorkflowNotificationCreate,
-    WorkflowNotificationUpdate,
-    WorkflowNotificationResponse,
-    NotificationPreferenceCreate,
-    NotificationPreferenceUpdate,
-    NotificationPreferenceResponse,
-    BulkNotificationRequest,
-    NotificationSendRequest,
-    NotificationStatistics,
+    workflow_notification,
+    workflow_notification_template,
 )
 from app.models.workflow.notification import NotificationStatus
+from app.schemas.workflow import (
+    BulkNotificationRequest,
+    NotificationPreferenceCreate,
+    NotificationPreferenceResponse,
+    NotificationPreferenceUpdate,
+    NotificationSendRequest,
+    NotificationStatistics,
+    WorkflowNotificationCreate,
+    WorkflowNotificationResponse,
+    WorkflowNotificationTemplateCreate,
+    WorkflowNotificationTemplateResponse,
+    WorkflowNotificationTemplateUpdate,
+    WorkflowNotificationUpdate,
+)
 
 router = APIRouter()
 
@@ -31,6 +32,7 @@ router = APIRouter()
 # ============================================================================
 # Notification Templates
 # ============================================================================
+
 
 @router.get("/templates", response_model=List[WorkflowNotificationTemplateResponse])
 def list_templates(
@@ -41,9 +43,13 @@ def list_templates(
 ):
     """List all notification templates"""
     if is_active is not None:
-        templates = db.query(workflow_notification_template.model).filter(
-            workflow_notification_template.model.is_active == is_active
-        ).offset(skip).limit(limit).all()
+        templates = (
+            db.query(workflow_notification_template.model)
+            .filter(workflow_notification_template.model.is_active == is_active)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
     else:
         templates = workflow_notification_template.get_multi(db, skip=skip, limit=limit)
     return templates
@@ -104,6 +110,7 @@ def delete_template(
 # Notifications
 # ============================================================================
 
+
 @router.get("/", response_model=List[WorkflowNotificationResponse])
 def list_notifications(
     recipient_id: Optional[int] = Query(None),
@@ -123,9 +130,12 @@ def list_notifications(
     if unread_only:
         query = query.filter(workflow_notification.model.read_at == None)
 
-    notifications = query.order_by(
-        workflow_notification.model.created_at.desc()
-    ).offset(skip).limit(limit).all()
+    notifications = (
+        query.order_by(workflow_notification.model.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
     return notifications
 
@@ -244,13 +254,14 @@ def mark_all_as_read(
     db: Session = Depends(get_db),
 ):
     """Mark all notifications as read for a recipient"""
-    count = db.query(workflow_notification.model).filter(
-        workflow_notification.model.recipient_id == recipient_id,
-        workflow_notification.model.read_at == None
-    ).update({
-        "read_at": datetime.utcnow(),
-        "status": NotificationStatus.READ
-    })
+    count = (
+        db.query(workflow_notification.model)
+        .filter(
+            workflow_notification.model.recipient_id == recipient_id,
+            workflow_notification.model.read_at == None,
+        )
+        .update({"read_at": datetime.utcnow(), "status": NotificationStatus.READ})
+    )
 
     db.commit()
 
@@ -263,34 +274,56 @@ def get_user_notification_stats(
     db: Session = Depends(get_db),
 ):
     """Get notification statistics for a user"""
-    total = db.query(workflow_notification.model).filter(
-        workflow_notification.model.recipient_id == user_id
-    ).count()
+    total = (
+        db.query(workflow_notification.model)
+        .filter(workflow_notification.model.recipient_id == user_id)
+        .count()
+    )
 
-    sent = db.query(workflow_notification.model).filter(
-        workflow_notification.model.recipient_id == user_id,
-        workflow_notification.model.status == NotificationStatus.SENT
-    ).count()
+    sent = (
+        db.query(workflow_notification.model)
+        .filter(
+            workflow_notification.model.recipient_id == user_id,
+            workflow_notification.model.status == NotificationStatus.SENT,
+        )
+        .count()
+    )
 
-    delivered = db.query(workflow_notification.model).filter(
-        workflow_notification.model.recipient_id == user_id,
-        workflow_notification.model.status == NotificationStatus.DELIVERED
-    ).count()
+    delivered = (
+        db.query(workflow_notification.model)
+        .filter(
+            workflow_notification.model.recipient_id == user_id,
+            workflow_notification.model.status == NotificationStatus.DELIVERED,
+        )
+        .count()
+    )
 
-    read = db.query(workflow_notification.model).filter(
-        workflow_notification.model.recipient_id == user_id,
-        workflow_notification.model.status == NotificationStatus.READ
-    ).count()
+    read = (
+        db.query(workflow_notification.model)
+        .filter(
+            workflow_notification.model.recipient_id == user_id,
+            workflow_notification.model.status == NotificationStatus.READ,
+        )
+        .count()
+    )
 
-    failed = db.query(workflow_notification.model).filter(
-        workflow_notification.model.recipient_id == user_id,
-        workflow_notification.model.status == NotificationStatus.FAILED
-    ).count()
+    failed = (
+        db.query(workflow_notification.model)
+        .filter(
+            workflow_notification.model.recipient_id == user_id,
+            workflow_notification.model.status == NotificationStatus.FAILED,
+        )
+        .count()
+    )
 
-    pending = db.query(workflow_notification.model).filter(
-        workflow_notification.model.recipient_id == user_id,
-        workflow_notification.model.status == NotificationStatus.PENDING
-    ).count()
+    pending = (
+        db.query(workflow_notification.model)
+        .filter(
+            workflow_notification.model.recipient_id == user_id,
+            workflow_notification.model.status == NotificationStatus.PENDING,
+        )
+        .count()
+    )
 
     delivery_rate = (delivered / total * 100) if total > 0 else 0
     read_rate = (read / total * 100) if total > 0 else 0
@@ -311,15 +344,18 @@ def get_user_notification_stats(
 # Notification Preferences
 # ============================================================================
 
+
 @router.get("/preferences/{user_id}", response_model=List[NotificationPreferenceResponse])
 def get_user_preferences(
     user_id: int,
     db: Session = Depends(get_db),
 ):
     """Get notification preferences for a user"""
-    preferences = db.query(notification_preference.model).filter(
-        notification_preference.model.user_id == user_id
-    ).all()
+    preferences = (
+        db.query(notification_preference.model)
+        .filter(notification_preference.model.user_id == user_id)
+        .all()
+    )
     return preferences
 
 

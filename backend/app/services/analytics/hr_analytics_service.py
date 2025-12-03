@@ -7,17 +7,19 @@ Provides analytics and insights for HR operations:
 - Turnover rates
 - Employee demographics
 """
-from typing import Dict, List, Optional, Any
+
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import and_, extract, func, or_
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_, extract
 
 from app.models.fleet.courier import Courier, CourierStatus
-from app.models.hr.leave import Leave, LeaveType, LeaveStatus
 from app.models.hr.attendance import Attendance, AttendanceStatus
-from app.models.hr.salary import Salary
+from app.models.hr.leave import Leave, LeaveStatus, LeaveType
 from app.models.hr.loan import Loan, LoanStatus
+from app.models.hr.salary import Salary
 
 
 class HRAnalyticsService:
@@ -33,11 +35,7 @@ class HRAnalyticsService:
     """
 
     def get_leave_analytics(
-        self,
-        db: Session,
-        start_date: date,
-        end_date: date,
-        leave_type: Optional[LeaveType] = None
+        self, db: Session, start_date: date, end_date: date, leave_type: Optional[LeaveType] = None
     ) -> Dict[str, Any]:
         """
         Analyze leave patterns and trends
@@ -52,10 +50,7 @@ class HRAnalyticsService:
             Dictionary with leave analytics
         """
         query = db.query(Leave).filter(
-            and_(
-                Leave.start_date >= start_date,
-                Leave.end_date <= end_date
-            )
+            and_(Leave.start_date >= start_date, Leave.end_date <= end_date)
         )
 
         if leave_type:
@@ -96,10 +91,7 @@ class HRAnalyticsService:
         avg_days = total_days / total_requests if total_requests > 0 else 0
 
         return {
-            "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            },
+            "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
             "summary": {
                 "total_requests": total_requests,
                 "approved": approved,
@@ -107,18 +99,14 @@ class HRAnalyticsService:
                 "pending": pending,
                 "approval_rate": round(approval_rate, 2),
                 "total_days": total_days,
-                "average_days_per_leave": round(avg_days, 2)
+                "average_days_per_leave": round(avg_days, 2),
             },
             "by_status": by_status,
-            "by_type": by_type
+            "by_type": by_type,
         }
 
     def get_attendance_analytics(
-        self,
-        db: Session,
-        month: int,
-        year: int,
-        courier_id: Optional[int] = None
+        self, db: Session, month: int, year: int, courier_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Analyze attendance patterns for a month
@@ -133,10 +121,7 @@ class HRAnalyticsService:
             Dictionary with attendance analytics
         """
         query = db.query(Attendance).filter(
-            and_(
-                Attendance.month == month,
-                Attendance.year == year
-            )
+            and_(Attendance.month == month, Attendance.year == year)
         )
 
         if courier_id:
@@ -172,17 +157,15 @@ class HRAnalyticsService:
                 courier_attendance[cid][attendance.status.value] += 1
 
             perfect_attendance_count = sum(
-                1 for stats in courier_attendance.values()
+                1
+                for stats in courier_attendance.values()
                 if stats["absent"] == 0 and stats["late"] == 0 and stats["present"] > 0
             )
         else:
             perfect_attendance_count = 1 if absent == 0 and late == 0 and present > 0 else 0
 
         return {
-            "period": {
-                "month": month,
-                "year": year
-            },
+            "period": {"month": month, "year": year},
             "courier_id": courier_id,
             "summary": {
                 "total_records": total_records,
@@ -192,16 +175,11 @@ class HRAnalyticsService:
                 "presence_rate": round(presence_rate, 2),
                 "absence_rate": round(absence_rate, 2),
                 "late_rate": round(late_rate, 2),
-                "perfect_attendance_count": perfect_attendance_count
-            }
+                "perfect_attendance_count": perfect_attendance_count,
+            },
         }
 
-    def get_salary_distribution(
-        self,
-        db: Session,
-        month: int,
-        year: int
-    ) -> Dict[str, Any]:
+    def get_salary_distribution(self, db: Session, month: int, year: int) -> Dict[str, Any]:
         """
         Analyze salary distribution
 
@@ -213,21 +191,12 @@ class HRAnalyticsService:
         Returns:
             Dictionary with salary distribution metrics
         """
-        salaries = (
-            db.query(Salary)
-            .filter(
-                and_(
-                    Salary.month == month,
-                    Salary.year == year
-                )
-            )
-            .all()
-        )
+        salaries = db.query(Salary).filter(and_(Salary.month == month, Salary.year == year)).all()
 
         if not salaries:
             return {
                 "period": {"month": month, "year": year},
-                "message": "No salary data available for this period"
+                "message": "No salary data available for this period",
             }
 
         # Calculate statistics
@@ -238,43 +207,37 @@ class HRAnalyticsService:
         total_count = len(salaries)
 
         return {
-            "period": {
-                "month": month,
-                "year": year
-            },
+            "period": {"month": month, "year": year},
             "employee_count": total_count,
             "base_salary": {
                 "total": sum(base_salaries),
                 "average": sum(base_salaries) / total_count,
                 "min": min(base_salaries),
                 "max": max(base_salaries),
-                "median": sorted(base_salaries)[total_count // 2]
+                "median": sorted(base_salaries)[total_count // 2],
             },
             "gross_salary": {
                 "total": sum(gross_salaries),
                 "average": sum(gross_salaries) / total_count,
                 "min": min(gross_salaries),
                 "max": max(gross_salaries),
-                "median": sorted(gross_salaries)[total_count // 2]
+                "median": sorted(gross_salaries)[total_count // 2],
             },
             "net_salary": {
                 "total": sum(net_salaries),
                 "average": sum(net_salaries) / total_count,
                 "min": min(net_salaries),
                 "max": max(net_salaries),
-                "median": sorted(net_salaries)[total_count // 2]
+                "median": sorted(net_salaries)[total_count // 2],
             },
             "deductions": {
                 "total_gosi": sum(float(s.gosi_employee) for s in salaries),
                 "total_loans": sum(float(s.loan_deduction) for s in salaries),
-                "total_other": sum(float(s.deductions) for s in salaries)
-            }
+                "total_other": sum(float(s.deductions) for s in salaries),
+            },
         }
 
-    def get_employee_demographics(
-        self,
-        db: Session
-    ) -> Dict[str, Any]:
+    def get_employee_demographics(self, db: Session) -> Dict[str, Any]:
         """
         Get employee demographics overview
 
@@ -286,12 +249,7 @@ class HRAnalyticsService:
         """
         # Total employees by status
         status_breakdown = (
-            db.query(
-                Courier.status,
-                func.count(Courier.id)
-            )
-            .group_by(Courier.status)
-            .all()
+            db.query(Courier.status, func.count(Courier.id)).group_by(Courier.status).all()
         )
 
         by_status = {}
@@ -302,9 +260,7 @@ class HRAnalyticsService:
 
         # Active loans
         active_loans = (
-            db.query(func.count(Loan.id))
-            .filter(Loan.status == LoanStatus.ACTIVE)
-            .scalar()
+            db.query(func.count(Loan.id)).filter(Loan.status == LoanStatus.ACTIVE).scalar()
         )
 
         # Employees with loans
@@ -321,19 +277,13 @@ class HRAnalyticsService:
                 "active_loans": active_loans,
                 "employees_with_loans": employees_with_loans,
                 "loan_penetration_rate": round(
-                    (employees_with_loans / total_employees * 100) if total_employees > 0 else 0,
-                    2
-                )
+                    (employees_with_loans / total_employees * 100) if total_employees > 0 else 0, 2
+                ),
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
 
-    def get_turnover_metrics(
-        self,
-        db: Session,
-        start_date: date,
-        end_date: date
-    ) -> Dict[str, Any]:
+    def get_turnover_metrics(self, db: Session, start_date: date, end_date: date) -> Dict[str, Any]:
         """
         Calculate employee turnover metrics
 
@@ -367,7 +317,7 @@ class HRAnalyticsService:
             .filter(
                 and_(
                     Courier.created_at >= datetime.combine(start_date, datetime.min.time()),
-                    Courier.created_at <= datetime.combine(end_date, datetime.max.time())
+                    Courier.created_at <= datetime.combine(end_date, datetime.max.time()),
                 )
             )
             .scalar()
@@ -385,16 +335,13 @@ class HRAnalyticsService:
         turnover_rate = (terminated / avg_employees * 100) if avg_employees > 0 else 0
 
         return {
-            "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            },
+            "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
             "employees_at_start": total_employees_start,
             "employees_at_end": total_employees_end,
             "new_hires": new_hires,
             "terminations": terminated,
             "turnover_rate": round(turnover_rate, 2),
-            "net_change": total_employees_end - total_employees_start
+            "net_change": total_employees_end - total_employees_start,
         }
 
 

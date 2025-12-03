@@ -5,20 +5,18 @@ from app.models.workflow.approval_chain import (
     ApprovalRequest,
 )
 from app.schemas.workflow.approval import (
-    ApprovalChainCreate,
-    ApprovalChainUpdate,
     ApprovalChainApproverCreate,
     ApprovalChainApproverUpdate,
+    ApprovalChainCreate,
+    ApprovalChainUpdate,
     ApprovalRequestCreate,
     ApprovalRequestUpdate,
 )
 
-approval_chain = CRUDBase[ApprovalChain, ApprovalChainCreate, ApprovalChainUpdate](
-    ApprovalChain
-)
+approval_chain = CRUDBase[ApprovalChain, ApprovalChainCreate, ApprovalChainUpdate](ApprovalChain)
 approval_chain_approver = CRUDBase[
     ApprovalChainApprover, ApprovalChainApproverCreate, ApprovalChainApproverUpdate
 ](ApprovalChainApprover)
-approval_request = CRUDBase[
-    ApprovalRequest, ApprovalRequestCreate, ApprovalRequestUpdate
-](ApprovalRequest)
+approval_request = CRUDBase[ApprovalRequest, ApprovalRequestCreate, ApprovalRequestUpdate](
+    ApprovalRequest
+)

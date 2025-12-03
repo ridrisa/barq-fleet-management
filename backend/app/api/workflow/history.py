@@ -1,18 +1,19 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
 from datetime import datetime
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.crud.workflow import workflow_history, workflow_step_history
+from app.models.workflow.history import WorkflowHistoryEventType
 from app.schemas.workflow import (
     WorkflowHistoryResponse,
     WorkflowHistoryWithActor,
     WorkflowStepHistoryResponse,
     WorkflowTimelineResponse,
 )
-from app.models.workflow.history import WorkflowHistoryEventType
 
 router = APIRouter()
 
@@ -50,7 +51,9 @@ def list_history(
     if filters:
         query = query.filter(and_(*filters))
 
-    history = query.order_by(workflow_history.model.event_time.desc()).offset(skip).limit(limit).all()
+    history = (
+        query.order_by(workflow_history.model.event_time.desc()).offset(skip).limit(limit).all()
+    )
     return history
 
 
@@ -83,14 +86,20 @@ def get_workflow_timeline(
         raise HTTPException(status_code=404, detail="Workflow instance not found")
 
     # Get all history events
-    events = db.query(workflow_history.model).filter(
-        workflow_history.model.workflow_instance_id == instance_id
-    ).order_by(workflow_history.model.event_time).all()
+    events = (
+        db.query(workflow_history.model)
+        .filter(workflow_history.model.workflow_instance_id == instance_id)
+        .order_by(workflow_history.model.event_time)
+        .all()
+    )
 
     # Get all step history
-    steps = db.query(workflow_step_history.model).filter(
-        workflow_step_history.model.workflow_instance_id == instance_id
-    ).order_by(workflow_step_history.model.started_at).all()
+    steps = (
+        db.query(workflow_step_history.model)
+        .filter(workflow_step_history.model.workflow_instance_id == instance_id)
+        .order_by(workflow_step_history.model.started_at)
+        .all()
+    )
 
     # Calculate total duration
     total_duration_minutes = None
@@ -118,9 +127,12 @@ def get_audit_trail(
     Get tamper-evident audit trail for a workflow instance
     Includes checksum verification for data integrity
     """
-    events = db.query(workflow_history.model).filter(
-        workflow_history.model.workflow_instance_id == instance_id
-    ).order_by(workflow_history.model.event_time).all()
+    events = (
+        db.query(workflow_history.model)
+        .filter(workflow_history.model.workflow_instance_id == instance_id)
+        .order_by(workflow_history.model.event_time)
+        .all()
+    )
 
     if not events:
         raise HTTPException(status_code=404, detail="No audit trail found for this workflow")
@@ -138,9 +150,12 @@ def get_step_history(
     db: Session = Depends(get_db),
 ):
     """Get step execution history for a workflow instance"""
-    steps = db.query(workflow_step_history.model).filter(
-        workflow_step_history.model.workflow_instance_id == instance_id
-    ).order_by(workflow_step_history.model.step_index).all()
+    steps = (
+        db.query(workflow_step_history.model)
+        .filter(workflow_step_history.model.workflow_instance_id == instance_id)
+        .order_by(workflow_step_history.model.step_index)
+        .all()
+    )
 
     return steps
 
@@ -157,7 +172,7 @@ def get_field_changes(
     """
     query = db.query(workflow_history.model).filter(
         workflow_history.model.workflow_instance_id == instance_id,
-        workflow_history.model.field_changes != None
+        workflow_history.model.field_changes != None,
     )
 
     if field_name:
@@ -199,9 +214,12 @@ def export_audit_trail(
     Export complete audit trail for compliance/archival purposes
     Supports multiple formats: JSON, CSV, PDF
     """
-    events = db.query(workflow_history.model).filter(
-        workflow_history.model.workflow_instance_id == instance_id
-    ).order_by(workflow_history.model.event_time).all()
+    events = (
+        db.query(workflow_history.model)
+        .filter(workflow_history.model.workflow_instance_id == instance_id)
+        .order_by(workflow_history.model.event_time)
+        .all()
+    )
 
     if not events:
         raise HTTPException(status_code=404, detail="No audit trail found")
@@ -216,7 +234,9 @@ def export_audit_trail(
         "events": [
             {
                 "id": e.id,
-                "event_type": e.event_type.value if hasattr(e.event_type, 'value') else e.event_type,
+                "event_type": (
+                    e.event_type.value if hasattr(e.event_type, "value") else e.event_type
+                ),
                 "event_time": e.event_time.isoformat(),
                 "actor_id": e.actor_id,
                 "description": e.description,

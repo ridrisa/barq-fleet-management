@@ -1,10 +1,11 @@
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
 from datetime import date, timedelta
+from typing import Any, Dict, List, Optional
+
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import Session
 
 from app.models.fleet import Vehicle, VehicleStatus, VehicleType
-from app.schemas.fleet import VehicleCreate, VehicleUpdate, VehicleDocumentStatus
+from app.schemas.fleet import VehicleCreate, VehicleDocumentStatus, VehicleUpdate
 from app.services.base import CRUDBase
 
 
@@ -25,10 +26,14 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
         *,
         skip: int = 0,
         limit: int = 100,
-        vehicle_type: Optional[VehicleType] = None
+        vehicle_type: Optional[VehicleType] = None,
+        organization_id: Optional[int] = None,
     ) -> List[Vehicle]:
         """Get all active vehicles, optionally filtered by type"""
         query = db.query(Vehicle).filter(Vehicle.status == VehicleStatus.ACTIVE)
+
+        if organization_id:
+            query = query.filter(Vehicle.organization_id == organization_id)
 
         if vehicle_type:
             query = query.filter(Vehicle.vehicle_type == vehicle_type)
@@ -41,16 +46,16 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
         status: VehicleStatus,
         *,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[Vehicle]:
         """Get vehicles by status"""
-        return (
-            db.query(Vehicle)
-            .filter(Vehicle.status == status)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(Vehicle).filter(Vehicle.status == status)
+
+        if organization_id:
+            query = query.filter(Vehicle.organization_id == organization_id)
+
+        return query.offset(skip).limit(limit).all()
 
     def get_available_vehicles(
         self,
@@ -58,14 +63,18 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
         *,
         skip: int = 0,
         limit: int = 100,
-        vehicle_type: Optional[VehicleType] = None
+        vehicle_type: Optional[VehicleType] = None,
+        organization_id: Optional[int] = None,
     ) -> List[Vehicle]:
         """Get available vehicles (active and not assigned)"""
-        query = db.query(Vehicle).filter(
-            Vehicle.status == VehicleStatus.ACTIVE
-        ).filter(
-            ~Vehicle.assigned_couriers.any()
+        query = (
+            db.query(Vehicle)
+            .filter(Vehicle.status == VehicleStatus.ACTIVE)
+            .filter(~Vehicle.assigned_couriers.any())
         )
+
+        if organization_id:
+            query = query.filter(Vehicle.organization_id == organization_id)
 
         if vehicle_type:
             query = query.filter(Vehicle.vehicle_type == vehicle_type)
@@ -78,16 +87,16 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
         city: str,
         *,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[Vehicle]:
         """Get vehicles assigned to a city"""
-        return (
-            db.query(Vehicle)
-            .filter(Vehicle.assigned_to_city == city)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(Vehicle).filter(Vehicle.assigned_to_city == city)
+
+        if organization_id:
+            query = query.filter(Vehicle.organization_id == organization_id)
+
+        return query.offset(skip).limit(limit).all()
 
     def get_due_for_service(
         self,
@@ -95,31 +104,26 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
         *,
         days_threshold: int = 7,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[Vehicle]:
         """Get vehicles due for service within threshold days"""
         today = date.today()
         threshold_date = today + timedelta(days=days_threshold)
 
-        return (
-            db.query(Vehicle)
-            .filter(
-                and_(
-                    Vehicle.status == VehicleStatus.ACTIVE,
-                    Vehicle.next_service_due_date <= threshold_date
-                )
+        query = db.query(Vehicle).filter(
+            and_(
+                Vehicle.status == VehicleStatus.ACTIVE,
+                Vehicle.next_service_due_date <= threshold_date,
             )
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
 
-    def update_mileage(
-        self,
-        db: Session,
-        vehicle_id: int,
-        new_mileage: float
-    ) -> Vehicle:
+        if organization_id:
+            query = query.filter(Vehicle.organization_id == organization_id)
+
+        return query.offset(skip).limit(limit).all()
+
+    def update_mileage(self, db: Session, vehicle_id: int, new_mileage: float) -> Vehicle:
         """Update vehicle mileage"""
         vehicle = self.get(db, vehicle_id)
         if vehicle and new_mileage > vehicle.current_mileage:
@@ -128,12 +132,7 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
             db.refresh(vehicle)
         return vehicle
 
-    def update_status(
-        self,
-        db: Session,
-        vehicle_id: int,
-        status: VehicleStatus
-    ) -> Vehicle:
+    def update_status(self, db: Session, vehicle_id: int, status: VehicleStatus) -> Vehicle:
         """Update vehicle status"""
         vehicle = self.get(db, vehicle_id)
         if vehicle:
@@ -149,7 +148,7 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
         service_date: date,
         service_mileage: float,
         next_service_date: Optional[date] = None,
-        next_service_mileage: Optional[float] = None
+        next_service_mileage: Optional[float] = None,
     ) -> Vehicle:
         """Record service completion and schedule next service"""
         vehicle = self.get(db, vehicle_id)
@@ -167,27 +166,31 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
         return vehicle
 
     def get_expiring_documents(
-        self,
-        db: Session,
-        days_threshold: int = 30
+        self, db: Session, days_threshold: int = 30, organization_id: Optional[int] = None
     ) -> List[VehicleDocumentStatus]:
         """
         Get vehicles with documents expiring soon
         Args:
             days_threshold: Days until expiry to consider (default 30)
+            organization_id: Optional organization ID filter
         """
         today = date.today()
         threshold_date = today + timedelta(days=days_threshold)
 
-        vehicles = db.query(Vehicle).filter(
+        query = db.query(Vehicle).filter(
             and_(
                 Vehicle.status.in_([VehicleStatus.ACTIVE, VehicleStatus.MAINTENANCE]),
                 or_(
                     Vehicle.registration_expiry_date <= threshold_date,
                     Vehicle.insurance_expiry_date <= threshold_date,
-                )
+                ),
             )
-        ).all()
+        )
+
+        if organization_id:
+            query = query.filter(Vehicle.organization_id == organization_id)
+
+        vehicles = query.all()
 
         result = []
         for vehicle in vehicles:
@@ -195,52 +198,69 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
                 vehicle_id=vehicle.id,
                 plate_number=vehicle.plate_number,
                 registration_expiry_date=vehicle.registration_expiry_date,
-                registration_expired=vehicle.registration_expiry_date < today if vehicle.registration_expiry_date else False,
-                registration_expires_soon=vehicle.registration_expiry_date <= threshold_date if vehicle.registration_expiry_date else False,
+                registration_expired=(
+                    vehicle.registration_expiry_date < today
+                    if vehicle.registration_expiry_date
+                    else False
+                ),
+                registration_expires_soon=(
+                    vehicle.registration_expiry_date <= threshold_date
+                    if vehicle.registration_expiry_date
+                    else False
+                ),
                 insurance_expiry_date=vehicle.insurance_expiry_date,
-                insurance_expired=vehicle.insurance_expiry_date < today if vehicle.insurance_expiry_date else False,
-                insurance_expires_soon=vehicle.insurance_expiry_date <= threshold_date if vehicle.insurance_expiry_date else False,
+                insurance_expired=(
+                    vehicle.insurance_expiry_date < today
+                    if vehicle.insurance_expiry_date
+                    else False
+                ),
+                insurance_expires_soon=(
+                    vehicle.insurance_expiry_date <= threshold_date
+                    if vehicle.insurance_expiry_date
+                    else False
+                ),
             )
 
-            doc_status.any_expired = (
-                doc_status.registration_expired or
-                doc_status.insurance_expired
-            )
+            doc_status.any_expired = doc_status.registration_expired or doc_status.insurance_expired
             doc_status.any_expires_soon = (
-                doc_status.registration_expires_soon or
-                doc_status.insurance_expires_soon
+                doc_status.registration_expires_soon or doc_status.insurance_expires_soon
             )
 
             result.append(doc_status)
 
         return result
 
-    def get_statistics(self, db: Session) -> Dict[str, Any]:
+    def get_statistics(self, db: Session, organization_id: Optional[int] = None) -> Dict[str, Any]:
         """Get overall vehicle statistics"""
-        total = db.query(func.count(Vehicle.id)).scalar()
+        base_query = db.query(Vehicle)
+
+        if organization_id:
+            base_query = base_query.filter(Vehicle.organization_id == organization_id)
+
+        total = base_query.with_entities(func.count(Vehicle.id)).scalar()
 
         status_counts = (
-            db.query(Vehicle.status, func.count(Vehicle.id))
+            base_query.with_entities(Vehicle.status, func.count(Vehicle.id))
             .group_by(Vehicle.status)
             .all()
         )
 
         type_counts = (
-            db.query(Vehicle.vehicle_type, func.count(Vehicle.id))
+            base_query.with_entities(Vehicle.vehicle_type, func.count(Vehicle.id))
             .group_by(Vehicle.vehicle_type)
             .all()
         )
 
         assigned = (
-            db.query(func.count(Vehicle.id))
-            .filter(Vehicle.assigned_couriers.any())
+            base_query.filter(Vehicle.assigned_couriers.any())
+            .with_entities(func.count(Vehicle.id))
             .scalar()
         )
 
         available = (
-            db.query(func.count(Vehicle.id))
-            .filter(Vehicle.status == VehicleStatus.ACTIVE)
+            base_query.filter(Vehicle.status == VehicleStatus.ACTIVE)
             .filter(~Vehicle.assigned_couriers.any())
+            .with_entities(func.count(Vehicle.id))
             .scalar()
         )
 
@@ -258,16 +278,26 @@ class VehicleService(CRUDBase[Vehicle, VehicleCreate, VehicleUpdate]):
         *,
         search_term: str,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[Vehicle]:
         """Search vehicles by plate, make, model, or VIN"""
-        return self.search(
-            db,
-            search_term=search_term,
-            search_fields=["plate_number", "make", "model", "vin_number", "registration_number"],
-            skip=skip,
-            limit=limit
-        )
+        query = db.query(Vehicle)
+
+        if organization_id:
+            query = query.filter(Vehicle.organization_id == organization_id)
+
+        if search_term:
+            search_filters = []
+            search_fields = ["plate_number", "make", "model", "vin_number", "registration_number"]
+            for field in search_fields:
+                if hasattr(Vehicle, field):
+                    search_filters.append(getattr(Vehicle, field).ilike(f"%{search_term}%"))
+
+            if search_filters:
+                query = query.filter(or_(*search_filters))
+
+        return query.offset(skip).limit(limit).all()
 
 
 # Create instance

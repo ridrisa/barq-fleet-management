@@ -1,12 +1,14 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import date, datetime
+from typing import Optional
+
+from pydantic import BaseModel, Field
 
 from app.models.fleet import AssignmentStatus, AssignmentType
 
 
 class AssignmentBase(BaseModel):
     """Base assignment schema"""
+
     courier_id: int
     vehicle_id: int
     assignment_type: AssignmentType = AssignmentType.PERMANENT
@@ -23,11 +25,13 @@ class AssignmentBase(BaseModel):
 
 class AssignmentCreate(AssignmentBase):
     """Schema for creating assignment"""
+
     pass
 
 
 class AssignmentUpdate(BaseModel):
     """Schema for updating assignment"""
+
     status: Optional[AssignmentStatus] = None
     end_date: Optional[date] = None
     end_mileage: Optional[int] = Field(None, ge=0)
@@ -37,6 +41,7 @@ class AssignmentUpdate(BaseModel):
 
 class AssignmentResponse(AssignmentBase):
     """Schema for assignment response"""
+
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -50,6 +55,7 @@ class AssignmentResponse(AssignmentBase):
 
 class AssignmentList(BaseModel):
     """Minimal schema for list views"""
+
     id: int
     courier_id: int
     vehicle_id: int

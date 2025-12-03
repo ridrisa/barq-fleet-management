@@ -1,30 +1,34 @@
 """Role and Permission Models for RBAC"""
+
 import enum
-from sqlalchemy import Column, Integer, String, Boolean, Text, Table, ForeignKey
+
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
 
-
 # Association table for role-permission many-to-many relationship
 role_permissions = Table(
-    'role_permissions',
+    "role_permissions",
     BaseModel.metadata,
-    Column('role_id', Integer, ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True),
-    Column('permission_id', Integer, ForeignKey('permissions.id', ondelete='CASCADE'), primary_key=True)
+    Column("role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "permission_id", Integer, ForeignKey("permissions.id", ondelete="CASCADE"), primary_key=True
+    ),
 )
 
 # Association table for user-role many-to-many relationship
 user_roles = Table(
-    'user_roles',
+    "user_roles",
     BaseModel.metadata,
-    Column('user_id', Integer, ForeignKey('users.id', ondelete='CASCADE'), primary_key=True),
-    Column('role_id', Integer, ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True)
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("role_id", Integer, ForeignKey("roles.id", ondelete="CASCADE"), primary_key=True),
 )
 
 
 class PermissionAction(str, enum.Enum):
     """Permission actions"""
+
     CREATE = "create"
     READ = "read"
     UPDATE = "update"
@@ -36,6 +40,7 @@ class PermissionAction(str, enum.Enum):
 
 class PermissionResource(str, enum.Enum):
     """System resources that can have permissions"""
+
     # Fleet
     COURIER = "courier"
     VEHICLE = "vehicle"
@@ -94,6 +99,7 @@ class Permission(BaseModel):
     - salary:read (can view salary records)
     - salary:manage (can manage all salary operations)
     """
+
     __tablename__ = "permissions"
 
     name = Column(String(100), unique=True, nullable=False, index=True)  # e.g., "courier:read"
@@ -122,6 +128,7 @@ class Role(BaseModel):
     - Courier: Limited self-service access
     - Viewer: Read-only access
     """
+
     __tablename__ = "roles"
 
     name = Column(String(50), unique=True, nullable=False, index=True)

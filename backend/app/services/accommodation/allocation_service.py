@@ -1,24 +1,21 @@
 """Allocation Service"""
-from typing import List, Optional, Dict
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from datetime import date
 
-from app.services.base import CRUDBase
+from datetime import date
+from typing import Dict, List, Optional
+
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import Session
+
 from app.models.accommodation.allocation import Allocation
 from app.schemas.accommodation.allocation import AllocationCreate, AllocationUpdate
+from app.services.base import CRUDBase
 
 
 class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]):
     """Service for bed allocation management operations"""
 
     def get_by_courier(
-        self,
-        db: Session,
-        *,
-        courier_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
     ) -> List[Allocation]:
         """
         Get all allocations for a courier
@@ -42,12 +39,7 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
         )
 
     def get_by_bed(
-        self,
-        db: Session,
-        *,
-        bed_id: int,
-        skip: int = 0,
-        limit: int = 100
+        self, db: Session, *, bed_id: int, skip: int = 0, limit: int = 100
     ) -> List[Allocation]:
         """
         Get all allocations for a bed
@@ -77,7 +69,7 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
         courier_id: Optional[int] = None,
         bed_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 100
+        limit: int = 100,
     ) -> List[Allocation]:
         """
         Get active allocations (not yet released)
@@ -100,19 +92,9 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
         if bed_id:
             query = query.filter(self.model.bed_id == bed_id)
 
-        return (
-            query.order_by(self.model.allocation_date.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        return query.order_by(self.model.allocation_date.desc()).offset(skip).limit(limit).all()
 
-    def get_active_by_courier(
-        self,
-        db: Session,
-        *,
-        courier_id: int
-    ) -> Optional[Allocation]:
+    def get_active_by_courier(self, db: Session, *, courier_id: int) -> Optional[Allocation]:
         """
         Get current active allocation for a courier
 
@@ -125,22 +107,12 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
         """
         return (
             db.query(self.model)
-            .filter(
-                and_(
-                    self.model.courier_id == courier_id,
-                    self.model.release_date.is_(None)
-                )
-            )
+            .filter(and_(self.model.courier_id == courier_id, self.model.release_date.is_(None)))
             .order_by(self.model.allocation_date.desc())
             .first()
         )
 
-    def get_active_by_bed(
-        self,
-        db: Session,
-        *,
-        bed_id: int
-    ) -> Optional[Allocation]:
+    def get_active_by_bed(self, db: Session, *, bed_id: int) -> Optional[Allocation]:
         """
         Get current active allocation for a bed
 
@@ -153,21 +125,13 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
         """
         return (
             db.query(self.model)
-            .filter(
-                and_(
-                    self.model.bed_id == bed_id,
-                    self.model.release_date.is_(None)
-                )
-            )
+            .filter(and_(self.model.bed_id == bed_id, self.model.release_date.is_(None)))
             .order_by(self.model.allocation_date.desc())
             .first()
         )
 
     def allocate_bed(
-        self,
-        db: Session,
-        *,
-        allocation_data: AllocationCreate
+        self, db: Session, *, allocation_data: AllocationCreate
     ) -> Optional[Allocation]:
         """
         Create a new bed allocation
@@ -200,11 +164,7 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
         return allocation
 
     def release_allocation(
-        self,
-        db: Session,
-        *,
-        allocation_id: int,
-        release_date: Optional[date] = None
+        self, db: Session, *, allocation_id: int, release_date: Optional[date] = None
     ) -> Optional[Allocation]:
         """
         Release a bed allocation
@@ -233,12 +193,7 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
 
         return allocation
 
-    def get_statistics(
-        self,
-        db: Session,
-        *,
-        courier_id: Optional[int] = None
-    ) -> Dict:
+    def get_statistics(self, db: Session, *, courier_id: Optional[int] = None) -> Dict:
         """
         Get allocation statistics
 
@@ -263,8 +218,7 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
         completed_allocations = [a for a in allocations if a.release_date]
         if completed_allocations:
             total_days = sum(
-                (a.release_date - a.allocation_date).days
-                for a in completed_allocations
+                (a.release_date - a.allocation_date).days for a in completed_allocations
             )
             avg_stay_duration = total_days / len(completed_allocations)
         else:
@@ -274,7 +228,7 @@ class AllocationService(CRUDBase[Allocation, AllocationCreate, AllocationUpdate]
             "total_allocations": len(allocations),
             "active_allocations": active_count,
             "completed_allocations": completed_count,
-            "average_stay_duration_days": round(avg_stay_duration, 2)
+            "average_stay_duration_days": round(avg_stay_duration, 2),
         }
 
 

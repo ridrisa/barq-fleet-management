@@ -1,12 +1,15 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, JSON, DateTime, Enum
+import enum
+
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class WorkflowHistoryEventType(str, enum.Enum):
     """Types of workflow history events"""
+
     CREATED = "created"
     STARTED = "started"
     STEP_COMPLETED = "step_completed"
@@ -29,10 +32,16 @@ class WorkflowHistoryEventType(str, enum.Enum):
 
 class WorkflowHistory(TenantMixin, BaseModel):
     """Complete audit trail for workflow instances - tamper-evident"""
+
     __tablename__ = "workflow_history"
 
-    workflow_instance_id = Column(Integer, ForeignKey("workflow_instances.id"), nullable=False, index=True)
-    event_type = Column(Enum(WorkflowHistoryEventType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    workflow_instance_id = Column(
+        Integer, ForeignKey("workflow_instances.id"), nullable=False, index=True
+    )
+    event_type = Column(
+        Enum(WorkflowHistoryEventType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+    )
 
     # Actor information
     actor_id = Column(Integer, ForeignKey("users.id"))
@@ -63,6 +72,7 @@ class WorkflowHistory(TenantMixin, BaseModel):
 
 class WorkflowStepHistory(TenantMixin, BaseModel):
     """Detailed history for individual workflow steps"""
+
     __tablename__ = "workflow_step_history"
 
     workflow_instance_id = Column(Integer, ForeignKey("workflow_instances.id"), nullable=False)

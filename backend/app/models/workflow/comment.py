@@ -1,11 +1,13 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, Boolean, DateTime
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 
 
 class WorkflowComment(TenantMixin, BaseModel):
     """Comments on workflow instances for collaboration and communication"""
+
     __tablename__ = "workflow_comments"
 
     workflow_instance_id = Column(Integer, ForeignKey("workflow_instances.id"), nullable=False)
@@ -20,5 +22,9 @@ class WorkflowComment(TenantMixin, BaseModel):
     # Relationships
     workflow_instance = relationship("WorkflowInstance", back_populates="comments")
     user = relationship("User")
-    parent_comment = relationship("WorkflowComment", remote_side="WorkflowComment.id", back_populates="replies")
-    replies = relationship("WorkflowComment", back_populates="parent_comment", cascade="all, delete-orphan")
+    parent_comment = relationship(
+        "WorkflowComment", remote_side="WorkflowComment.id", back_populates="replies"
+    )
+    replies = relationship(
+        "WorkflowComment", back_populates="parent_comment", cascade="all, delete-orphan"
+    )

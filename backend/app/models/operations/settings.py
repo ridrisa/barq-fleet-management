@@ -1,8 +1,10 @@
 """
 Operations Settings Model
 """
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Numeric, Boolean, JSON
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
 
@@ -15,7 +17,9 @@ class OperationsSettings(TenantMixin, BaseModel):
     # Setting Identification
     setting_key = Column(String(100), unique=True, nullable=False, index=True)
     setting_name = Column(String(200), nullable=False)
-    setting_group = Column(String(100), nullable=False, index=True, comment="Group: dispatch, sla, quality, zone, etc.")
+    setting_group = Column(
+        String(100), nullable=False, index=True, comment="Group: dispatch, sla, quality, zone, etc."
+    )
     description = Column(Text)
 
     # Value
@@ -79,7 +83,11 @@ class DispatchRule(TenantMixin, BaseModel):
     # Example: {"algorithm": "nearest", "max_distance_km": 5, "prefer_rating_above": 4.0}
 
     # Algorithm Settings
-    algorithm = Column(String(50), default="load_balanced", comment="nearest, load_balanced, priority_based, round_robin")
+    algorithm = Column(
+        String(50),
+        default="load_balanced",
+        comment="nearest, load_balanced, priority_based, round_robin",
+    )
     max_distance_km = Column(Numeric(10, 2), default=10.0)
     max_courier_load = Column(Integer, default=5)
     min_courier_rating = Column(Numeric(3, 2))
@@ -116,7 +124,9 @@ class SLAThreshold(TenantMixin, BaseModel):
     description = Column(Text)
 
     # Type
-    sla_type = Column(String(50), nullable=False, index=True, comment="delivery_time, response_time, pickup_time")
+    sla_type = Column(
+        String(50), nullable=False, index=True, comment="delivery_time, response_time, pickup_time"
+    )
     service_type = Column(String(50), index=True, comment="express, standard, economy")
 
     # Target Values (in minutes)
@@ -150,7 +160,9 @@ class NotificationSetting(TenantMixin, BaseModel):
     # Setting Details
     setting_code = Column(String(50), unique=True, nullable=False, index=True)
     setting_name = Column(String(200), nullable=False)
-    event_type = Column(String(100), nullable=False, index=True, comment="Event that triggers notification")
+    event_type = Column(
+        String(100), nullable=False, index=True, comment="Event that triggers notification"
+    )
     # Events: sla_warning, sla_breach, dispatch_failed, queue_escalation, quality_failed, etc.
 
     # Notification Channels
@@ -167,7 +179,9 @@ class NotificationSetting(TenantMixin, BaseModel):
 
     # Timing
     cooldown_minutes = Column(Integer, default=0, comment="Minimum time between notifications")
-    batch_delay_minutes = Column(Integer, default=0, comment="Batch notifications within this window")
+    batch_delay_minutes = Column(
+        Integer, default=0, comment="Batch notifications within this window"
+    )
 
     # Template
     email_template = Column(String(100), comment="Email template ID")

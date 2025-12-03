@@ -2,14 +2,16 @@
 Celery Background Tasks
 Task definitions for email, reports, data aggregation, SLA monitoring, etc.
 """
+
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from celery import Task
 from celery.exceptions import MaxRetriesExceededError
 
-from app.workers.celery_app import celery_app
 from app.core.performance_config import performance_config
+from app.workers.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,7 @@ class DatabaseTask(Task):
     """
     Base task class with database session management
     """
+
     _db_session = None
 
     @property
@@ -25,6 +28,7 @@ class DatabaseTask(Task):
         """Get or create database session"""
         if self._db_session is None:
             from app.core.database import db_manager
+
             self._db_session = db_manager.create_session()
         return self._db_session
 
@@ -50,7 +54,7 @@ def send_email_task(
     subject: str,
     body: str,
     html_body: Optional[str] = None,
-    attachments: Optional[List[Dict]] = None
+    attachments: Optional[List[Dict]] = None,
 ):
     """
     Send email asynchronously
@@ -76,10 +80,10 @@ def send_email_task(
         # This is a placeholder - integrate with your email service
         # Example: SendGrid, AWS SES, SMTP, etc.
 
-        from smtplib import SMTP
-        from email.mime.text import MIMEText
-        from email.mime.multipart import MIMEMultipart
         import os
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+        from smtplib import SMTP
 
         # Create message
         msg = MIMEMultipart("alternative")
@@ -151,7 +155,7 @@ def generate_report_task(
     organization_id: str,
     start_date: str,
     end_date: str,
-    format: str = "pdf"
+    format: str = "pdf",
 ):
     """
     Generate report asynchronously
@@ -219,9 +223,9 @@ def generate_daily_reports_task(self):
     try:
         from app.models import Organization
 
-        organizations = self.db_session.query(Organization).filter(
-            Organization.is_active == True
-        ).all()
+        organizations = (
+            self.db_session.query(Organization).filter(Organization.is_active == True).all()
+        )
 
         yesterday = (datetime.utcnow() - timedelta(days=1)).date()
 
@@ -233,7 +237,7 @@ def generate_daily_reports_task(self):
                 organization_id=org.id,
                 start_date=yesterday.isoformat(),
                 end_date=yesterday.isoformat(),
-                format="pdf"
+                format="pdf",
             )
             results.append(result.id)
 
@@ -274,11 +278,8 @@ def aggregate_metrics_task(self):
 
         if snapshots:
             from app.utils.batch import bulk_insert
-            bulk_insert(
-                self.db_session,
-                MetricSnapshot,
-                [s.__dict__ for s in snapshots]
-            )
+
+            bulk_insert(self.db_session, MetricSnapshot, [s.__dict__ for s in snapshots])
 
         self.db_session.commit()
 
@@ -302,18 +303,23 @@ def check_sla_compliance_task(self):
     logger.info("Checking SLA compliance")
 
     try:
-        from app.models.support import Ticket
-        from app.models.operations import Delivery
         from datetime import datetime
+
+        from app.models.operations import Delivery
+        from app.models.support import Ticket
 
         now = datetime.utcnow()
 
         # Check ticket SLAs
-        overdue_tickets = self.db_session.query(Ticket).filter(
-            Ticket.status.in_(["open", "in_progress"]),
-            Ticket.sla_due_at < now,
-            Ticket.sla_breached == False
-        ).all()
+        overdue_tickets = (
+            self.db_session.query(Ticket)
+            .filter(
+                Ticket.status.in_(["open", "in_progress"]),
+                Ticket.sla_due_at < now,
+                Ticket.sla_breached == False,
+            )
+            .all()
+        )
 
         for ticket in overdue_tickets:
             ticket.sla_breached = True
@@ -323,14 +329,17 @@ def check_sla_compliance_task(self):
             send_email_task.delay(
                 recipient=ticket.assigned_to_email,
                 subject=f"SLA Breach: Ticket {ticket.number}",
-                body=f"Ticket {ticket.number} has breached its SLA."
+                body=f"Ticket {ticket.number} has breached its SLA.",
             )
 
         # Check delivery SLAs
-        overdue_deliveries = self.db_session.query(Delivery).filter(
-            Delivery.status.in_(["pending", "in_transit"]),
-            Delivery.expected_delivery_at < now
-        ).all()
+        overdue_deliveries = (
+            self.db_session.query(Delivery)
+            .filter(
+                Delivery.status.in_(["pending", "in_transit"]), Delivery.expected_delivery_at < now
+            )
+            .all()
+        )
 
         for delivery in overdue_deliveries:
             logger.warning(f"Delivery {delivery.id} is overdue")
@@ -375,15 +384,18 @@ def cleanup_old_data_task(self, days_to_keep: int = 90):
         cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
 
         # Cleanup old workflow history
-        deleted_history = self.db_session.query(WorkflowHistory).filter(
-            WorkflowHistory.created_at < cutoff_date
-        ).delete()
+        deleted_history = (
+            self.db_session.query(WorkflowHistory)
+            .filter(WorkflowHistory.created_at < cutoff_date)
+            .delete()
+        )
 
         # Cleanup resolved tickets older than cutoff
-        deleted_tickets = self.db_session.query(Ticket).filter(
-            Ticket.status == "resolved",
-            Ticket.resolved_at < cutoff_date
-        ).delete()
+        deleted_tickets = (
+            self.db_session.query(Ticket)
+            .filter(Ticket.status == "resolved", Ticket.resolved_at < cutoff_date)
+            .delete()
+        )
 
         self.db_session.commit()
 
@@ -419,34 +431,24 @@ def warm_cache_task(self):
         from app.models import Organization, User
 
         # Cache active organizations
-        organizations = self.db_session.query(Organization).filter(
-            Organization.is_active == True
-        ).all()
+        organizations = (
+            self.db_session.query(Organization).filter(Organization.is_active == True).all()
+        )
 
         for org in organizations:
             cache_manager.set(
-                "organization",
-                org.id,
-                org.to_dict(),
-                ttl=performance_config.cache.organization_ttl
+                "organization", org.id, org.to_dict(), ttl=performance_config.cache.organization_ttl
             )
 
         # Cache active users
-        users = self.db_session.query(User).filter(
-            User.is_active == True
-        ).limit(1000).all()
+        users = self.db_session.query(User).filter(User.is_active == True).limit(1000).all()
 
         for user in users:
             cache_manager.set(
-                "user",
-                user.id,
-                user.to_dict(),
-                ttl=performance_config.cache.user_ttl
+                "user", user.id, user.to_dict(), ttl=performance_config.cache.user_ttl
             )
 
-        logger.info(
-            f"Cache warmed: {len(organizations)} organizations, {len(users)} users"
-        )
+        logger.info(f"Cache warmed: {len(organizations)} organizations, {len(users)} users")
 
         return {
             "organizations": len(organizations),

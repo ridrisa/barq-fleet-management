@@ -1,12 +1,17 @@
-from sqlalchemy import Column, String, Integer, Date, DateTime, Time, ForeignKey, Text, Numeric, Boolean, Enum as SQLEnum
+import enum
+
+from sqlalchemy import Boolean, Column, Date, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text, Time
 from sqlalchemy.orm import relationship
+
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-import enum
 
 
 class AccidentSeverity(str, enum.Enum):
     """Severity level of accident"""
+
     MINOR = "minor"  # Cosmetic damage only
     MODERATE = "moderate"  # Moderate damage, vehicle driveable
     MAJOR = "major"  # Significant damage, vehicle undriveable
@@ -15,6 +20,7 @@ class AccidentSeverity(str, enum.Enum):
 
 class AccidentType(str, enum.Enum):
     """Type of accident"""
+
     COLLISION = "collision"  # With another vehicle
     SINGLE_VEHICLE = "single_vehicle"  # Single vehicle accident
     PEDESTRIAN = "pedestrian"  # Involving pedestrian
@@ -25,6 +31,7 @@ class AccidentType(str, enum.Enum):
 
 class FaultStatus(str, enum.Enum):
     """Who is at fault"""
+
     OUR_FAULT = "our_fault"
     OTHER_PARTY = "other_party"
     SHARED = "shared"
@@ -34,6 +41,7 @@ class FaultStatus(str, enum.Enum):
 
 class AccidentStatus(str, enum.Enum):
     """Case status"""
+
     REPORTED = "reported"
     UNDER_INVESTIGATION = "under_investigation"
     INSURANCE_CLAIM_FILED = "insurance_claim_filed"
@@ -48,15 +56,21 @@ class AccidentLog(TenantMixin, BaseModel):
     __tablename__ = "accident_logs"
 
     # Foreign Keys
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True)
-    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="SET NULL"), nullable=True, index=True)
+    vehicle_id = Column(
+        Integer, ForeignKey("vehicles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    courier_id = Column(
+        Integer, ForeignKey("couriers.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Accident Details
     accident_date = Column(Date, nullable=False, index=True)
     accident_time = Column(Time)
     accident_type = Column(SQLEnum(AccidentType), nullable=False)
     severity = Column(SQLEnum(AccidentSeverity), nullable=False, index=True)
-    status = Column(SQLEnum(AccidentStatus), default=AccidentStatus.REPORTED, nullable=False, index=True)
+    status = Column(
+        SQLEnum(AccidentStatus), default=AccidentStatus.REPORTED, nullable=False, index=True
+    )
 
     # Location
     location_description = Column(Text, nullable=False)
@@ -192,9 +206,7 @@ class AccidentLog(TenantMixin, BaseModel):
     def financial_impact(self) -> float:
         """Calculate total financial impact"""
         return float(
-            (self.total_cost or 0) +
-            (self.lost_revenue or 0) -
-            (self.insurance_covered or 0)
+            (self.total_cost or 0) + (self.lost_revenue or 0) - (self.insurance_covered or 0)
         )
 
     @property

@@ -1,36 +1,35 @@
 """Analytics schemas"""
 
+from app.schemas.analytics.common import (
+    AlertItem,
+    ChartData,
+    ComparisonData,
+    ComparisonType,
+    DateRangeParams,
+    DistributionBucket,
+    ExportRequest,
+    KPICard,
+    MetricValue,
+    PaginatedResponse,
+    PaginationParams,
+    PerformanceCategory,
+    PeriodType,
+    TopPerformerItem,
+    TrendDataPoint,
+    TrendDirection,
+)
 from app.schemas.analytics.performance import (
-    PerformanceBase,
-    PerformanceCreate,
-    PerformanceUpdate,
-    PerformanceResponse,
-    PerformanceList,
-    PerformanceStats,
-    TopPerformer,
-    PerformanceTrend,
     CourierComparison,
     DateRangeQuery,
+    PerformanceBase,
     PerformanceBulkCreate,
-)
-
-from app.schemas.analytics.common import (
-    PeriodType,
-    ComparisonType,
-    TrendDirection,
-    PerformanceCategory,
-    DateRangeParams,
-    MetricValue,
-    TrendDataPoint,
-    ComparisonData,
-    KPICard,
-    ChartData,
-    TopPerformerItem,
-    DistributionBucket,
-    AlertItem,
-    ExportRequest,
-    PaginationParams,
-    PaginatedResponse,
+    PerformanceCreate,
+    PerformanceList,
+    PerformanceResponse,
+    PerformanceStats,
+    PerformanceTrend,
+    PerformanceUpdate,
+    TopPerformer,
 )
 
 __all__ = [

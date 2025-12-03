@@ -222,7 +222,7 @@ class HSTSMiddleware(BaseHTTPMiddleware):
         app,
         max_age: int = 31536000,  # 1 year
         include_subdomains: bool = True,
-        preload: bool = True
+        preload: bool = True,
     ):
         super().__init__(app)
         self.max_age = max_age

@@ -1,11 +1,14 @@
 """Support Analytics Schemas"""
-from pydantic import BaseModel, Field
+
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional
-from datetime import datetime, date
+
+from pydantic import BaseModel, Field
 
 
 class TicketMetrics(BaseModel):
     """Ticket volume and status metrics"""
+
     total_tickets: int = 0
     open_tickets: int = 0
     in_progress_tickets: int = 0
@@ -21,6 +24,7 @@ class TicketMetrics(BaseModel):
 
 class SLAMetrics(BaseModel):
     """SLA compliance metrics"""
+
     total_with_sla: int = 0
     sla_met: int = 0
     sla_breached: int = 0
@@ -32,6 +36,7 @@ class SLAMetrics(BaseModel):
 
 class ResponseTimeMetrics(BaseModel):
     """Response time metrics"""
+
     avg_first_response_minutes: float = 0.0
     median_first_response_minutes: float = 0.0
     avg_resolution_time_hours: float = 0.0
@@ -40,6 +45,7 @@ class ResponseTimeMetrics(BaseModel):
 
 class AgentPerformanceMetrics(BaseModel):
     """Individual agent performance metrics"""
+
     agent_id: int
     agent_name: str
     tickets_assigned: int = 0
@@ -50,6 +56,7 @@ class AgentPerformanceMetrics(BaseModel):
 
 class CustomerSatisfactionMetrics(BaseModel):
     """Customer satisfaction metrics"""
+
     total_feedbacks: int = 0
     average_rating: float = 0.0
     positive_feedback_count: int = 0
@@ -59,6 +66,7 @@ class CustomerSatisfactionMetrics(BaseModel):
 
 class SupportTrendData(BaseModel):
     """Trend data point"""
+
     date: date
     ticket_count: int = 0
     resolved_count: int = 0
@@ -67,6 +75,7 @@ class SupportTrendData(BaseModel):
 
 class SupportAnalytics(BaseModel):
     """Comprehensive support analytics"""
+
     period_start: date
     period_end: date
     ticket_metrics: TicketMetrics
@@ -80,6 +89,7 @@ class SupportAnalytics(BaseModel):
 
 class EscalationAnalytics(BaseModel):
     """Escalation analytics"""
+
     total_escalated: int = 0
     by_level: Dict[str, int] = Field(default_factory=dict)
     avg_time_to_escalate_hours: float = 0.0
@@ -89,6 +99,7 @@ class EscalationAnalytics(BaseModel):
 
 class KBAnalytics(BaseModel):
     """Knowledge base analytics"""
+
     total_articles: int = 0
     published_articles: int = 0
     total_views: int = 0
@@ -99,6 +110,7 @@ class KBAnalytics(BaseModel):
 
 class ChatAnalytics(BaseModel):
     """Live chat analytics"""
+
     total_sessions: int = 0
     active_sessions: int = 0
     avg_wait_time_minutes: float = 0.0
@@ -109,5 +121,6 @@ class ChatAnalytics(BaseModel):
 
 class DateRangeFilter(BaseModel):
     """Date range filter for analytics"""
+
     start_date: date = Field(..., description="Start date for analytics period")
     end_date: date = Field(..., description="End date for analytics period")

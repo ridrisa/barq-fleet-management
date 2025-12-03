@@ -1,16 +1,15 @@
 """Bed Allocation API Routes"""
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
-from sqlalchemy.orm import Session
+
 from datetime import date
+from typing import List, Optional
 
-from app.core.dependencies import get_db, get_current_user
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
+
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
-from app.schemas.accommodation import (
-    AllocationCreate, AllocationUpdate, AllocationResponse
-)
+from app.schemas.accommodation import AllocationCreate, AllocationResponse, AllocationUpdate
 from app.services.accommodation import allocation_service
-
 
 router = APIRouter()
 
@@ -39,14 +38,10 @@ def get_allocations(
         )
 
     if courier_id:
-        return allocation_service.get_by_courier(
-            db, courier_id=courier_id, skip=skip, limit=limit
-        )
+        return allocation_service.get_by_courier(db, courier_id=courier_id, skip=skip, limit=limit)
 
     if bed_id:
-        return allocation_service.get_by_bed(
-            db, bed_id=bed_id, skip=skip, limit=limit
-        )
+        return allocation_service.get_by_bed(db, bed_id=bed_id, skip=skip, limit=limit)
 
     return allocation_service.get_multi(db, skip=skip, limit=limit)
 
@@ -67,7 +62,7 @@ def create_allocation(
     if not allocation:
         raise HTTPException(
             status_code=400,
-            detail="Cannot allocate bed. Either bed is not available or courier already has an active allocation."
+            detail="Cannot allocate bed. Either bed is not available or courier already has an active allocation.",
         )
 
     return allocation
@@ -129,10 +124,7 @@ def get_courier_active_allocation(
     """
     allocation = allocation_service.get_active_by_courier(db, courier_id=courier_id)
     if not allocation:
-        raise HTTPException(
-            status_code=404,
-            detail="No active allocation found for this courier"
-        )
+        raise HTTPException(status_code=404, detail="No active allocation found for this courier")
     return allocation
 
 
@@ -149,10 +141,7 @@ def get_bed_active_allocation(
     """
     allocation = allocation_service.get_active_by_bed(db, bed_id=bed_id)
     if not allocation:
-        raise HTTPException(
-            status_code=404,
-            detail="No active allocation found for this bed"
-        )
+        raise HTTPException(status_code=404, detail="No active allocation found for this bed")
     return allocation
 
 
@@ -174,15 +163,10 @@ def release_allocation(
         raise HTTPException(status_code=404, detail="Allocation not found")
 
     if allocation.release_date:
-        raise HTTPException(
-            status_code=400,
-            detail="Allocation has already been released"
-        )
+        raise HTTPException(status_code=400, detail="Allocation has already been released")
 
     updated_allocation = allocation_service.release_allocation(
-        db,
-        allocation_id=allocation_id,
-        release_date=release_date or date.today()
+        db, allocation_id=allocation_id, release_date=release_date or date.today()
     )
 
     return updated_allocation

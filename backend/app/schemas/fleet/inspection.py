@@ -1,13 +1,15 @@
-from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Optional
 
-from app.models.fleet import InspectionType, InspectionStatus, VehicleCondition
+from pydantic import BaseModel, Field
+
+from app.models.fleet import InspectionStatus, InspectionType, VehicleCondition
 
 
 class InspectionBase(BaseModel):
     """Base inspection schema"""
+
     vehicle_id: int
     inspector_id: Optional[int] = None
     inspection_type: InspectionType
@@ -92,11 +94,13 @@ class InspectionBase(BaseModel):
 
 class InspectionCreate(InspectionBase):
     """Schema for creating inspection"""
+
     pass
 
 
 class InspectionUpdate(BaseModel):
     """Schema for updating inspection"""
+
     status: Optional[InspectionStatus] = None
     overall_condition: Optional[VehicleCondition] = None
     issues_found: Optional[str] = None
@@ -108,6 +112,7 @@ class InspectionUpdate(BaseModel):
 
 class InspectionResponse(InspectionBase):
     """Schema for inspection response"""
+
     id: int
     inspection_score: Optional[int] = None
     total_checks: Optional[int] = None
@@ -125,6 +130,7 @@ class InspectionResponse(InspectionBase):
 
 class InspectionList(BaseModel):
     """Minimal schema for list views"""
+
     id: int
     vehicle_id: int
     inspection_type: InspectionType

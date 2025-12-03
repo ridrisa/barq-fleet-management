@@ -2,8 +2,10 @@
 FMS API Routes
 Provides proxy endpoints to machinettalk FMS for GPS tracking and fleet monitoring.
 """
+
 from fastapi import APIRouter
-from app.api.fms import assets, geofences, placemarks, tracking, sync
+
+from app.api.fms import assets, geofences, placemarks, sync, tracking
 
 router = APIRouter()
 
