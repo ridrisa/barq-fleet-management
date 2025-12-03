@@ -2,6 +2,7 @@
 from sqlalchemy import Column, String, Numeric, DateTime, Boolean, Text, Enum as SQLEnum, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -21,7 +22,7 @@ class KPITrend(str, enum.Enum):
     STABLE = "stable"
 
 
-class KPI(BaseModel):
+class KPI(TenantMixin, BaseModel):
     """
     Key Performance Indicators with targets and thresholds.
     Tracks organizational and operational KPIs over time.

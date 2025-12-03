@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -23,7 +24,7 @@ class DispatchPriority(str, enum.Enum):
     LOW = "low"
 
 
-class DispatchAssignment(BaseModel):
+class DispatchAssignment(TenantMixin, BaseModel):
     """Dispatch assignments for delivery allocation"""
 
     __tablename__ = "dispatch_assignments"

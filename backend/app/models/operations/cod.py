@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Numeric, Date, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class CODStatus(str, enum.Enum):
@@ -9,7 +10,7 @@ class CODStatus(str, enum.Enum):
     DEPOSITED = "deposited"
     RECONCILED = "reconciled"
 
-class COD(BaseModel):
+class COD(TenantMixin, BaseModel):
     __tablename__ = "cod_transactions"
 
     courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)

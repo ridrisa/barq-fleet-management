@@ -2,6 +2,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Enum as SQLEnum, DateTime
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -13,7 +14,7 @@ class ChatStatus(str, enum.Enum):
     TRANSFERRED = "transferred"
 
 
-class ChatSession(BaseModel):
+class ChatSession(TenantMixin, BaseModel):
     """
     Chat Session model - Live chat conversations
     Enables real-time support communication

@@ -1,8 +1,9 @@
 from sqlalchemy import Column, String, Integer, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
-class Building(BaseModel):
+class Building(TenantMixin, BaseModel):
     __tablename__ = "buildings"
 
     name = Column(String, nullable=False)

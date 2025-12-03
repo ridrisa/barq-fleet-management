@@ -2,9 +2,10 @@
 from sqlalchemy import Column, String, Numeric, JSON, DateTime, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class MetricSnapshot(BaseModel):
+class MetricSnapshot(TenantMixin, BaseModel):
     """
     Time-series metric snapshots for analytics.
     Stores point-in-time measurements with dimensions for flexible querying.

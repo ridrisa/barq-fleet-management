@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
 class BackupType(str, enum.Enum):
@@ -34,7 +35,7 @@ class BackupStorage(str, enum.Enum):
     SFTP = "sftp"
 
 
-class Backup(BaseModel):
+class Backup(TenantMixin, BaseModel):
     """
     Backup model for database backup management
 

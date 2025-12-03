@@ -2,9 +2,10 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class TicketReply(BaseModel):
+class TicketReply(TenantMixin, BaseModel):
     """
     Ticket Reply model - Manages threaded conversations on tickets
     Allows multiple replies and back-and-forth communication

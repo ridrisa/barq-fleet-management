@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, Boolean, BigInteger, DateTime
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -14,7 +15,7 @@ class AttachmentType(str, enum.Enum):
     OTHER = "other"
 
 
-class WorkflowAttachment(BaseModel):
+class WorkflowAttachment(TenantMixin, BaseModel):
     """File attachments for workflow instances"""
     __tablename__ = "workflow_attachments"
 

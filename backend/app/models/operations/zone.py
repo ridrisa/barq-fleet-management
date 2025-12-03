@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, Float, Text, JSON, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -11,7 +12,7 @@ class ZoneStatus(str, enum.Enum):
     MAINTENANCE = "maintenance"
 
 
-class Zone(BaseModel):
+class Zone(TenantMixin, BaseModel):
     """Delivery zones for service area coverage"""
 
     __tablename__ = "zones"

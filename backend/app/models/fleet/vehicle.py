@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, Date, Numeric, Enum as SQLEnum, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -37,7 +38,7 @@ class OwnershipType(str, enum.Enum):
     RENTED = "rented"
 
 
-class Vehicle(BaseModel):
+class Vehicle(TenantMixin, BaseModel):
     """Vehicle model - Fleet asset tracking"""
 
     __tablename__ = "vehicles"

@@ -2,9 +2,10 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, BigInteger
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class TicketAttachment(BaseModel):
+class TicketAttachment(TenantMixin, BaseModel):
     """
     Ticket Attachment model - File attachments for tickets and replies
     Stores metadata about uploaded files

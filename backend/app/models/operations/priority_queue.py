@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -23,7 +24,7 @@ class QueueStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
-class PriorityQueueEntry(BaseModel):
+class PriorityQueueEntry(TenantMixin, BaseModel):
     """Priority queue for delivery scheduling and assignment"""
 
     __tablename__ = "priority_queue_entries"

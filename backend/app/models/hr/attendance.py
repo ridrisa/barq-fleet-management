@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, Time, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class AttendanceStatus(str, enum.Enum):
@@ -10,7 +11,7 @@ class AttendanceStatus(str, enum.Enum):
     HALF_DAY = "half_day"
     ON_LEAVE = "on_leave"
 
-class Attendance(BaseModel):
+class Attendance(TenantMixin, BaseModel):
     __tablename__ = "attendance"
 
     courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)

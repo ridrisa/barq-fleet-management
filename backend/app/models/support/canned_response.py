@@ -2,9 +2,10 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class CannedResponse(BaseModel):
+class CannedResponse(TenantMixin, BaseModel):
     """
     Canned Response model - Pre-written responses for quick replies
     Used in tickets and live chat for common responses

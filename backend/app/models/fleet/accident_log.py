@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, DateTime, Time, ForeignKey, Text, Numeric, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -41,7 +42,7 @@ class AccidentStatus(str, enum.Enum):
     CLOSED = "closed"
 
 
-class AccidentLog(BaseModel):
+class AccidentLog(TenantMixin, BaseModel):
     """Accident and incident reporting for fleet vehicles"""
 
     __tablename__ = "accident_logs"

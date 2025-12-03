@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, JSON, DateTime, Enum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -26,7 +27,7 @@ class WorkflowHistoryEventType(str, enum.Enum):
     CUSTOM = "custom"
 
 
-class WorkflowHistory(BaseModel):
+class WorkflowHistory(TenantMixin, BaseModel):
     """Complete audit trail for workflow instances - tamper-evident"""
     __tablename__ = "workflow_history"
 
@@ -60,7 +61,7 @@ class WorkflowHistory(BaseModel):
     actor = relationship("User", foreign_keys=[actor_id])
 
 
-class WorkflowStepHistory(BaseModel):
+class WorkflowStepHistory(TenantMixin, BaseModel):
     """Detailed history for individual workflow steps"""
     __tablename__ = "workflow_step_history"
 

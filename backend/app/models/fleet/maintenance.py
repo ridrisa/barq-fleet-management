@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text, Numeric, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -28,7 +29,7 @@ class ServiceProvider(str, enum.Enum):
     THIRD_PARTY = "third_party"
 
 
-class VehicleMaintenance(BaseModel):
+class VehicleMaintenance(TenantMixin, BaseModel):
     """Vehicle maintenance and service records"""
 
     __tablename__ = "vehicle_maintenance"

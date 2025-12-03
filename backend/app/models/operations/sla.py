@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -31,7 +32,7 @@ class SLAStatus(str, enum.Enum):
     EXPIRED = "expired"
 
 
-class SLADefinition(BaseModel):
+class SLADefinition(TenantMixin, BaseModel):
     """Service Level Agreement definitions and targets"""
 
     __tablename__ = "sla_definitions"
@@ -78,7 +79,7 @@ class SLADefinition(BaseModel):
         return f"<SLADefinition {self.sla_code}: {self.sla_name}>"
 
 
-class SLATracking(BaseModel):
+class SLATracking(TenantMixin, BaseModel):
     """SLA compliance tracking and breach monitoring"""
 
     __tablename__ = "sla_tracking"

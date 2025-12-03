@@ -2,6 +2,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, Enum as SQLEnum, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -12,7 +13,7 @@ class ArticleStatus(str, enum.Enum):
     ARCHIVED = "archived"
 
 
-class KBArticle(BaseModel):
+class KBArticle(TenantMixin, BaseModel):
     """
     Knowledge Base Article model - Self-service documentation
     Helps reduce support ticket volume with searchable articles

@@ -5,6 +5,7 @@ For storing operational procedures, policies, training materials, and reports.
 from sqlalchemy import Column, String, Integer, Text, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -19,7 +20,7 @@ class DocumentCategory(str, enum.Enum):
     OTHER = "Other"
 
 
-class OperationsDocument(BaseModel):
+class OperationsDocument(TenantMixin, BaseModel):
     """Operations document model for procedures, policies, and training materials"""
 
     __tablename__ = "operations_documents"

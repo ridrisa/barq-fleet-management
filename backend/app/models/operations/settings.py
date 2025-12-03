@@ -4,9 +4,10 @@ Operations Settings Model
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Numeric, Boolean, JSON
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class OperationsSettings(BaseModel):
+class OperationsSettings(TenantMixin, BaseModel):
     """Global operations configuration settings"""
 
     __tablename__ = "operations_settings"
@@ -55,7 +56,7 @@ class OperationsSettings(BaseModel):
         return None
 
 
-class DispatchRule(BaseModel):
+class DispatchRule(TenantMixin, BaseModel):
     """Auto-dispatch rules and algorithms"""
 
     __tablename__ = "dispatch_rules"
@@ -104,7 +105,7 @@ class DispatchRule(BaseModel):
         return f"<DispatchRule {self.rule_code}: {self.rule_name}>"
 
 
-class SLAThreshold(BaseModel):
+class SLAThreshold(TenantMixin, BaseModel):
     """SLA threshold configurations"""
 
     __tablename__ = "sla_thresholds"
@@ -141,7 +142,7 @@ class SLAThreshold(BaseModel):
         return f"<SLAThreshold {self.threshold_code}: {self.threshold_name}>"
 
 
-class NotificationSetting(BaseModel):
+class NotificationSetting(TenantMixin, BaseModel):
     """Notification settings for operations events"""
 
     __tablename__ = "notification_settings"
@@ -179,7 +180,7 @@ class NotificationSetting(BaseModel):
         return f"<NotificationSetting {self.setting_code}: {self.event_type}>"
 
 
-class ZoneDefault(BaseModel):
+class ZoneDefault(TenantMixin, BaseModel):
     """Default settings for new zones"""
 
     __tablename__ = "zone_defaults"

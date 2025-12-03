@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum, Text, DateTime
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -12,7 +13,7 @@ class ApprovalStatus(str, enum.Enum):
     EXPIRED = "expired"
 
 
-class ApprovalChain(BaseModel):
+class ApprovalChain(TenantMixin, BaseModel):
     """Approval chain template for workflows"""
     __tablename__ = "approval_chains"
 
@@ -32,7 +33,7 @@ class ApprovalChain(BaseModel):
     approval_requests = relationship("ApprovalRequest", back_populates="approval_chain")
 
 
-class ApprovalChainApprover(BaseModel):
+class ApprovalChainApprover(TenantMixin, BaseModel):
     """Approvers in an approval chain with level hierarchy"""
     __tablename__ = "approval_chain_approvers"
 
@@ -49,7 +50,7 @@ class ApprovalChainApprover(BaseModel):
     role = relationship("Role")
 
 
-class ApprovalRequest(BaseModel):
+class ApprovalRequest(TenantMixin, BaseModel):
     """Individual approval requests for workflow instances"""
     __tablename__ = "approval_requests"
 

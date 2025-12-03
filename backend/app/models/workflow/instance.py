@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, ForeignKey, Enum, JSON, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class WorkflowStatus(str, enum.Enum):
@@ -12,7 +13,7 @@ class WorkflowStatus(str, enum.Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
-class WorkflowInstance(BaseModel):
+class WorkflowInstance(TenantMixin, BaseModel):
     __tablename__ = "workflow_instances"
 
     template_id = Column(Integer, ForeignKey("workflow_templates.id"), nullable=False)

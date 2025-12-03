@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Numeric, Date, ForeignKey, Enum, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class LoanStatus(str, enum.Enum):
@@ -8,7 +9,7 @@ class LoanStatus(str, enum.Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
-class Loan(BaseModel):
+class Loan(TenantMixin, BaseModel):
     __tablename__ = "loans"
 
     courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)

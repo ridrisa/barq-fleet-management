@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Text, Boolean, Enum as SQLEnum, Numeric
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -30,7 +31,7 @@ class VehicleCondition(str, enum.Enum):
     POOR = "poor"
 
 
-class Inspection(BaseModel):
+class Inspection(TenantMixin, BaseModel):
     """Vehicle inspection records for safety and compliance"""
 
     __tablename__ = "vehicle_inspections"

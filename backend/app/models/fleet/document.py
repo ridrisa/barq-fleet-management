@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Date, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -22,7 +23,7 @@ class DocumentEntity(str, enum.Enum):
     VEHICLE = "vehicle"
 
 
-class Document(BaseModel):
+class Document(TenantMixin, BaseModel):
     __tablename__ = "documents"
 
     # Entity reference

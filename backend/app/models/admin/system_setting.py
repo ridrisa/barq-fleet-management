@@ -3,6 +3,7 @@ import enum
 from sqlalchemy import Column, String, Text, Boolean, JSON
 
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
 class SettingType(str, enum.Enum):
@@ -29,7 +30,7 @@ class SettingCategory(str, enum.Enum):
     COMPLIANCE = "compliance"
 
 
-class SystemSetting(BaseModel):
+class SystemSetting(TenantMixin, BaseModel):
     """
     System Settings model for application configuration
 

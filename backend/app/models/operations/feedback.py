@@ -4,6 +4,7 @@ Customer Feedback Model for Operations
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -34,7 +35,7 @@ class FeedbackSentiment(str, enum.Enum):
     NEGATIVE = "negative"
 
 
-class CustomerFeedback(BaseModel):
+class CustomerFeedback(TenantMixin, BaseModel):
     """Customer feedback and ratings for deliveries and service"""
 
     __tablename__ = "customer_feedbacks"
@@ -159,7 +160,7 @@ class CustomerFeedback(BaseModel):
         )
 
 
-class FeedbackTemplate(BaseModel):
+class FeedbackTemplate(TenantMixin, BaseModel):
     """Templates for responding to common feedback types"""
 
     __tablename__ = "feedback_templates"

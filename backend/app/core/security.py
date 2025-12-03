@@ -219,22 +219,34 @@ class TokenManager:
     - Long-lived refresh tokens
     - Token revocation via blacklist
     - Secure token generation
+    - Multi-tenant organization context
     """
 
     @staticmethod
     def create_access_token(
         data: Dict[str, Any],
-        expires_delta: Optional[timedelta] = None
+        expires_delta: Optional[timedelta] = None,
+        organization_id: Optional[int] = None,
+        organization_role: Optional[str] = None
     ) -> str:
         """
-        Create JWT access token with standard claims
+        Create JWT access token with standard claims and optional organization context.
 
         Args:
-            data: Payload data to encode
+            data: Payload data to encode (must include 'sub' for user ID)
             expires_delta: Optional expiration override
+            organization_id: Optional organization ID for multi-tenant context
+            organization_role: Optional organization role (OWNER, ADMIN, MANAGER, VIEWER)
 
         Returns:
             Encoded JWT token string
+
+        Example:
+            token = TokenManager.create_access_token(
+                data={"sub": str(user.id)},
+                organization_id=org.id,
+                organization_role="ADMIN"
+            )
         """
         to_encode = data.copy()
 
@@ -256,6 +268,12 @@ class TokenManager:
             "jti": secrets.token_urlsafe(32),  # Unique token ID
         })
 
+        # Add multi-tenant organization context if provided
+        if organization_id is not None:
+            to_encode["org_id"] = organization_id
+        if organization_role is not None:
+            to_encode["org_role"] = organization_role
+
         # Encode token
         encoded_jwt = jwt.encode(
             to_encode,
@@ -264,6 +282,34 @@ class TokenManager:
         )
 
         return encoded_jwt
+
+    @staticmethod
+    def create_tenant_token(
+        user_id: int,
+        organization_id: int,
+        organization_role: str,
+        expires_delta: Optional[timedelta] = None
+    ) -> str:
+        """
+        Create JWT access token with full multi-tenant context.
+
+        This is a convenience method for creating tokens with organization context.
+
+        Args:
+            user_id: User ID to encode
+            organization_id: Organization ID for tenant isolation
+            organization_role: User's role in the organization
+            expires_delta: Optional expiration override
+
+        Returns:
+            Encoded JWT token string with tenant context
+        """
+        return TokenManager.create_access_token(
+            data={"sub": str(user_id)},
+            expires_delta=expires_delta,
+            organization_id=organization_id,
+            organization_role=organization_role
+        )
 
     @staticmethod
     def create_refresh_token(user_id: int) -> Tuple[str, str]:

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, ForeignKey, Text, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -18,7 +19,7 @@ class AssignmentType(str, enum.Enum):
     TRIAL = "trial"
 
 
-class CourierVehicleAssignment(BaseModel):
+class CourierVehicleAssignment(TenantMixin, BaseModel):
     """Track courier-vehicle assignment history"""
 
     __tablename__ = "courier_vehicle_assignments"

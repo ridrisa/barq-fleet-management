@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, DateTime, Time, ForeignKey, Text, Numeric, Boolean, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -20,7 +21,7 @@ class FuelProvider(str, enum.Enum):
     OTHER = "other"
 
 
-class VehicleLog(BaseModel):
+class VehicleLog(TenantMixin, BaseModel):
     """Daily vehicle operation logs and trip records"""
 
     __tablename__ = "vehicle_logs"

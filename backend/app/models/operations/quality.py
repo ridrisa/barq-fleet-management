@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -24,7 +25,7 @@ class InspectionStatus(str, enum.Enum):
     PASSED = "passed"
 
 
-class QualityMetric(BaseModel):
+class QualityMetric(TenantMixin, BaseModel):
     """Quality control metrics and measurements"""
 
     __tablename__ = "quality_metrics"
@@ -54,7 +55,7 @@ class QualityMetric(BaseModel):
         return f"<QualityMetric {self.metric_code}: {self.metric_name}>"
 
 
-class QualityInspection(BaseModel):
+class QualityInspection(TenantMixin, BaseModel):
     """Quality inspections for couriers, vehicles, and operations"""
 
     __tablename__ = "quality_inspections"

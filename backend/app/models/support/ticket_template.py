@@ -2,10 +2,11 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, Enum as SQLEnum, Boolean, JSON
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 from app.models.support.ticket import TicketCategory, TicketPriority
 
 
-class TicketTemplate(BaseModel):
+class TicketTemplate(TenantMixin, BaseModel):
     """
     Ticket Template model - Predefined templates for common ticket types
     Speeds up ticket creation with pre-filled fields

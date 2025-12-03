@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, JSON, DateTime, Boolean, Enum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -42,7 +43,7 @@ class NotificationStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
-class WorkflowNotificationTemplate(BaseModel):
+class WorkflowNotificationTemplate(TenantMixin, BaseModel):
     """Templates for workflow notifications"""
     __tablename__ = "workflow_notification_templates"
 
@@ -71,7 +72,7 @@ class WorkflowNotificationTemplate(BaseModel):
     notifications = relationship("WorkflowNotification", back_populates="template")
 
 
-class WorkflowNotification(BaseModel):
+class WorkflowNotification(TenantMixin, BaseModel):
     """Individual notification instances"""
     __tablename__ = "workflow_notifications"
 
@@ -119,7 +120,7 @@ class WorkflowNotification(BaseModel):
     recipient = relationship("User")
 
 
-class NotificationPreference(BaseModel):
+class NotificationPreference(TenantMixin, BaseModel):
     """User preferences for workflow notifications"""
     __tablename__ = "workflow_notification_preferences"
 

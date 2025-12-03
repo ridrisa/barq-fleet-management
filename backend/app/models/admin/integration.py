@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, String, Boolean, Text, JSON, DateTime
 from datetime import datetime
 
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
 class IntegrationType(str, enum.Enum):
@@ -29,7 +30,7 @@ class IntegrationStatus(str, enum.Enum):
     TESTING = "testing"
 
 
-class Integration(BaseModel):
+class Integration(TenantMixin, BaseModel):
     """
     Integration model for managing third-party service integrations
 

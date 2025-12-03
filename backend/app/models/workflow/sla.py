@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum, JSON, Text, DateTime
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -19,7 +20,7 @@ class SLAPriority(str, enum.Enum):
     CRITICAL = "critical"
 
 
-class WorkflowSLA(BaseModel):
+class WorkflowSLA(TenantMixin, BaseModel):
     """SLA definitions for workflow templates"""
     __tablename__ = "workflow_slas"
 
@@ -51,7 +52,7 @@ class WorkflowSLA(BaseModel):
     sla_instances = relationship("WorkflowSLAInstance", back_populates="sla")
 
 
-class WorkflowSLAInstance(BaseModel):
+class WorkflowSLAInstance(TenantMixin, BaseModel):
     """SLA tracking for individual workflow instances"""
     __tablename__ = "workflow_sla_instances"
 
@@ -88,7 +89,7 @@ class WorkflowSLAInstance(BaseModel):
     events = relationship("SLAEvent", back_populates="sla_instance", cascade="all, delete-orphan")
 
 
-class SLAEvent(BaseModel):
+class SLAEvent(TenantMixin, BaseModel):
     """Event log for SLA tracking"""
     __tablename__ = "sla_events"
 

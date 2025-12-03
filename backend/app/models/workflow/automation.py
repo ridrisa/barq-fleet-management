@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum, JSON, Text, DateTime
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -30,7 +31,7 @@ class AutomationStatus(str, enum.Enum):
     ERROR = "error"
 
 
-class WorkflowAutomation(BaseModel):
+class WorkflowAutomation(TenantMixin, BaseModel):
     """Automation rules for workflows"""
     __tablename__ = "workflow_automations"
 
@@ -70,7 +71,7 @@ class WorkflowAutomation(BaseModel):
     execution_logs = relationship("AutomationExecutionLog", back_populates="automation", cascade="all, delete-orphan")
 
 
-class AutomationExecutionLog(BaseModel):
+class AutomationExecutionLog(TenantMixin, BaseModel):
     """Log of automation executions"""
     __tablename__ = "automation_execution_logs"
 

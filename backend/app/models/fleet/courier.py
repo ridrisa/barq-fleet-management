@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, Date, ForeignKey, Enum as SQLEnum, Text, Numeric
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -31,7 +32,7 @@ class ProjectType(str, enum.Enum):
     MIXED = "mixed"
 
 
-class Courier(BaseModel):
+class Courier(TenantMixin, BaseModel):
     """Courier/Driver model - Core entity for fleet management"""
 
     __tablename__ = "couriers"

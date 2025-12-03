@@ -2,6 +2,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Enum as SQLEnum, Text, DateTime, Boolean, JSON
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -47,7 +48,7 @@ class EscalationLevel(str, enum.Enum):
     MANAGEMENT = "management"
 
 
-class Ticket(BaseModel):
+class Ticket(TenantMixin, BaseModel):
     """Support Ticket model - Manages support requests and issues"""
 
     __tablename__ = "tickets"

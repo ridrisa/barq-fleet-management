@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum as SQLEnum, Text, Numeric
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -22,7 +23,7 @@ class HandoverType(str, enum.Enum):
     MAINTENANCE = "maintenance"
 
 
-class Handover(BaseModel):
+class Handover(TenantMixin, BaseModel):
     """Courier-to-courier handover records for vehicles, deliveries, and assets"""
 
     __tablename__ = "handovers"

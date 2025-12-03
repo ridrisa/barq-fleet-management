@@ -2,9 +2,10 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class KBCategory(BaseModel):
+class KBCategory(TenantMixin, BaseModel):
     """
     Knowledge Base Category model - Hierarchical categories for articles
     Allows organizing articles in a tree structure

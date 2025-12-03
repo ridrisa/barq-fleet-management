@@ -1,9 +1,10 @@
 """FAQ Model"""
 from sqlalchemy import Column, String, Integer, Text, Boolean
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class FAQ(BaseModel):
+class FAQ(TenantMixin, BaseModel):
     """
     FAQ model - Frequently Asked Questions
     Quick answers to common questions

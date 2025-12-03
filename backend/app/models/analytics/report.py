@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Text, Enum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -35,7 +36,7 @@ class ReportFormat(str, enum.Enum):
     JSON = "json"
 
 
-class Report(BaseModel):
+class Report(TenantMixin, BaseModel):
     """
     Generated reports with parameters and storage paths.
     Supports scheduled and on-demand report generation.

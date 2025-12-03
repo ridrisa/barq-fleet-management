@@ -6,6 +6,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, T
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
 class ApiKeyStatus(str, enum.Enum):
@@ -15,7 +16,7 @@ class ApiKeyStatus(str, enum.Enum):
     EXPIRED = "expired"
 
 
-class ApiKey(BaseModel):
+class ApiKey(TenantMixin, BaseModel):
     """
     API Key model for programmatic API access
 

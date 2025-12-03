@@ -4,6 +4,7 @@ Route Management Model for Operations
 from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, JSON, Enum as SQLEnum, Text, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -16,7 +17,7 @@ class RouteStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
-class Route(BaseModel):
+class Route(TenantMixin, BaseModel):
     """Delivery routes for courier operations"""
 
     __tablename__ = "routes"

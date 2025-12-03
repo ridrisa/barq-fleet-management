@@ -1,8 +1,9 @@
 from sqlalchemy import Column, Integer, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
-class Allocation(BaseModel):
+class Allocation(TenantMixin, BaseModel):
     __tablename__ = "allocations"
 
     courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)

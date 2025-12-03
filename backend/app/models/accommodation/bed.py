@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class BedStatus(str, enum.Enum):
@@ -8,7 +9,7 @@ class BedStatus(str, enum.Enum):
     OCCUPIED = "occupied"
     RESERVED = "reserved"
 
-class Bed(BaseModel):
+class Bed(TenantMixin, BaseModel):
     __tablename__ = "beds"
 
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)

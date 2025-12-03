@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Enum, JSON, Text, DateTime
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -37,7 +38,7 @@ class TriggerEventType(str, enum.Enum):
     CUSTOM = "custom"
 
 
-class WorkflowTrigger(BaseModel):
+class WorkflowTrigger(TenantMixin, BaseModel):
     """Trigger configuration for workflows"""
     __tablename__ = "workflow_triggers"
 
@@ -87,7 +88,7 @@ class WorkflowTrigger(BaseModel):
     trigger_executions = relationship("TriggerExecution", back_populates="trigger", cascade="all, delete-orphan")
 
 
-class TriggerExecution(BaseModel):
+class TriggerExecution(TenantMixin, BaseModel):
     """Log of trigger executions"""
     __tablename__ = "trigger_executions"
 

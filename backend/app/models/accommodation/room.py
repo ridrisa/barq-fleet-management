@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class RoomStatus(str, enum.Enum):
@@ -8,7 +9,7 @@ class RoomStatus(str, enum.Enum):
     OCCUPIED = "occupied"
     MAINTENANCE = "maintenance"
 
-class Room(BaseModel):
+class Room(TenantMixin, BaseModel):
     __tablename__ = "rooms"
 
     building_id = Column(Integer, ForeignKey("buildings.id"), nullable=False)

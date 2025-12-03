@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, ForeignKey, Enum, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class LeaveType(str, enum.Enum):
@@ -15,7 +16,7 @@ class LeaveStatus(str, enum.Enum):
     REJECTED = "rejected"
     CANCELLED = "cancelled"
 
-class Leave(BaseModel):
+class Leave(TenantMixin, BaseModel):
     __tablename__ = "leaves"
 
     courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)

@@ -1,9 +1,10 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, Boolean, DateTime
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class WorkflowComment(BaseModel):
+class WorkflowComment(TenantMixin, BaseModel):
     """Comments on workflow instances for collaboration and communication"""
     __tablename__ = "workflow_comments"
 

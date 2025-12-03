@@ -2,6 +2,7 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 
@@ -24,7 +25,7 @@ class FeedbackStatus(str, enum.Enum):
     DISMISSED = "dismissed"
 
 
-class Feedback(BaseModel):
+class Feedback(TenantMixin, BaseModel):
     """
     Customer Feedback model - Collects customer feedback
     Helps improve product and service quality

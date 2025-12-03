@@ -1,9 +1,10 @@
 from sqlalchemy import Column, Integer, String, Numeric, Date, ForeignKey
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class FuelLog(BaseModel):
+class FuelLog(TenantMixin, BaseModel):
     __tablename__ = "fuel_logs"
 
     vehicle_id = Column(Integer, ForeignKey("vehicles.id"), nullable=False)

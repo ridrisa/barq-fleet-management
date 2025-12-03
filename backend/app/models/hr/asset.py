@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class AssetType(str, enum.Enum):
@@ -15,7 +16,7 @@ class AssetStatus(str, enum.Enum):
     DAMAGED = "damaged"
     LOST = "lost"
 
-class Asset(BaseModel):
+class Asset(TenantMixin, BaseModel):
     __tablename__ = "assets"
 
     asset_type = Column(Enum(AssetType, values_callable=lambda x: [e.value for e in x]), nullable=False)

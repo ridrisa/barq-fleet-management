@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Boolean, JSON, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
 class WorkflowTemplateCategory(str):
@@ -12,7 +13,7 @@ class WorkflowTemplateCategory(str):
     GENERAL = "general"
 
 
-class WorkflowTemplate(BaseModel):
+class WorkflowTemplate(TenantMixin, BaseModel):
     __tablename__ = "workflow_templates"
 
     name = Column(String, nullable=False)

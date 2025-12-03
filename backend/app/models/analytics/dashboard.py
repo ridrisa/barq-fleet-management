@@ -3,9 +3,10 @@ from sqlalchemy import Column, String, Integer, ForeignKey, Boolean, Text, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class Dashboard(BaseModel):
+class Dashboard(TenantMixin, BaseModel):
     """
     Custom dashboards with configurable widgets.
     Users can create personalized views of their data.

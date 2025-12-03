@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class DeliveryStatus(str, enum.Enum):
@@ -10,7 +11,7 @@ class DeliveryStatus(str, enum.Enum):
     FAILED = "failed"
     RETURNED = "returned"
 
-class Delivery(BaseModel):
+class Delivery(TenantMixin, BaseModel):
     __tablename__ = "deliveries"
 
     tracking_number = Column(String, unique=True, nullable=False)

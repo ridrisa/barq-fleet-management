@@ -352,12 +352,106 @@ def close_database():
     logger.info("Database connections closed")
 
 
+# ============================================================================
+# Multi-Tenancy Support
+# ============================================================================
+
+def get_tenant_db(
+    organization_id: int,
+    is_superuser: bool = False
+) -> Generator[Session, None, None]:
+    """
+    Get database session with tenant context for Row-Level Security (RLS).
+
+    This function sets PostgreSQL session variables that are used by RLS policies
+    to enforce tenant isolation at the database level.
+
+    Args:
+        organization_id: The organization ID to scope queries to
+        is_superuser: If True, bypasses RLS policies for admin access
+
+    Yields:
+        Database session with RLS context configured
+
+    Usage:
+        async def get_couriers(
+            db: Session = Depends(get_tenant_db_dependency)
+        ):
+            # Automatically filtered by organization_id via RLS
+            return db.query(Courier).all()
+    """
+    db = db_manager.create_session()
+    try:
+        # Set RLS context variables for tenant isolation
+        db.execute(text(f"SET app.current_org_id = '{organization_id}'"))
+        db.execute(text(f"SET app.is_superuser = '{str(is_superuser).lower()}'"))
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        # Reset context variables to prevent leaking to connection pool
+        try:
+            db.execute(text("RESET app.current_org_id"))
+            db.execute(text("RESET app.is_superuser"))
+        except Exception:
+            pass
+        db.close()
+
+
+class TenantContext:
+    """
+    Context manager for tenant-scoped database operations.
+
+    Usage:
+        with TenantContext(organization_id=1) as db:
+            couriers = db.query(Courier).all()
+    """
+
+    def __init__(self, organization_id: int, is_superuser: bool = False):
+        self.organization_id = organization_id
+        self.is_superuser = is_superuser
+        self.session: Optional[Session] = None
+
+    def __enter__(self) -> Session:
+        self.session = db_manager.create_session()
+        self.session.execute(
+            text(f"SET app.current_org_id = '{self.organization_id}'")
+        )
+        self.session.execute(
+            text(f"SET app.is_superuser = '{str(self.is_superuser).lower()}'")
+        )
+        return self.session
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            if exc_type is not None:
+                self.session.rollback()
+            else:
+                self.session.commit()
+
+            # Reset context
+            try:
+                self.session.execute(text("RESET app.current_org_id"))
+                self.session.execute(text("RESET app.is_superuser"))
+            except Exception:
+                pass
+
+            self.session.close()
+
+
+# Import text for SQL execution
+from sqlalchemy import text
+
+
 # Export commonly used items
 __all__ = [
     "Base",
     "db_manager",
     "get_db",
     "get_read_db",
+    "get_tenant_db",
+    "TenantContext",
     "OptimizedQuery",
     "initialize_database",
     "close_database",

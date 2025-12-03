@@ -1,9 +1,10 @@
 from sqlalchemy import Column, String, Integer, Date, ForeignKey, Numeric, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 
 
-class PerformanceData(BaseModel):
+class PerformanceData(TenantMixin, BaseModel):
     """Performance & Analytics model - Tracks courier performance metrics"""
 
     __tablename__ = "performance_data"

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Numeric, Date, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class BonusType(str, enum.Enum):
@@ -14,7 +15,7 @@ class PaymentStatus(str, enum.Enum):
     APPROVED = "approved"
     PAID = "paid"
 
-class Bonus(BaseModel):
+class Bonus(TenantMixin, BaseModel):
     __tablename__ = "bonuses"
 
     courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)

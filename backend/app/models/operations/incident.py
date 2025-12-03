@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Date, ForeignKey, Enum, Text
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
+from app.models.mixins import TenantMixin
 import enum
 
 class IncidentType(str, enum.Enum):
@@ -16,7 +17,7 @@ class IncidentStatus(str, enum.Enum):
     RESOLVED = "resolved"
     CLOSED = "closed"
 
-class Incident(BaseModel):
+class Incident(TenantMixin, BaseModel):
     __tablename__ = "incidents"
 
     incident_type = Column(Enum(IncidentType, values_callable=lambda x: [e.value for e in x]), nullable=False)
