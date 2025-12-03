@@ -19,7 +19,7 @@ from sqlalchemy.dialects.postgresql import JSON
 
 # revision identifiers, used by Alembic.
 revision = '017'
-down_revision = 'perf_indexes_001'
+down_revision = '016'
 branch_labels = None
 depends_on = None
 

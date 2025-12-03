@@ -9,7 +9,7 @@
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { api } from '@/lib/api'
+import { organizationAPI } from '@/lib/api'
 
 /**
  * Organization interface matching backend model
@@ -122,15 +122,10 @@ export const useOrganizationStore = create<OrganizationState>()(
 
         try {
           // Request new token with organization context
-          const response = await api.post<{
-            access_token: string
-            token_type: string
-          }>('/auth/switch-organization', {
-            organization_id: organizationId,
-          })
+          const response = await organizationAPI.switch(organizationId)
 
           // Update stored token
-          localStorage.setItem('token', response.data.access_token)
+          localStorage.setItem('token', response.access_token)
 
           // Update organization state
           set({
@@ -156,11 +151,7 @@ export const useOrganizationStore = create<OrganizationState>()(
         set({ isLoading: true, error: null })
 
         try {
-          const response = await api.get<OrganizationMembership[]>(
-            '/users/me/organizations'
-          )
-
-          const memberships = response.data
+          const memberships = await organizationAPI.getAll()
 
           set({
             organizations: memberships,
@@ -171,7 +162,7 @@ export const useOrganizationStore = create<OrganizationState>()(
           const { currentOrganization } = get()
           if (!currentOrganization && memberships.length > 0) {
             const activeMembership = memberships.find(
-              (m) => m.organization.is_active && m.is_active
+              (m: OrganizationMembership) => m.organization.is_active && m.is_active
             )
             if (activeMembership) {
               set({

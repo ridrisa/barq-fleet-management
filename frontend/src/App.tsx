@@ -5,13 +5,14 @@ import { useAuthStore } from './stores/authStore'
 import { routes } from './router/routes'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LoadingScreen } from './components/ui/Spinner'
+import { OrganizationProvider } from './contexts/OrganizationContext'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />
 }
 
-function App() {
+function AppRoutes() {
   const routing = useRoutes(
     routes.map((route) => {
       // Public routes that don't require authentication
@@ -23,10 +24,16 @@ function App() {
     })
   )
 
+  return <Suspense fallback={<LoadingScreen />}>{routing}</Suspense>
+}
+
+function App() {
   return (
     <ErrorBoundary>
-      <Toaster />
-      <Suspense fallback={<LoadingScreen />}>{routing}</Suspense>
+      <OrganizationProvider>
+        <Toaster />
+        <AppRoutes />
+      </OrganizationProvider>
     </ErrorBoundary>
   )
 }
