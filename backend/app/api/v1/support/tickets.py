@@ -45,7 +45,7 @@ router = APIRouter()
 def get_tickets(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     category: Optional[TicketCategory] = None,
     priority: Optional[TicketPriority] = None,
     status_filter: Optional[TicketStatus] = Query(None, alias="status"),
@@ -104,7 +104,7 @@ def get_ticket_statistics(
 def get_open_tickets(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get all open tickets (open, in_progress, pending)"""
@@ -115,7 +115,7 @@ def get_open_tickets(
 def get_my_tickets(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get tickets created by current user"""
@@ -126,7 +126,7 @@ def get_my_tickets(
 def get_assigned_tickets(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get tickets assigned to current user"""
@@ -234,7 +234,7 @@ def get_ticket_replies(
     ticket_id: int,
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get all replies for a ticket"""
@@ -289,7 +289,7 @@ def set_ticket_sla(
 def get_sla_breached_tickets(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get tickets that have breached SLA"""
@@ -301,7 +301,7 @@ def get_sla_at_risk_tickets(
     db: Session = Depends(get_db),
     hours_threshold: int = Query(2, ge=1, le=24, description="Hours threshold to consider at risk"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get tickets at risk of breaching SLA within threshold hours"""
@@ -354,7 +354,7 @@ def get_escalated_tickets(
     db: Session = Depends(get_db),
     level: Optional[EscalationLevel] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get all escalated tickets, optionally filtered by level"""
@@ -463,7 +463,7 @@ def search_tickets(
     q: str = Query(..., min_length=2, description="Search query"),
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Search tickets by subject, description, ticket ID, or tags"""
@@ -474,7 +474,7 @@ def search_tickets(
 def get_unassigned_tickets(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get all unassigned tickets"""
@@ -486,7 +486,7 @@ def get_tickets_by_department(
     department: str,
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get tickets by department"""
@@ -502,7 +502,7 @@ def get_tickets_by_department(
 def get_ticket_templates(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     active_only: bool = True,
     current_user: User = Depends(get_current_user),
 ):
@@ -610,7 +610,7 @@ def get_canned_responses(
     db: Session = Depends(get_db),
     category: Optional[str] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get canned responses, optionally filtered by category"""
@@ -657,7 +657,7 @@ def search_canned_responses(
     q: str = Query(..., min_length=2, description="Search query"),
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Search canned responses by title or content"""

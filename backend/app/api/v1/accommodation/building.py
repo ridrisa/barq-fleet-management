@@ -17,7 +17,7 @@ router = APIRouter()
 def get_buildings(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     search: Optional[str] = None,
     current_user: User = Depends(get_current_user),
 ):

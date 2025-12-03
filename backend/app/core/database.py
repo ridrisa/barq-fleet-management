@@ -381,8 +381,8 @@ def get_tenant_db(
     db = db_manager.create_session()
     try:
         # Set RLS context variables for tenant isolation
-        db.execute(text(f"SET app.current_org_id = '{organization_id}'"))
-        db.execute(text(f"SET app.is_superuser = '{str(is_superuser).lower()}'"))
+        db.execute(text("SET app.current_org_id = :org_id"), {"org_id": str(int(organization_id))})
+        db.execute(text("SET app.is_superuser = :is_super"), {"is_super": str(is_superuser).lower()})
         yield db
     except Exception:
         db.rollback()
@@ -413,8 +413,8 @@ class TenantContext:
 
     def __enter__(self) -> Session:
         self.session = db_manager.create_session()
-        self.session.execute(text(f"SET app.current_org_id = '{self.organization_id}'"))
-        self.session.execute(text(f"SET app.is_superuser = '{str(self.is_superuser).lower()}'"))
+        self.session.execute(text("SET app.current_org_id = :org_id"), {"org_id": str(int(self.organization_id))})
+        self.session.execute(text("SET app.is_superuser = :is_super"), {"is_super": str(self.is_superuser).lower()})
         return self.session
 
     def __exit__(self, exc_type, exc_val, exc_tb):

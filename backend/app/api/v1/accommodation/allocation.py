@@ -18,7 +18,7 @@ router = APIRouter()
 def get_allocations(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     courier_id: Optional[int] = None,
     bed_id: Optional[int] = None,
     active_only: bool = False,

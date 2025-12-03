@@ -23,7 +23,7 @@ def get_maintenance_records(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     vehicle_id: Optional[int] = None,
 ):
     """Get maintenance records"""
@@ -46,7 +46,7 @@ def get_scheduled_maintenance(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
 ):
     """Get scheduled maintenance"""
     return maintenance_service.get_scheduled(
@@ -60,7 +60,7 @@ def get_overdue_maintenance(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
 ):
     """Get overdue maintenance"""
     return maintenance_service.get_overdue(

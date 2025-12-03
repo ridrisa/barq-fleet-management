@@ -56,6 +56,11 @@ class VehicleBase(BaseModel):
     notes: Optional[str] = None
     is_pool_vehicle: bool = False
 
+    # FMS Integration fields
+    fms_asset_id: Optional[int] = None
+    fms_tracking_unit_id: Optional[int] = None
+    fms_last_sync: Optional[datetime] = None
+
 
 # Schema for creating a vehicle
 class VehicleCreate(VehicleBase):
@@ -116,6 +121,11 @@ class VehicleUpdate(BaseModel):
     total_trips: Optional[int] = Field(None, ge=0)
     total_distance: Optional[Decimal] = Field(None, ge=0)
     avg_fuel_consumption: Optional[Decimal] = Field(None, ge=0)
+
+    # FMS Integration fields
+    fms_asset_id: Optional[int] = None
+    fms_tracking_unit_id: Optional[int] = None
+    fms_last_sync: Optional[datetime] = None
 
 
 # Schema for vehicle response

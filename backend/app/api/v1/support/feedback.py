@@ -25,7 +25,7 @@ router = APIRouter()
 def get_feedbacks(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     category: Optional[FeedbackCategory] = None,
     status_filter: Optional[FeedbackStatus] = Query(None, alias="status"),
     rating: Optional[int] = Query(None, ge=1, le=5),
@@ -74,7 +74,7 @@ def get_feedback_statistics(
 def get_positive_feedback(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get positive feedback (4-5 stars)"""
@@ -85,7 +85,7 @@ def get_positive_feedback(
 def get_negative_feedback(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get negative feedback (1-2 stars)"""

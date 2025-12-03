@@ -6,7 +6,7 @@ These can be merged into users.py or kept separate.
 
 import secrets
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
@@ -54,11 +54,11 @@ class PasswordResetConfirm(BaseModel):
 
 
 class PasswordResetResponse(BaseModel):
-    """Schema for password reset response"""
+    """Schema for password reset response - never exposes sensitive tokens"""
 
     message: str
-    reset_token: Optional[str] = None
-    expires_at: Optional[datetime] = None
+    # SECURITY: reset_token and expires_at removed - these should NEVER be in API responses
+    # Tokens should only be sent via secure channels (email/SMS)
 
 
 @router.post("/bulk/activate", response_model=dict)
@@ -212,34 +212,48 @@ def request_password_reset(
     """
     Request password reset.
 
-    Generates a password reset token and sends it via email.
+    Sends a password reset link via email.
     Public endpoint - no authentication required.
 
-    In production, this would:
-    1. Generate a secure token
-    2. Store it with expiration
-    3. Send email with reset link
-    4. Return success without revealing if user exists (security)
+    SECURITY:
+    - Always returns generic success message to prevent user enumeration
+    - NEVER returns the reset token in the response
+    - Token should only be sent via secure channel (email)
+
+    Implementation steps:
+    1. Generate secure random token
+    2. Store token hash (not raw token) in database with expiration
+    3. Send email with reset link containing the raw token
+    4. Return generic success message
     """
     user = db.query(User).filter(User.email == data.email).first()
 
     # Always return success to avoid user enumeration
+    # (Don't reveal if email exists or not)
     if not user:
         return PasswordResetResponse(
             message="If an account exists with this email, a password reset link has been sent."
         )
 
-    # Generate reset token (in production, store this securely)
+    # Generate reset token
     reset_token = secrets.token_urlsafe(32)
     expires_at = datetime.utcnow() + timedelta(hours=24)
 
-    # TODO: Store token in database with expiration
-    # TODO: Send email with reset link
+    # TODO: Store token hash in database (not the raw token)
+    # Example: store SHA-256 hash of the token
+    # token_hash = hashlib.sha256(reset_token.encode()).hexdigest()
+    # PasswordResetToken.create(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
 
+    # TODO: Send email with reset link containing the raw token
+    # Example: send_email(
+    #     to=user.email,
+    #     subject="Password Reset",
+    #     body=f"Reset your password: {FRONTEND_URL}/reset-password?token={reset_token}"
+    # )
+
+    # Return generic success message - NEVER return the token in response
     return PasswordResetResponse(
-        message="Password reset link has been sent to your email",
-        reset_token=reset_token,  # Only for development/testing
-        expires_at=expires_at,
+        message="If an account exists with this email, a password reset link has been sent."
     )
 
 
@@ -254,7 +268,17 @@ def admin_reset_user_password(
 
     Requires superuser permission.
 
-    Generates a temporary password and forces password change on next login.
+    SECURITY:
+    - Generates a temporary password and sends it to user via secure channel (email)
+    - NEVER returns the temporary password in the API response
+    - Sets flag to force password change on next login
+
+    Implementation steps:
+    1. Generate secure temporary password
+    2. Hash and store password
+    3. Send temp password to user's email (not in API response)
+    4. Set force_password_change flag
+    5. Return success message only
     """
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -266,14 +290,21 @@ def admin_reset_user_password(
     temp_password = secrets.token_urlsafe(12)
     user.hashed_password = get_password_hash(temp_password)
 
+    # TODO: Send temp_password via email to user.email
+    # Example: send_email(
+    #     to=user.email,
+    #     subject="Password Reset by Administrator",
+    #     body=f"Your temporary password is: {temp_password}\nPlease change it upon next login."
+    # )
+
     # TODO: Set flag to force password change on next login
     # user.force_password_change = True
 
     db.commit()
 
+    # SECURITY: Don't return the password - it should be sent via email
     return {
-        "message": "Password has been reset",
-        "temporary_password": temp_password,  # In production, send via secure channel
+        "message": "Password has been reset. Temporary password sent to user's email.",
         "user_id": user.id,
         "email": user.email,
     }

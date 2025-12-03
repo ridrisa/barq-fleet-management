@@ -20,3 +20,11 @@ class User(BaseModel):
 
     # Relationships - RBAC (uncommented to fix bidirectional relationship)
     roles = relationship("Role", secondary="user_roles", back_populates="users")
+
+    # Password reset tokens relationship
+    password_reset_tokens = relationship(
+        "PasswordResetToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic"
+    )

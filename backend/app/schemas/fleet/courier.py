@@ -56,6 +56,11 @@ class CourierBase(BaseModel):
     emergency_contact_name: Optional[str] = Field(None, max_length=200)
     emergency_contact_phone: Optional[str] = Field(None, pattern=r"^\+?[0-9]{9,15}$")
 
+    # FMS Integration fields
+    fms_asset_id: Optional[int] = None
+    fms_driver_id: Optional[int] = None
+    fms_last_sync: Optional[datetime] = None
+
 
 # Schema for creating a new courier
 class CourierCreate(CourierBase):
@@ -115,6 +120,11 @@ class CourierUpdate(BaseModel):
 
     performance_score: Optional[Decimal] = Field(None, ge=0, le=100)
     total_deliveries: Optional[int] = Field(None, ge=0)
+
+    # FMS Integration fields
+    fms_asset_id: Optional[int] = None
+    fms_driver_id: Optional[int] = None
+    fms_last_sync: Optional[datetime] = None
 
 
 # Schema for courier response

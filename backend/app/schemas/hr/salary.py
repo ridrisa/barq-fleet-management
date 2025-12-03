@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -34,7 +34,8 @@ class SalaryResponse(SalaryBase):
     id: int
     gross_salary: Decimal
     net_salary: Decimal
-    created_at: date
-    updated_at: Optional[date] = None
+    payment_date: Optional[date] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

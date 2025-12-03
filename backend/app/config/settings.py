@@ -21,9 +21,16 @@ class Settings:
         # Security
         self.SECRET_KEY: str = self._require_secret("SECRET_KEY")
         self.ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+
+        # Environment-sensitive JWT expiration (15 min prod, 60 min dev)
+        default_expire = "15" if self.ENVIRONMENT.lower() == "production" else "60"
         self.ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
-            os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")
+            os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", default_expire)
         )
+
+        # JWT audience and issuer verification
+        self.JWT_AUDIENCE: str = os.getenv("JWT_AUDIENCE", "barq-client")
+        self.JWT_ISSUER: str = os.getenv("JWT_ISSUER", "barq-api")
 
         # Google OAuth (optional)
         self.GOOGLE_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")

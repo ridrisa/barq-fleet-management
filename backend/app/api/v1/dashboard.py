@@ -5,11 +5,26 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import and_, case, extract, func, or_
 from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_current_organization, get_db
 from app.models.fleet.assignment import CourierVehicleAssignment
 from app.models.fleet.courier import Courier, CourierStatus, ProjectType, SponsorshipStatus
 from app.models.fleet.vehicle import Vehicle
+from app.models.tenant.organization import Organization
 from app.models.user import User
+from app.schemas.analytics import (
+    DashboardStatsResponse,
+    DeliveryTrendsResponse,
+    FleetStatusResponse,
+    CourierStatusChartResponse,
+    SponsorshipDistributionResponse,
+    ProjectDistributionResponse,
+    CityDistributionResponse,
+    MonthlyTrendsResponse,
+    DashboardAlertsResponse,
+    TopCouriersResponse,
+    RecentActivityResponse,
+    ExecutiveSummaryResponse,
+)
 
 # Try importing optional models
 try:
@@ -36,41 +51,99 @@ except ImportError:
 router = APIRouter()
 
 
-@router.get("/stats")
-def get_dashboard_stats(db: Session = Depends(get_db)):
+@router.get("/stats", response_model=DashboardStatsResponse)
+def get_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> DashboardStatsResponse:
     """
-    Get comprehensive dashboard statistics.
+    Get comprehensive dashboard statistics for the current organization.
     """
-    # Basic counts
-    total_users = db.query(User).count()
-    total_vehicles = db.query(Vehicle).count()
-    total_couriers = db.query(Courier).count()
-    total_assignments = db.query(CourierVehicleAssignment).count()
+    org_id = current_org.id
+
+    # Basic counts - filtered by organization
+    total_vehicles = db.query(Vehicle).filter(Vehicle.organization_id == org_id).count()
+    total_couriers = db.query(Courier).filter(Courier.organization_id == org_id).count()
+    total_assignments = (
+        db.query(CourierVehicleAssignment)
+        .filter(CourierVehicleAssignment.organization_id == org_id)
+        .count()
+    )
+
+    # Note: User model may not have organization_id, so we skip filtering for users
+    # or count users through OrganizationUser relationship if needed
+    total_users = 0  # Placeholder - implement based on OrganizationUser if needed
 
     # Courier status breakdown
-    active_couriers = db.query(Courier).filter(Courier.status == CourierStatus.ACTIVE).count()
-    inactive_couriers = db.query(Courier).filter(Courier.status == CourierStatus.INACTIVE).count()
-    on_leave_couriers = db.query(Courier).filter(Courier.status == CourierStatus.ON_LEAVE).count()
-    onboarding_couriers = (
-        db.query(Courier).filter(Courier.status == CourierStatus.ONBOARDING).count()
+    active_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ACTIVE)
+        .count()
     )
-    suspended_couriers = db.query(Courier).filter(Courier.status == CourierStatus.SUSPENDED).count()
+    inactive_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.INACTIVE)
+        .count()
+    )
+    on_leave_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ON_LEAVE)
+        .count()
+    )
+    onboarding_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ONBOARDING)
+        .count()
+    )
+    suspended_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.SUSPENDED)
+        .count()
+    )
 
     # Vehicle status breakdown
-    vehicles_available = db.query(Vehicle).filter(Vehicle.status == "available").count()
-    vehicles_assigned = db.query(Vehicle).filter(Vehicle.status == "assigned").count()
-    vehicles_maintenance = db.query(Vehicle).filter(Vehicle.status == "maintenance").count()
-    vehicles_out_of_service = db.query(Vehicle).filter(Vehicle.status == "out_of_service").count()
+    vehicles_available = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "available")
+        .count()
+    )
+    vehicles_assigned = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "assigned")
+        .count()
+    )
+    vehicles_maintenance = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "maintenance")
+        .count()
+    )
+    vehicles_out_of_service = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "out_of_service")
+        .count()
+    )
 
     # Recent activity (last 7 days)
     week_ago = datetime.utcnow() - timedelta(days=7)
     month_ago = datetime.utcnow() - timedelta(days=30)
 
-    new_couriers_this_week = db.query(Courier).filter(Courier.created_at >= week_ago).count()
-    new_couriers_this_month = db.query(Courier).filter(Courier.created_at >= month_ago).count()
+    new_couriers_this_week = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.created_at >= week_ago)
+        .count()
+    )
+    new_couriers_this_month = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.created_at >= month_ago)
+        .count()
+    )
     new_assignments_this_week = (
         db.query(CourierVehicleAssignment)
-        .filter(CourierVehicleAssignment.created_at >= week_ago)
+        .filter(
+            CourierVehicleAssignment.organization_id == org_id,
+            CourierVehicleAssignment.created_at >= week_ago,
+        )
         .count()
     )
 
@@ -84,33 +157,67 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 
     # Sponsorship breakdown
     ajeer_count = (
-        db.query(Courier).filter(Courier.sponsorship_status == SponsorshipStatus.AJEER).count()
+        db.query(Courier)
+        .filter(
+            Courier.organization_id == org_id,
+            Courier.sponsorship_status == SponsorshipStatus.AJEER,
+        )
+        .count()
     )
     inhouse_count = (
-        db.query(Courier).filter(Courier.sponsorship_status == SponsorshipStatus.INHOUSE).count()
+        db.query(Courier)
+        .filter(
+            Courier.organization_id == org_id,
+            Courier.sponsorship_status == SponsorshipStatus.INHOUSE,
+        )
+        .count()
     )
     freelancer_count = (
-        db.query(Courier).filter(Courier.sponsorship_status == SponsorshipStatus.FREELANCER).count()
+        db.query(Courier)
+        .filter(
+            Courier.organization_id == org_id,
+            Courier.sponsorship_status == SponsorshipStatus.FREELANCER,
+        )
+        .count()
     )
 
     # Project type breakdown
     ecommerce_count = (
-        db.query(Courier).filter(Courier.project_type == ProjectType.ECOMMERCE).count()
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.project_type == ProjectType.ECOMMERCE)
+        .count()
     )
-    food_count = db.query(Courier).filter(Courier.project_type == ProjectType.FOOD).count()
+    food_count = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.project_type == ProjectType.FOOD)
+        .count()
+    )
     warehouse_count = (
-        db.query(Courier).filter(Courier.project_type == ProjectType.WAREHOUSE).count()
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.project_type == ProjectType.WAREHOUSE)
+        .count()
     )
-    barq_count = db.query(Courier).filter(Courier.project_type == ProjectType.BARQ).count()
+    barq_count = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.project_type == ProjectType.BARQ)
+        .count()
+    )
 
     # Couriers with vehicles
-    couriers_with_vehicle = db.query(Courier).filter(Courier.current_vehicle_id.isnot(None)).count()
+    couriers_with_vehicle = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.current_vehicle_id.isnot(None))
+        .count()
+    )
 
     # Calculate growth rates
     two_weeks_ago = datetime.utcnow() - timedelta(days=14)
     couriers_two_weeks = (
         db.query(Courier)
-        .filter(and_(Courier.created_at >= two_weeks_ago, Courier.created_at < week_ago))
+        .filter(
+            Courier.organization_id == org_id,
+            and_(Courier.created_at >= two_weeks_ago, Courier.created_at < week_ago),
+        )
         .count()
     )
 
@@ -176,11 +283,16 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/charts/deliveries")
-def get_delivery_trends(db: Session = Depends(get_db)):
+@router.get("/charts/deliveries", response_model=DeliveryTrendsResponse)
+def get_delivery_trends(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> DeliveryTrendsResponse:
     """
-    Get delivery trends for charts (last 7 days).
+    Get delivery trends for charts (last 7 days) for the current organization.
     """
+    org_id = current_org.id
     today = datetime.utcnow().date()
     data = []
 
@@ -189,14 +301,15 @@ def get_delivery_trends(db: Session = Depends(get_db)):
             day_date = today - timedelta(days=i)
             next_day = day_date + timedelta(days=1)
 
-            # Get actual delivery counts
+            # Get actual delivery counts filtered by organization
             total = (
                 db.query(Delivery)
                 .filter(
+                    Delivery.organization_id == org_id,
                     and_(
                         func.date(Delivery.created_at) >= day_date,
                         func.date(Delivery.created_at) < next_day,
-                    )
+                    ),
                 )
                 .count()
             )
@@ -204,11 +317,12 @@ def get_delivery_trends(db: Session = Depends(get_db)):
             completed = (
                 db.query(Delivery)
                 .filter(
+                    Delivery.organization_id == org_id,
                     and_(
                         func.date(Delivery.created_at) >= day_date,
                         func.date(Delivery.created_at) < next_day,
                         Delivery.status == DeliveryStatus.DELIVERED.value,
-                    )
+                    ),
                 )
                 .count()
             )
@@ -216,11 +330,12 @@ def get_delivery_trends(db: Session = Depends(get_db)):
             failed = (
                 db.query(Delivery)
                 .filter(
+                    Delivery.organization_id == org_id,
                     and_(
                         func.date(Delivery.created_at) >= day_date,
                         func.date(Delivery.created_at) < next_day,
                         Delivery.status == DeliveryStatus.FAILED.value,
-                    )
+                    ),
                 )
                 .count()
             )
@@ -256,15 +371,37 @@ def get_delivery_trends(db: Session = Depends(get_db)):
     return {"trend_data": data}
 
 
-@router.get("/charts/fleet-status")
-def get_fleet_status(db: Session = Depends(get_db)):
+@router.get("/charts/fleet-status", response_model=FleetStatusResponse)
+def get_fleet_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> FleetStatusResponse:
     """
-    Get fleet status distribution for pie chart.
+    Get fleet status distribution for pie chart for the current organization.
     """
-    vehicles_available = db.query(Vehicle).filter(Vehicle.status == "available").count()
-    vehicles_assigned = db.query(Vehicle).filter(Vehicle.status == "assigned").count()
-    vehicles_maintenance = db.query(Vehicle).filter(Vehicle.status == "maintenance").count()
-    vehicles_out_of_service = db.query(Vehicle).filter(Vehicle.status == "out_of_service").count()
+    org_id = current_org.id
+
+    vehicles_available = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "available")
+        .count()
+    )
+    vehicles_assigned = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "assigned")
+        .count()
+    )
+    vehicles_maintenance = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "maintenance")
+        .count()
+    )
+    vehicles_out_of_service = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "out_of_service")
+        .count()
+    )
 
     return {
         "fleet_status": [
@@ -276,11 +413,17 @@ def get_fleet_status(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/charts/courier-status")
-def get_courier_status_distribution(db: Session = Depends(get_db)):
+@router.get("/charts/courier-status", response_model=CourierStatusChartResponse)
+def get_courier_status_distribution(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> CourierStatusChartResponse:
     """
-    Get courier status distribution for charts.
+    Get courier status distribution for charts for the current organization.
     """
+    org_id = current_org.id
+
     status_counts = []
     status_colors = {
         CourierStatus.ACTIVE: "#10B981",
@@ -292,7 +435,11 @@ def get_courier_status_distribution(db: Session = Depends(get_db)):
     }
 
     for status in CourierStatus:
-        count = db.query(Courier).filter(Courier.status == status).count()
+        count = (
+            db.query(Courier)
+            .filter(Courier.organization_id == org_id, Courier.status == status)
+            .count()
+        )
         if count > 0:
             status_counts.append(
                 {
@@ -305,11 +452,17 @@ def get_courier_status_distribution(db: Session = Depends(get_db)):
     return {"courier_status": status_counts}
 
 
-@router.get("/charts/sponsorship")
-def get_sponsorship_distribution(db: Session = Depends(get_db)):
+@router.get("/charts/sponsorship", response_model=SponsorshipDistributionResponse)
+def get_sponsorship_distribution(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> SponsorshipDistributionResponse:
     """
-    Get courier sponsorship distribution.
+    Get courier sponsorship distribution for the current organization.
     """
+    org_id = current_org.id
+
     colors = {
         SponsorshipStatus.AJEER: "#3B82F6",
         SponsorshipStatus.INHOUSE: "#10B981",
@@ -319,7 +472,11 @@ def get_sponsorship_distribution(db: Session = Depends(get_db)):
 
     result = []
     for status in SponsorshipStatus:
-        count = db.query(Courier).filter(Courier.sponsorship_status == status).count()
+        count = (
+            db.query(Courier)
+            .filter(Courier.organization_id == org_id, Courier.sponsorship_status == status)
+            .count()
+        )
         if count > 0:
             result.append(
                 {
@@ -332,11 +489,17 @@ def get_sponsorship_distribution(db: Session = Depends(get_db)):
     return {"sponsorship_distribution": result}
 
 
-@router.get("/charts/project-types")
-def get_project_type_distribution(db: Session = Depends(get_db)):
+@router.get("/charts/project-types", response_model=ProjectDistributionResponse)
+def get_project_type_distribution(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> ProjectDistributionResponse:
     """
-    Get courier distribution by project type.
+    Get courier distribution by project type for the current organization.
     """
+    org_id = current_org.id
+
     colors = {
         ProjectType.ECOMMERCE: "#3B82F6",
         ProjectType.FOOD: "#F59E0B",
@@ -347,7 +510,11 @@ def get_project_type_distribution(db: Session = Depends(get_db)):
 
     result = []
     for project in ProjectType:
-        count = db.query(Courier).filter(Courier.project_type == project).count()
+        count = (
+            db.query(Courier)
+            .filter(Courier.organization_id == org_id, Courier.project_type == project)
+            .count()
+        )
         if count > 0:
             result.append(
                 {
@@ -360,14 +527,20 @@ def get_project_type_distribution(db: Session = Depends(get_db)):
     return {"project_distribution": result}
 
 
-@router.get("/charts/city-distribution")
-def get_city_distribution(db: Session = Depends(get_db)):
+@router.get("/charts/city-distribution", response_model=CityDistributionResponse)
+def get_city_distribution(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> CityDistributionResponse:
     """
-    Get courier distribution by city.
+    Get courier distribution by city for the current organization.
     """
+    org_id = current_org.id
+
     city_counts = (
         db.query(Courier.city, func.count(Courier.id).label("count"))
-        .filter(Courier.city.isnot(None))
+        .filter(Courier.organization_id == org_id, Courier.city.isnot(None))
         .group_by(Courier.city)
         .order_by(func.count(Courier.id).desc())
         .limit(10)
@@ -394,11 +567,16 @@ def get_city_distribution(db: Session = Depends(get_db)):
     return {"city_distribution": result}
 
 
-@router.get("/charts/monthly-trends")
-def get_monthly_trends(db: Session = Depends(get_db)):
+@router.get("/charts/monthly-trends", response_model=MonthlyTrendsResponse)
+def get_monthly_trends(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> MonthlyTrendsResponse:
     """
-    Get monthly courier onboarding trends for the last 6 months.
+    Get monthly courier onboarding trends for the last 6 months for the current organization.
     """
+    org_id = current_org.id
     today = datetime.utcnow().date()
     data = []
 
@@ -416,7 +594,10 @@ def get_monthly_trends(db: Session = Depends(get_db)):
         # Count new couriers
         new_couriers = (
             db.query(Courier)
-            .filter(and_(Courier.created_at >= month_start, Courier.created_at < next_month))
+            .filter(
+                Courier.organization_id == org_id,
+                and_(Courier.created_at >= month_start, Courier.created_at < next_month),
+            )
             .count()
         )
 
@@ -424,11 +605,12 @@ def get_monthly_trends(db: Session = Depends(get_db)):
         terminated = (
             db.query(Courier)
             .filter(
+                Courier.organization_id == org_id,
                 and_(
                     Courier.status == CourierStatus.TERMINATED,
                     Courier.updated_at >= month_start,
                     Courier.updated_at < next_month,
-                )
+                ),
             )
             .count()
         )
@@ -445,11 +627,16 @@ def get_monthly_trends(db: Session = Depends(get_db)):
     return {"monthly_trends": data}
 
 
-@router.get("/alerts")
-def get_dashboard_alerts(db: Session = Depends(get_db)):
+@router.get("/alerts", response_model=DashboardAlertsResponse)
+def get_dashboard_alerts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> DashboardAlertsResponse:
     """
-    Get system alerts and warnings.
+    Get system alerts and warnings for the current organization.
     """
+    org_id = current_org.id
     alerts = []
     today = date.today()
     warning_days = 30
@@ -459,12 +646,13 @@ def get_dashboard_alerts(db: Session = Depends(get_db)):
     expiring_iqamas = (
         db.query(Courier)
         .filter(
+            Courier.organization_id == org_id,
             and_(
                 Courier.iqama_expiry_date.isnot(None),
                 Courier.iqama_expiry_date <= today + timedelta(days=warning_days),
                 Courier.iqama_expiry_date > today,
                 Courier.status == CourierStatus.ACTIVE,
-            )
+            ),
         )
         .count()
     )
@@ -472,11 +660,12 @@ def get_dashboard_alerts(db: Session = Depends(get_db)):
     expired_iqamas = (
         db.query(Courier)
         .filter(
+            Courier.organization_id == org_id,
             and_(
                 Courier.iqama_expiry_date.isnot(None),
                 Courier.iqama_expiry_date <= today,
                 Courier.status == CourierStatus.ACTIVE,
-            )
+            ),
         )
         .count()
     )
@@ -484,12 +673,13 @@ def get_dashboard_alerts(db: Session = Depends(get_db)):
     expiring_licenses = (
         db.query(Courier)
         .filter(
+            Courier.organization_id == org_id,
             and_(
                 Courier.license_expiry_date.isnot(None),
                 Courier.license_expiry_date <= today + timedelta(days=warning_days),
                 Courier.license_expiry_date > today,
                 Courier.status == CourierStatus.ACTIVE,
-            )
+            ),
         )
         .count()
     )
@@ -497,22 +687,30 @@ def get_dashboard_alerts(db: Session = Depends(get_db)):
     expired_licenses = (
         db.query(Courier)
         .filter(
+            Courier.organization_id == org_id,
             and_(
                 Courier.license_expiry_date.isnot(None),
                 Courier.license_expiry_date <= today,
                 Courier.status == CourierStatus.ACTIVE,
-            )
+            ),
         )
         .count()
     )
 
     # Vehicles in maintenance
-    vehicles_in_maintenance = db.query(Vehicle).filter(Vehicle.status == "maintenance").count()
+    vehicles_in_maintenance = (
+        db.query(Vehicle)
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == "maintenance")
+        .count()
+    )
 
     # Couriers without vehicles
     active_without_vehicle = (
         db.query(Courier)
-        .filter(and_(Courier.status == CourierStatus.ACTIVE, Courier.current_vehicle_id.is_(None)))
+        .filter(
+            Courier.organization_id == org_id,
+            and_(Courier.status == CourierStatus.ACTIVE, Courier.current_vehicle_id.is_(None)),
+        )
         .count()
     )
 
@@ -599,14 +797,21 @@ def get_dashboard_alerts(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/performance/top-couriers")
-def get_top_couriers(db: Session = Depends(get_db), limit: int = 5):
+@router.get("/performance/top-couriers", response_model=TopCouriersResponse)
+def get_top_couriers(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+    limit: int = 5,
+) -> TopCouriersResponse:
     """
-    Get top performing couriers.
+    Get top performing couriers for the current organization.
     """
+    org_id = current_org.id
+
     top_couriers = (
         db.query(Courier)
-        .filter(Courier.status == CourierStatus.ACTIVE)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ACTIVE)
         .order_by(
             Courier.performance_score.desc().nullslast(),
             Courier.total_deliveries.desc().nullslast(),
@@ -633,15 +838,27 @@ def get_top_couriers(db: Session = Depends(get_db), limit: int = 5):
     return {"top_couriers": result}
 
 
-@router.get("/recent-activity")
-def get_recent_activity(db: Session = Depends(get_db), limit: int = 10):
+@router.get("/recent-activity", response_model=RecentActivityResponse)
+def get_recent_activity(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+    limit: int = 10,
+) -> RecentActivityResponse:
     """
-    Get recent system activity.
+    Get recent system activity for the current organization.
     """
+    org_id = current_org.id
     activities = []
 
     # Get recent couriers
-    recent_couriers = db.query(Courier).order_by(Courier.created_at.desc()).limit(5).all()
+    recent_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id)
+        .order_by(Courier.created_at.desc())
+        .limit(5)
+        .all()
+    )
     for courier in recent_couriers:
         activities.append(
             {
@@ -657,6 +874,7 @@ def get_recent_activity(db: Session = Depends(get_db), limit: int = 10):
     # Get recent assignments
     recent_assignments = (
         db.query(CourierVehicleAssignment)
+        .filter(CourierVehicleAssignment.organization_id == org_id)
         .order_by(CourierVehicleAssignment.created_at.desc())
         .limit(5)
         .all()
@@ -679,27 +897,37 @@ def get_recent_activity(db: Session = Depends(get_db), limit: int = 10):
     return {"activities": activities[:limit]}
 
 
-@router.get("/summary")
-def get_executive_summary(db: Session = Depends(get_db)):
+@router.get("/summary", response_model=ExecutiveSummaryResponse)
+def get_executive_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> ExecutiveSummaryResponse:
     """
-    Get executive summary with key metrics and insights.
+    Get executive summary with key metrics and insights for the current organization.
     """
+    org_id = current_org.id
+
     # Get basic counts
-    total_couriers = db.query(Courier).count()
-    active_couriers = db.query(Courier).filter(Courier.status == CourierStatus.ACTIVE).count()
-    total_vehicles = db.query(Vehicle).count()
+    total_couriers = db.query(Courier).filter(Courier.organization_id == org_id).count()
+    active_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ACTIVE)
+        .count()
+    )
+    total_vehicles = db.query(Vehicle).filter(Vehicle.organization_id == org_id).count()
 
     # Calculate averages
     avg_performance = (
         db.query(func.avg(Courier.performance_score))
-        .filter(Courier.status == CourierStatus.ACTIVE)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ACTIVE)
         .scalar()
         or 0
     )
 
     avg_deliveries = (
         db.query(func.avg(Courier.total_deliveries))
-        .filter(Courier.status == CourierStatus.ACTIVE)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ACTIVE)
         .scalar()
         or 0
     )
@@ -708,10 +936,17 @@ def get_executive_summary(db: Session = Depends(get_db)):
     week_ago = datetime.utcnow() - timedelta(days=7)
     two_weeks_ago = datetime.utcnow() - timedelta(days=14)
 
-    this_week_couriers = db.query(Courier).filter(Courier.created_at >= week_ago).count()
+    this_week_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.created_at >= week_ago)
+        .count()
+    )
     last_week_couriers = (
         db.query(Courier)
-        .filter(and_(Courier.created_at >= two_weeks_ago, Courier.created_at < week_ago))
+        .filter(
+            Courier.organization_id == org_id,
+            and_(Courier.created_at >= two_weeks_ago, Courier.created_at < week_ago),
+        )
         .count()
     )
 
@@ -739,26 +974,34 @@ def get_executive_summary(db: Session = Depends(get_db)):
                 "up" if courier_change > 0 else "down" if courier_change < 0 else "stable"
             ),
         },
-        "health_score": calculate_fleet_health_score(db),
+        "health_score": calculate_fleet_health_score(db, org_id),
     }
 
 
-def calculate_fleet_health_score(db: Session) -> dict:
+def calculate_fleet_health_score(db: Session, org_id: int) -> dict:
     """
-    Calculate overall fleet health score (0-100).
+    Calculate overall fleet health score (0-100) for a specific organization.
     """
     scores = []
 
     # Courier availability score (weight: 30%)
-    total_couriers = db.query(Courier).count()
-    active_couriers = db.query(Courier).filter(Courier.status == CourierStatus.ACTIVE).count()
+    total_couriers = db.query(Courier).filter(Courier.organization_id == org_id).count()
+    active_couriers = (
+        db.query(Courier)
+        .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ACTIVE)
+        .count()
+    )
     courier_score = (active_couriers / total_couriers * 100) if total_couriers > 0 else 0
     scores.append(("Courier Availability", courier_score, 0.30))
 
     # Vehicle utilization score (weight: 25%)
-    total_vehicles = db.query(Vehicle).count()
+    total_vehicles = db.query(Vehicle).filter(Vehicle.organization_id == org_id).count()
     vehicles_active = (
-        db.query(Vehicle).filter(Vehicle.status.in_(["available", "assigned"])).count()
+        db.query(Vehicle)
+        .filter(
+            Vehicle.organization_id == org_id, Vehicle.status.in_(["available", "assigned"])
+        )
+        .count()
     )
     vehicle_score = (vehicles_active / total_vehicles * 100) if total_vehicles > 0 else 0
     scores.append(("Vehicle Utilization", vehicle_score, 0.25))
@@ -768,11 +1011,12 @@ def calculate_fleet_health_score(db: Session) -> dict:
     couriers_with_valid_docs = (
         db.query(Courier)
         .filter(
+            Courier.organization_id == org_id,
             and_(
                 Courier.status == CourierStatus.ACTIVE,
                 or_(Courier.iqama_expiry_date.is_(None), Courier.iqama_expiry_date > today),
                 or_(Courier.license_expiry_date.is_(None), Courier.license_expiry_date > today),
-            )
+            ),
         )
         .count()
     )
@@ -783,7 +1027,8 @@ def calculate_fleet_health_score(db: Session) -> dict:
     couriers_with_vehicle = (
         db.query(Courier)
         .filter(
-            and_(Courier.status == CourierStatus.ACTIVE, Courier.current_vehicle_id.isnot(None))
+            Courier.organization_id == org_id,
+            and_(Courier.status == CourierStatus.ACTIVE, Courier.current_vehicle_id.isnot(None)),
         )
         .count()
     )

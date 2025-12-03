@@ -22,7 +22,7 @@ router = APIRouter()
 def get_instances(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     status: Optional[WorkflowStatus] = None,
     template_id: Optional[int] = None,
     initiated_by: Optional[int] = None,
@@ -212,7 +212,7 @@ def get_user_workflows(
     user_id: int,
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get all workflow instances initiated by a specific user"""

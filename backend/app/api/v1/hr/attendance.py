@@ -20,7 +20,7 @@ def get_attendances(
     db: Session = Depends(get_db),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     courier_id: Optional[int] = None,
     status: Optional[AttendanceStatus] = None,
     date_from: Optional[date] = None,
@@ -128,7 +128,7 @@ def get_courier_attendance(
     db: Session = Depends(get_db),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get all attendance records for a specific courier"""

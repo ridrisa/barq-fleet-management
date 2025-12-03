@@ -18,7 +18,7 @@ def get_inspections(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     vehicle_id: Optional[int] = None,
 ):
     """Get inspections"""
@@ -41,7 +41,7 @@ def get_failed_inspections(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
 ):
     """Get failed inspections"""
     return inspection_service.get_failed_inspections(
@@ -55,7 +55,7 @@ def get_follow_up_inspections(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
 ):
     """Get inspections requiring follow-up"""
     return inspection_service.get_requiring_follow_up(

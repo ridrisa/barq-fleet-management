@@ -20,7 +20,7 @@ router = APIRouter()
 def get_deliveries(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     courier_id: Optional[int] = None,
     status_filter: Optional[DeliveryStatus] = Query(None, alias="status"),
     start_date: Optional[date] = None,
@@ -97,7 +97,7 @@ def get_pending_deliveries(
     db: Session = Depends(get_db),
     courier_id: Optional[int] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
 ):
@@ -113,7 +113,7 @@ def get_cod_deliveries(
     courier_id: Optional[int] = None,
     status_filter: Optional[DeliveryStatus] = Query(None, alias="status"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
 ):

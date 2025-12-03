@@ -28,7 +28,7 @@ def get_vehicles(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     status: Optional[VehicleStatus] = None,
     vehicle_type: Optional[VehicleType] = None,
     city: Optional[str] = None,
@@ -57,7 +57,7 @@ def get_active_vehicles(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     vehicle_type: Optional[VehicleType] = None,
 ):
     """Get active vehicles"""
@@ -72,7 +72,7 @@ def get_available_vehicles(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     vehicle_type: Optional[VehicleType] = None,
 ):
     """Get available vehicles (not assigned)"""
@@ -88,7 +88,7 @@ def get_vehicles_due_for_service(
     current_org: Organization = Depends(get_current_organization),
     days: int = Query(7, ge=1, le=365),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
 ):
     """Get vehicles due for service"""
     return vehicle_service.get_due_for_service(
@@ -233,7 +233,7 @@ def update_vehicle_mileage(
     }
 
 
-@router.post("/{vehicle_id}/update-status")
+@router.patch("/{vehicle_id}/update-status")
 def update_vehicle_status(
     vehicle_id: int,
     new_status: VehicleStatus,

@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.config.settings import settings
 from app.core.database import db_manager, get_db
+from app.core.token_blacklist import is_token_blacklisted
 from app.crud.user import crud_user
 from app.models.tenant.organization import Organization
 from app.models.user import User
@@ -55,7 +56,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         User: The authenticated user
 
     Raises:
-        HTTPException: 401 if token is invalid or user not found
+        HTTPException: 401 if token is invalid, blacklisted, or user not found
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,12 +64,22 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    # Check if token is blacklisted FIRST
+    if is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False},  # Skip audience verification for flexibility
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+            options={"verify_aud": True, "verify_iss": True},
         )
         token_data = TokenPayload(**payload)
         if token_data.sub is None:
@@ -135,17 +146,27 @@ def get_organization_id_from_token(token: str = Depends(oauth2_scheme)) -> Optio
         token: JWT access token
 
     Returns:
-        Organization ID or None if not present in token
+        Organization ID or None if not present in token or if token is blacklisted
     """
+    # Check if token is blacklisted
+    if is_token_blacklisted(token):
+        return None
+
     try:
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False},
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+            options={"verify_aud": True, "verify_iss": True},
         )
         org_id = payload.get("org_id")
-        return int(org_id) if org_id else None
+        if org_id is not None:
+            org_id = int(org_id)
+            if org_id < 1:
+                return None
+        return org_id
     except (JWTError, ValueError, TypeError):
         return None
 
@@ -167,7 +188,7 @@ def get_current_organization(
         Organization: The active organization
 
     Raises:
-        HTTPException: 401 if no organization in token
+        HTTPException: 401 if no organization in token or invalid organization ID
         HTTPException: 403 if organization is inactive or not found
     """
     credentials_exception = HTTPException(
@@ -181,12 +202,22 @@ def get_current_organization(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={"verify_aud": False},
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+            options={"verify_aud": True, "verify_iss": True},
         )
         org_id = payload.get("org_id")
         if org_id is None:
             raise credentials_exception
+
+        # Add validation: org_id must be a positive integer
         org_id = int(org_id)
+        if org_id < 1:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid organization",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     except (JWTError, ValueError, TypeError):
         raise credentials_exception
 
@@ -229,8 +260,8 @@ def get_tenant_db_session(
     try:
         # Set RLS context variables
         is_superuser = crud_user.is_superuser(current_user)
-        db.execute(text(f"SET app.current_org_id = '{current_org.id}'"))
-        db.execute(text(f"SET app.is_superuser = '{str(is_superuser).lower()}'"))
+        db.execute(text("SET app.current_org_id = :org_id"), {"org_id": str(int(current_org.id))})
+        db.execute(text("SET app.is_superuser = :is_super"), {"is_super": str(is_superuser).lower()})
         yield db
     except Exception:
         db.rollback()
@@ -265,7 +296,7 @@ def get_optional_tenant_db_session(
 
     if org_id:
         try:
-            db.execute(text(f"SET app.current_org_id = '{org_id}'"))
+            db.execute(text("SET app.current_org_id = :org_id"), {"org_id": str(int(org_id))})
             yield db
         finally:
             try:

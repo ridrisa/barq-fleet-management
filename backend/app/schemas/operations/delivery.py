@@ -42,7 +42,7 @@ class DeliveryResponse(DeliveryBase):
     id: int
     status: DeliveryStatus
     delivered_at: Optional[datetime] = None
-    created_at: date
-    updated_at: Optional[date] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

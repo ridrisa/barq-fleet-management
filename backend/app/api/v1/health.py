@@ -9,7 +9,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
-from app.core.dependencies import get_db
+from app.core.dependencies import get_current_user, get_db
+from app.models.user import User
 
 router = APIRouter()
 
@@ -52,19 +53,43 @@ def readiness_check(db: Session = Depends(get_db)):
 
 
 @router.get("/")
+def health_check_basic(db: Session = Depends(get_db)):
+    """Basic health check - public endpoint for monitoring"""
+    try:
+        db.execute(text("SELECT 1"))
+        return {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "unhealthy",
+                "timestamp": datetime.utcnow().isoformat(),
+            },
+        )
+
+
 @router.get("/detailed")
-def health_check_detailed(db: Session = Depends(get_db)):
-    """Detailed health check with comprehensive system information"""
+def health_check_detailed(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Detailed health check with system information.
+    Requires authentication - only accessible to authenticated users.
+    """
     health_data: Dict[str, Any] = {
         "status": "healthy",
         "version": settings.VERSION,
-        "environment": settings.ENVIRONMENT,
         "timestamp": datetime.utcnow().isoformat(),
         "uptime_seconds": _get_uptime(),
         "checks": {},
         "system": {},
     }
 
+    # Database check
     try:
         start_time = datetime.utcnow()
         db.execute(text("SELECT 1"))
@@ -74,6 +99,7 @@ def health_check_detailed(db: Session = Depends(get_db)):
         health_data["status"] = "unhealthy"
         health_data["checks"]["database"] = {"status": "unhealthy", "error": str(e)}
 
+    # System metrics - reduced sensitive information
     try:
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage("/")
@@ -81,12 +107,10 @@ def health_check_detailed(db: Session = Depends(get_db)):
         health_data["system"] = {
             "cpu_percent": psutil.cpu_percent(interval=0.1),
             "memory": {
-                "total_mb": round(memory.total / (1024 * 1024), 2),
                 "available_mb": round(memory.available / (1024 * 1024), 2),
                 "percent_used": memory.percent,
             },
             "disk": {
-                "total_gb": round(disk.total / (1024 * 1024 * 1024), 2),
                 "free_gb": round(disk.free / (1024 * 1024 * 1024), 2),
                 "percent_used": disk.percent,
             },

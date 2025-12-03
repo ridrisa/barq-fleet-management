@@ -25,7 +25,7 @@ router = APIRouter()
 def get_articles(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     category: Optional[str] = None,
     published_only: bool = True,
 ):

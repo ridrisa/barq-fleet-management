@@ -8,6 +8,11 @@ from app.models.accommodation.building import Building
 from app.models.accommodation.room import Room, RoomStatus
 
 # ============================================================================
+# Security Models - Password Reset
+# ============================================================================
+from app.models.password_reset_token import PasswordResetToken
+
+# ============================================================================
 # Admin Models - System Management
 # ============================================================================
 from app.models.admin.api_key import ApiKey, ApiKeyStatus
@@ -133,6 +138,8 @@ __all__ = [
     "User",
     "AuditLog",
     "AuditAction",
+    # Security
+    "PasswordResetToken",
     # RBAC
     "Role",
     "Permission",

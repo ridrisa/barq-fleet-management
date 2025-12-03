@@ -28,7 +28,7 @@ router = APIRouter()
 def get_chat_sessions(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     status_filter: Optional[ChatStatus] = Query(None, alias="status"),
     agent_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
@@ -77,7 +77,7 @@ def get_waiting_sessions(
 def get_my_chat_sessions(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get chat sessions for current user (as customer)"""
@@ -90,7 +90,7 @@ def get_my_chat_sessions(
 def get_assigned_chat_sessions(
     db: Session = Depends(get_db),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
 ):
     """Get chat sessions assigned to current user (as agent)"""

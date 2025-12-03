@@ -73,10 +73,10 @@ def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = 
     }
 
 
-@router.post("/google", response_model=Token)
+@router.post("/google", response_model=TokenWithOrganization)
 def google_auth(*, db: Session = Depends(get_db), token_data: Dict[str, str] = Body(...)):
     """
-    Google OAuth2 authentication.
+    Google OAuth2 authentication with organization context.
     Expects: {"credential": "google_id_token"}
     """
     if not settings.GOOGLE_CLIENT_ID:
@@ -137,12 +137,40 @@ def google_auth(*, db: Session = Depends(get_db), token_data: Dict[str, str] = B
     if not crud_user.is_active(user):
         raise HTTPException(status_code=400, detail="Inactive user")
 
+    # Get user's primary organization (first active membership)
+    memberships = organization_user_service.get_by_user(db, user.id, is_active=True)
+
+    organization_id: Optional[int] = None
+    organization_name: Optional[str] = None
+    organization_role: Optional[str] = None
+    org = None
+
+    if memberships:
+        # Use first active organization
+        primary_membership = memberships[0]
+        org = organization_service.get(db, primary_membership.organization_id)
+        if org and org.is_active:
+            organization_id = org.id
+            organization_name = org.name
+            organization_role = primary_membership.role.value
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": str(user.id)},
+        data={
+            "sub": str(user.id),
+            "org_id": organization_id,
+            "org_role": organization_role,
+        },
         expires_delta=access_token_expires,
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "organization_id": organization_id,
+        "organization_name": organization_name,
+        "organization_role": organization_role,
+    }
 
 
 @router.post("/register", response_model=TokenWithOrganization)
