@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 import httpx
 import asyncio
-from app.api.deps import get_current_user
+from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.fms import get_fms_client
 

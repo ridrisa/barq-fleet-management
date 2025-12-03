@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.fleet import AccidentLogCreate, AccidentLogUpdate, AccidentLogResponse, AccidentLogList
 from app.services.fleet import accident_log_service

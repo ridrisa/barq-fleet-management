@@ -187,7 +187,7 @@ export default function AnalyticsOverview() {
                 height={300}
                 colors={['#10b981', '#ef4444']}
                 formatXAxis={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+                formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
               />
             </CardContent>
           </Card>
@@ -220,7 +220,7 @@ export default function AnalyticsOverview() {
                 xKey="name"
                 yKey="deliveries"
                 height={300}
-                formatXAxis={(value) => value.split(' ')[0]}
+                formatXAxis={(value) => String(value).split(' ')[0]}
               />
             </CardContent>
           </Card>

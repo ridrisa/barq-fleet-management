@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.hr.bonus import bonus as crud_bonus
 from app.schemas.hr.bonus import BonusCreate, BonusUpdate, BonusResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_bonus(
             detail="Bonus not found"
         )
     crud_bonus.remove(db, id=bonus_id)
+    return None

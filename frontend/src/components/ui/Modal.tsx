@@ -43,11 +43,17 @@ export const Modal = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={title ? 'modal-title' : undefined}
+    >
       {/* Overlay */}
       <div
         className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
         onClick={closeOnOverlayClick ? onClose : undefined}
+        aria-hidden="true"
       />
 
       {/* Modal */}
@@ -56,14 +62,16 @@ export const Modal = ({
           'relative bg-white rounded-lg shadow-xl w-full mx-4',
           sizes[size]
         )}
+        role="document"
       >
         {/* Header */}
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+            <h2 id="modal-title" className="text-xl font-semibold text-gray-900">{title}</h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Close modal"
             >
               <X className="h-5 w-5" />
             </button>

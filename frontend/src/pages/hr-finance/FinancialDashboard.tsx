@@ -238,7 +238,7 @@ export default function FinancialDashboard() {
               yKey={['revenue', 'expenses']}
               height={300}
               colors={['#3b82f6', '#ef4444']}
-              formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+              formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
             />
           </CardContent>
         </Card>
@@ -268,7 +268,7 @@ export default function FinancialDashboard() {
               xKey="month"
               yKey="profit"
               height={300}
-              formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+              formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
             />
           </CardContent>
         </Card>
@@ -283,7 +283,7 @@ export default function FinancialDashboard() {
               xKey="month"
               yKey="cashFlow"
               height={300}
-              formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+              formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
             />
           </CardContent>
         </Card>

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 from app.crud.workflow import (
     workflow_notification_template,
     workflow_notification,

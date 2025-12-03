@@ -6,14 +6,11 @@ import Layout from '@/components/Layout'
 const Landing = lazyWithRetry(() => import('@/pages/Landing'))
 const Dashboard = lazyWithRetry(() => import('@/pages/Dashboard'))
 const Login = lazyWithRetry(() => import('@/pages/Login'))
-const Users = lazyWithRetry(() => import('@/pages/Users'))
-const Couriers = lazyWithRetry(() => import('@/pages/Couriers'))
-const Vehicles = lazyWithRetry(() => import('@/pages/Vehicles'))
 
 // Fleet Module
 const CouriersList = lazyWithRetry(() => import('@/pages/fleet/CouriersList'))
 const CourierProfile = lazyWithRetry(() => import('@/pages/fleet/CourierProfile'))
-const VehiclesList = lazyWithRetry(() => import('@/pages/fleet/VehiclesList'))
+const Vehicles = lazyWithRetry(() => import('@/pages/fleet/Vehicles'))
 const VehicleAssignments = lazyWithRetry(() => import('@/pages/fleet/VehicleAssignments'))
 const FuelTracking = lazyWithRetry(() => import('@/pages/fleet/FuelTracking'))
 const MaintenanceSchedule = lazyWithRetry(() => import('@/pages/fleet/MaintenanceSchedule'))
@@ -51,7 +48,6 @@ const DeliveryTracking = lazyWithRetry(() => import('@/pages/operations/Delivery
 const ScheduledDeliveries = lazyWithRetry(() => import('@/pages/operations/ScheduledDeliveries'))
 const Routes = lazyWithRetry(() => import('@/pages/operations/Routes'))
 const RouteOptimization = lazyWithRetry(() => import('@/pages/operations/RouteOptimization'))
-const Incidents = lazyWithRetry(() => import('@/pages/operations/Incidents'))
 const IncidentReporting = lazyWithRetry(() => import('@/pages/operations/IncidentReporting'))
 const QualityControl = lazyWithRetry(() => import('@/pages/operations/QualityControl'))
 const CustomerFeedback = lazyWithRetry(() => import('@/pages/operations/CustomerFeedback'))
@@ -97,7 +93,6 @@ const Tickets = lazyWithRetry(() => import('@/pages/support/Tickets'))
 const TicketDetails = lazyWithRetry(() => import('@/pages/support/TicketDetails'))
 const KnowledgeBase = lazyWithRetry(() => import('@/pages/support/KnowledgeBase'))
 const FAQ = lazyWithRetry(() => import('@/pages/support/FAQ'))
-const FAQs = lazyWithRetry(() => import('@/pages/support/FAQs'))
 const LiveChat = lazyWithRetry(() => import('@/pages/support/LiveChat'))
 const Feedback = lazyWithRetry(() => import('@/pages/support/Feedback'))
 const SupportAnalytics = lazyWithRetry(() => import('@/pages/support/SupportAnalytics'))
@@ -113,7 +108,8 @@ const OperationsAnalytics = lazyWithRetry(() => import('@/pages/analytics/Operat
 const CustomReports = lazyWithRetry(() => import('@/pages/analytics/CustomReports'))
 const KPIDashboard = lazyWithRetry(() => import('@/pages/analytics/KPIDashboard'))
 const Forecasting = lazyWithRetry(() => import('@/pages/analytics/Forecasting'))
-const CourierPerformanceAnalytics = lazyWithRetry(() => import('@/pages/analytics/CourierPerformance'))
+// CourierPerformanceAnalytics uses the fleet version (consolidated)
+const CourierPerformanceAnalytics = lazyWithRetry(() => import('@/pages/fleet/CourierPerformance'))
 const DeliveryAnalytics = lazyWithRetry(() => import('@/pages/analytics/DeliveryAnalytics'))
 const PerformanceReports = lazyWithRetry(() => import('@/pages/analytics/PerformanceReports'))
 
@@ -149,14 +145,11 @@ export const routes: RouteObject[] = [
     element: <Layout />,
     children: [
       { index: true, element: <Dashboard /> },
-      { path: 'users', element: <Users /> },
-      { path: 'couriers', element: <Couriers /> },
-      { path: 'vehicles', element: <Vehicles /> },
 
       // Fleet routes
       { path: 'fleet/couriers', element: <CouriersList /> },
       { path: 'fleet/couriers/:id', element: <CourierProfile /> },
-      { path: 'fleet/vehicles', element: <VehiclesList /> },
+      { path: 'fleet/vehicles', element: <Vehicles /> },
       { path: 'fleet/assignments', element: <VehicleAssignments /> },
       { path: 'fleet/fuel', element: <FuelTracking /> },
       { path: 'fleet/maintenance', element: <MaintenanceSchedule /> },
@@ -194,7 +187,6 @@ export const routes: RouteObject[] = [
       { path: 'ops/scheduled-deliveries', element: <ScheduledDeliveries /> },
       { path: 'ops/routes', element: <Routes /> },
       { path: 'ops/route-optimization', element: <RouteOptimization /> },
-      { path: 'ops/incidents', element: <Incidents /> },
       { path: 'ops/incident-reporting', element: <IncidentReporting /> },
       { path: 'ops/quality', element: <QualityControl /> },
       { path: 'ops/feedback', element: <CustomerFeedback /> },
@@ -240,7 +232,6 @@ export const routes: RouteObject[] = [
       { path: 'support/tickets/:id', element: <TicketDetails /> },
       { path: 'support/kb', element: <KnowledgeBase /> },
       { path: 'support/faq', element: <FAQ /> },
-      { path: 'support/faqs', element: <FAQs /> },
       { path: 'support/chat', element: <LiveChat /> },
       { path: 'support/feedback', element: <Feedback /> },
       { path: 'support/contact', element: <ContactSupport /> },
@@ -286,11 +277,9 @@ export const routeImports = {
   dashboard: () => import('@/pages/Dashboard'),
   fleet: {
     couriers: () => import('@/pages/fleet/CouriersList'),
-    vehicles: () => import('@/pages/fleet/VehiclesList'),
-    // Add more as needed
+    vehicles: () => import('@/pages/fleet/Vehicles'),
   },
   analytics: {
-    overview: () => import('@/pages/analytics/Overview'),
-    // Add more as needed
+    overview: () => import('@/pages/analytics/AnalyticsOverview'),
   },
 }

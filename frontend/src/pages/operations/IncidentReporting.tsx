@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search, Edit, Trash2, AlertTriangle, Filter, Image } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, AlertTriangle, Filter, Image, Download } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -19,6 +19,7 @@ export default function IncidentReporting() {
   useTranslation()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingIncident, setEditingIncident] = useState<any>(null)
+  const [typeFilter, setTypeFilter] = useState<string>('all')
   const [severityFilter, setSeverityFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -69,8 +70,15 @@ export default function IncidentReporting() {
     handleCloseModal()
   }
 
+  const handleExport = () => {
+    alert('Exporting incidents to Excel...')
+  }
+
   // Apply filters
   let displayData = filteredData
+  if (typeFilter !== 'all') {
+    displayData = displayData.filter((i: any) => i.incident_type === typeFilter)
+  }
   if (severityFilter !== 'all') {
     displayData = displayData.filter((i: any) => i.severity === severityFilter)
   }
@@ -224,10 +232,16 @@ export default function IncidentReporting() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Incident Reporting</h1>
-        <Button onClick={handleOpenCreateModal}>
-          <Plus className="h-4 w-4 mr-2" />
-          Report Incident
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button onClick={handleOpenCreateModal}>
+            <Plus className="h-4 w-4 mr-2" />
+            Report Incident
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -305,6 +319,21 @@ export default function IncidentReporting() {
               </div>
               <div className="w-full sm:w-40">
                 <Select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  options={[
+                    { value: 'all', label: 'All Types' },
+                    { value: 'accident', label: 'Accident' },
+                    { value: 'theft', label: 'Theft' },
+                    { value: 'damage', label: 'Damage' },
+                    { value: 'violation', label: 'Violation' },
+                    { value: 'other', label: 'Other' },
+                  ]}
+                  leftIcon={<Filter className="h-4 w-4 text-gray-400" />}
+                />
+              </div>
+              <div className="w-full sm:w-40">
+                <Select
                   value={severityFilter}
                   onChange={(e) => setSeverityFilter(e.target.value)}
                   options={[
@@ -314,7 +343,6 @@ export default function IncidentReporting() {
                     { value: 'medium', label: 'Medium' },
                     { value: 'low', label: 'Low' },
                   ]}
-                  leftIcon={<Filter className="h-4 w-4 text-gray-400" />}
                 />
               </div>
               <div className="w-full sm:w-40">

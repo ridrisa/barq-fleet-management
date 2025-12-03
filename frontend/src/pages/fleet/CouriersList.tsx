@@ -149,6 +149,11 @@ export default function CouriersList() {
     )
   }
 
+  // Calculate status counts for KPI cards
+  const activeCouriers = filteredData.filter((c: any) => c.status === 'active').length
+  const onLeaveCouriers = filteredData.filter((c: any) => c.status === 'on_leave').length
+  const terminatedCouriers = filteredData.filter((c: any) => c.status === 'terminated').length
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -157,6 +162,42 @@ export default function CouriersList() {
           <Plus className="h-4 w-4 mr-2" />
           Add Courier
         </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">{filteredData.length}</p>
+              <p className="text-sm text-gray-600">Total Couriers</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{activeCouriers}</p>
+              <p className="text-sm text-gray-600">Active</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-yellow-600">{onLeaveCouriers}</p>
+              <p className="text-sm text-gray-600">On Leave</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-600">{terminatedCouriers}</p>
+              <p className="text-sm text-gray-600">Terminated</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>

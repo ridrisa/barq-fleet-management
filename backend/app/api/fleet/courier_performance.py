@@ -9,7 +9,7 @@ from pydantic import BaseModel
 import io
 import csv
 
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.fleet.courier import Courier
 

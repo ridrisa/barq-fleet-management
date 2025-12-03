@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from app.crud.hr.salary import salary as crud_salary
 from app.schemas.hr.salary import SalaryCreate, SalaryUpdate, SalaryResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.fleet.courier import Courier
 
@@ -76,6 +76,7 @@ def delete_salary(
             detail="Salary not found"
         )
     crud_salary.remove(db, id=salary_id)
+    return None
 
 
 @router.post("/calculate", response_model=Dict[str, Any])

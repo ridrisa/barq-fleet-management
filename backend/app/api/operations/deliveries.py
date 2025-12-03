@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.operations import delivery as crud_delivery
 from app.schemas.operations.delivery import DeliveryCreate, DeliveryUpdate, DeliveryResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_delivery(
             detail="Delivery not found"
         )
     crud_delivery.remove(db, id=delivery_id)
+    return None

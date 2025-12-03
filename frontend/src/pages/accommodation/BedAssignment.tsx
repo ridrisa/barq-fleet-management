@@ -119,7 +119,7 @@ export default function BedAssignment() {
         setSelectedRoom(mockBeds[0].room_id)
       }
     } catch (error) {
-      console.error('Failed to fetch data:', error)
+      // Error fetching data
     } finally {
       setLoading(false)
     }
@@ -138,22 +138,20 @@ export default function BedAssignment() {
     e.preventDefault()
     try {
       // API call would go here
-      console.log('Assigning bed:', selectedBed, formData)
       fetchData()
       handleCloseModal()
     } catch (error) {
-      console.error('Failed to assign bed:', error)
+      // Error assigning bed
     }
   }
 
-  const handleUnassign = async (bedId: number) => {
+  const handleUnassign = async (_bedId: number) => {
     if (window.confirm('Are you sure you want to unassign this bed?')) {
       try {
         // API call would go here
-        console.log('Unassigning bed:', bedId)
         fetchData()
       } catch (error) {
-        console.error('Failed to unassign bed:', error)
+        // Error unassigning bed
       }
     }
   }

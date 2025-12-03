@@ -11,7 +11,7 @@ from pydantic import BaseModel
 import io
 import json
 
-from app.api.deps import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.utils.export import (
     export_to_csv,

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from datetime import date, datetime, timedelta
 from pydantic import BaseModel
 
-from app.api.deps import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 
 

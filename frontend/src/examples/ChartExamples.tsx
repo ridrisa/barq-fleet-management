@@ -30,7 +30,7 @@ export function LineChartExample() {
       colors={['#3b82f6', '#ef4444', '#10b981']}
       showGrid={true}
       showLegend={true}
-      formatYAxis={(value) => `$${(value / 1000).toFixed(0)}K`}
+      formatYAxis={(value) => `$${(Number(value) / 1000).toFixed(0)}K`}
     />
   )
 }
@@ -261,7 +261,7 @@ export function AnalyticsDashboardExample() {
           yKey="value"
           title="Revenue Trend"
           height={300}
-          formatYAxis={(value) => `$${(value / 1000).toFixed(0)}K`}
+          formatYAxis={(value) => `$${(Number(value) / 1000).toFixed(0)}K`}
         />
 
         <PieChart

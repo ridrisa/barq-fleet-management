@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 import io
 

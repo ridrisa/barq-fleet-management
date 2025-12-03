@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.fleet import assignment as crud_assignment
 from app.schemas.fleet.assignment import AssignmentCreate, AssignmentUpdate, AssignmentResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_assignment(
             detail="Assignment not found"
         )
     crud_assignment.remove(db, id=assignment_id)
+    return None

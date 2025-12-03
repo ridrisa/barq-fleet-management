@@ -5,7 +5,7 @@ from sqlalchemy import func
 from decimal import Decimal
 from app.crud.fleet.fuel_log import fuel_log as crud_fuel_log
 from app.schemas.fleet.fuel_log import FuelLogCreate, FuelLogUpdate, FuelLogResponse, FuelLogSummary
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.fleet.fuel_log import FuelLog
 
@@ -115,3 +115,4 @@ def delete_fuel_log(
             detail="Fuel log not found"
         )
     crud_fuel_log.remove(db, id=fuel_log_id)
+    return None

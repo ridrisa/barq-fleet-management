@@ -53,8 +53,8 @@ export function useCRUD<T, CreateData = Partial<T>, UpdateData = Partial<T>>({
       })
       showToast.success(`${entityName} created successfully`)
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || error.message || 'Failed to create'
+    onError: (error: Error) => {
+      const message = (error as { response?: { data?: { detail?: string } }; message?: string }).response?.data?.detail || error.message || 'Failed to create'
       showToast.error(`Error: ${message}`)
     },
   })
@@ -68,8 +68,8 @@ export function useCRUD<T, CreateData = Partial<T>, UpdateData = Partial<T>>({
       })
       showToast.success(`${entityName} updated successfully`)
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || error.message || 'Failed to update'
+    onError: (error: Error) => {
+      const message = (error as { response?: { data?: { detail?: string } }; message?: string }).response?.data?.detail || error.message || 'Failed to update'
       showToast.error(`Error: ${message}`)
     },
   })
@@ -83,8 +83,8 @@ export function useCRUD<T, CreateData = Partial<T>, UpdateData = Partial<T>>({
       })
       showToast.success(`${entityName} deleted successfully`)
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || error.message || 'Failed to delete'
+    onError: (error: Error) => {
+      const message = (error as { response?: { data?: { detail?: string } }; message?: string }).response?.data?.detail || error.message || 'Failed to delete'
       showToast.error(`Error: ${message}`)
     },
   })

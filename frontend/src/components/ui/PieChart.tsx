@@ -2,7 +2,7 @@ import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, Legend, ResponsiveCon
 import { Card, CardContent } from './Card'
 
 interface PieChartProps {
-  data: any[]
+  data: Record<string, unknown>[]
   dataKey: string
   nameKey: string
   title?: string
@@ -26,9 +26,13 @@ export function PieChart({
   innerRadius = 0,
   showLabels = true,
 }: PieChartProps) {
-  const renderLabel = (entry: any) => {
-    const percent = ((entry.value / data.reduce((sum, item) => sum + item[dataKey], 0)) * 100).toFixed(1)
-    return `${entry[nameKey]}: ${percent}%`
+  const total = data.reduce((sum, item) => sum + Number(item[dataKey] || 0), 0)
+
+  const renderLabel = (props: { value?: number; name?: string }) => {
+    const value = props.value || 0
+    const name = props.name || ''
+    const percent = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
+    return `${name}: ${percent}%`
   }
 
   return (

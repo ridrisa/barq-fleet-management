@@ -3,7 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 from app.crud.workflow import workflow_metrics
 from app.schemas.workflow import (
     WorkflowMetricsResponse,

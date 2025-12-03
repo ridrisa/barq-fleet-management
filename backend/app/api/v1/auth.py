@@ -7,7 +7,7 @@ from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_current_active_user
+from app.core.dependencies import get_db, get_current_active_user
 from app.config.settings import settings
 from app.core.security import create_access_token
 from app.crud.user import crud_user

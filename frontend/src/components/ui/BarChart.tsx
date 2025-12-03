@@ -2,7 +2,7 @@ import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 import { Card, CardContent } from './Card'
 
 interface BarChartProps {
-  data: any[]
+  data: Record<string, unknown>[]
   xKey: string
   yKey: string | string[]
   title?: string
@@ -12,8 +12,8 @@ interface BarChartProps {
   showGrid?: boolean
   showLegend?: boolean
   horizontal?: boolean
-  formatYAxis?: (value: any) => string
-  formatXAxis?: (value: any) => string
+  formatYAxis?: (value: number | string) => string
+  formatXAxis?: (value: number | string) => string
 }
 
 export function BarChart({

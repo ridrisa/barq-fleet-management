@@ -23,7 +23,7 @@ api_router.include_router(fleet.router, prefix="/fleet", tags=["fleet"])
 api_router.include_router(hr.router, prefix="/hr", tags=["hr"])
 api_router.include_router(operations.router, prefix="/operations", tags=["operations"])
 api_router.include_router(accommodation.router, prefix="/accommodation", tags=["accommodation"])
-api_router.include_router(finance.router, prefix="/finance", tags=["finance"])
+# api_router.include_router(finance.router, prefix="/finance", tags=["finance"])  # DISABLED: Module not yet production-ready
 api_router.include_router(workflow.router, prefix="/workflow", tags=["workflow"])
 api_router.include_router(support_router, prefix="/support", tags=["support"])
 api_router.include_router(fms.router, prefix="/fms", tags=["FMS Tracking"])

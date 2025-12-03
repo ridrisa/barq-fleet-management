@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 from app.config.settings import settings
 
 router = APIRouter()

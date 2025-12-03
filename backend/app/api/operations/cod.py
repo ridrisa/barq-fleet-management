@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.operations import cod as crud_cod
 from app.schemas.operations.cod import CODCreate, CODUpdate, CODResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_cod_transaction(
             detail="COD transaction not found"
         )
     crud_cod.remove(db, id=cod_id)
+    return None

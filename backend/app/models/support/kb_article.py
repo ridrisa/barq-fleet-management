@@ -62,7 +62,10 @@ class KBArticle(BaseModel):
 
     # Status & Publishing
     status = Column(
-        SQLEnum(ArticleStatus),
+        SQLEnum(
+            ArticleStatus,
+            values_callable=lambda obj: [e.value for e in obj]
+        ),
         default=ArticleStatus.DRAFT,
         nullable=False,
         index=True,

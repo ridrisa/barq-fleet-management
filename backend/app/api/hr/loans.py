@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.hr.loan import loan as crud_loan
 from app.schemas.hr.loan import LoanCreate, LoanUpdate, LoanResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_loan(
             detail="Loan not found"
         )
     crud_loan.remove(db, id=loan_id)
+    return None

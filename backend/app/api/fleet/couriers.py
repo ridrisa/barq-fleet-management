@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.fleet import courier as crud_courier
 from app.schemas.fleet.courier import CourierCreate, CourierUpdate, CourierResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_courier(
             detail="Courier not found"
         )
     crud_courier.remove(db, id=courier_id)
+    return None

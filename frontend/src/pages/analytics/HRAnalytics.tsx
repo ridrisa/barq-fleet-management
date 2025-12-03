@@ -172,7 +172,7 @@ export default function HRAnalytics() {
           yKey="balance"
           title="Leave Balance Overview per Courier"
           height={300}
-          formatXAxis={(value) => value.split(' ')[0]}
+          formatXAxis={(value) => String(value).split(' ')[0]}
         />
 
         <BarChart

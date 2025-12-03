@@ -22,7 +22,7 @@ export interface TableProps<T> {
   onSort?: (column: string) => void
 }
 
-export const Table = <T extends Record<string, any>>({
+export const Table = <T extends object>({
   data,
   columns,
   onRowClick,
@@ -72,15 +72,32 @@ export const Table = <T extends Record<string, any>>({
                     onSort(String(column.key))
                   }
                 }}
+                aria-sort={
+                  column.sortable && sortColumn === column.key
+                    ? sortDirection === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : column.sortable
+                    ? 'none'
+                    : undefined
+                }
+                tabIndex={column.sortable && onSort ? 0 : undefined}
+                role={column.sortable ? 'button' : undefined}
+                onKeyDown={(e) => {
+                  if (column.sortable && onSort && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault()
+                    onSort(String(column.key))
+                  }
+                }}
               >
                 <div className="flex items-center gap-2">
                   {column.header || column.label}
                   {column.sortable && sortColumn === column.key && (
                     <>
                       {sortDirection === 'asc' ? (
-                        <ChevronUp className="h-4 w-4" />
+                        <ChevronUp className="h-4 w-4" aria-hidden="true" />
                       ) : (
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-4 w-4" aria-hidden="true" />
                       )}
                     </>
                   )}
@@ -104,7 +121,7 @@ export const Table = <T extends Record<string, any>>({
                   key={String(column.key)}
                   className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                 >
-                  {column.render ? column.render(row) : row[column.key]}
+                  {column.render ? column.render(row) : String((row as Record<string, unknown>)[column.key as string] ?? '')}
                 </td>
               ))}
             </tr>

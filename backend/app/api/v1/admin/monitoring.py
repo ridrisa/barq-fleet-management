@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 
-from app.api.deps import get_db, get_current_superuser
+from app.core.dependencies import get_db, get_current_superuser
 from app.models.user import User
 from app.models.audit_log import AuditLog
 from app.schemas.admin.monitoring import (

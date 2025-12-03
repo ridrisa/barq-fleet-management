@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 
-from app.api.deps import get_db, get_current_superuser
+from app.core.dependencies import get_db, get_current_superuser
 from app.models.user import User
 from app.models.role import Role
 from app.schemas.user import User as UserSchema

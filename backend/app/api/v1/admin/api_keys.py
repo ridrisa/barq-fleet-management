@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from app.api.deps import get_db, get_current_superuser
+from app.core.dependencies import get_db, get_current_superuser
 from app.models.user import User
 from app.models.admin.api_key import ApiKey, ApiKeyStatus
 from app.schemas.admin.api_key import (

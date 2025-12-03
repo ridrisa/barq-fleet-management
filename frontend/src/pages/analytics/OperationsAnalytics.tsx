@@ -283,7 +283,7 @@ export default function OperationsAnalytics() {
               day: 'numeric',
             })
           }
-          formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+          formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
         />
       </div>
 

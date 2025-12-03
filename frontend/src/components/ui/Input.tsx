@@ -8,6 +8,8 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode
   leftIcon?: React.ReactNode
   rightIcon?: React.ReactNode
+  'aria-label'?: string
+  'aria-describedby'?: string
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -22,16 +24,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       leftIcon,
       rightIcon,
       disabled,
+      'aria-label': ariaLabel,
+      'aria-describedby': ariaDescribedBy,
       ...props
     },
     ref
   ) => {
     // Allow icon as alias for leftIcon
     const effectiveLeftIcon = leftIcon || icon
+    const errorId = error ? `${props.id || 'input'}-error` : undefined
+    const helperId = helperText ? `${props.id || 'input'}-helper` : undefined
+    const describedBy = ariaDescribedBy || [errorId, helperId].filter(Boolean).join(' ') || undefined
+
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={props.id}>
             {label}
           </label>
         )}
@@ -45,6 +53,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             type={type}
             ref={ref}
             disabled={disabled}
+            aria-label={ariaLabel || (label ? undefined : 'Input field')}
+            aria-describedby={describedBy}
+            aria-invalid={error ? 'true' : 'false'}
             className={cn(
               'block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400',
               'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
@@ -63,10 +74,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error && (
-          <p className="mt-1 text-sm text-red-600">{error}</p>
+          <p id={errorId} className="mt-1 text-sm text-red-600" role="alert">
+            {error}
+          </p>
         )}
         {helperText && !error && (
-          <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+          <p id={helperId} className="mt-1 text-sm text-gray-500">
+            {helperText}
+          </p>
         )}
       </div>
     )

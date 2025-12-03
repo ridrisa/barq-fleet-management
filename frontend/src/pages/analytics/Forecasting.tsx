@@ -390,7 +390,7 @@ export default function Forecasting() {
                         day: 'numeric',
                       })
                     }
-                    formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+                    formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
                   />
                   {showConfidenceInterval && (
                     <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg p-3">

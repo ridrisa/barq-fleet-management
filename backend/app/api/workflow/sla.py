@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 from app.crud.workflow import workflow_sla, workflow_sla_instance
 from app.schemas.workflow import (
     WorkflowSLACreate,

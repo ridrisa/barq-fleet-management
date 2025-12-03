@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 
 from app.config.settings import settings
-from app.config.database import Base
+from app.core.database import Base
 # Import all models for Alembic autogenerate
 from app.models import *  # noqa: F401, F403
 

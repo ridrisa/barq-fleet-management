@@ -10,7 +10,7 @@ import re
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlalchemy.orm import Session
-from app.config.database import SessionLocal
+from app.core.database import SessionLocal
 from app.models.fleet.courier import Courier, CourierStatus, SponsorshipStatus, ProjectType
 from app.models.fleet.vehicle import Vehicle, VehicleStatus, VehicleType, OwnershipType, FuelType
 from app.models.fleet.vehicle_log import VehicleLog, LogType

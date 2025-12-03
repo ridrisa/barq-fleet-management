@@ -41,8 +41,21 @@ class CustomerFeedback(BaseModel):
 
     # Feedback Identification
     feedback_number = Column(String(50), unique=True, nullable=False, index=True, comment="Unique feedback ID")
-    feedback_type = Column(SQLEnum(FeedbackType), nullable=False, index=True)
-    status = Column(SQLEnum(FeedbackStatus), default=FeedbackStatus.PENDING, nullable=False, index=True)
+    feedback_type = Column(
+        SQLEnum(FeedbackType, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+        index=True
+    )
+    status = Column(
+        SQLEnum(
+            FeedbackStatus,
+            name="customerfeedbackstatus",
+            values_callable=lambda obj: [e.value for e in obj]
+        ),
+        default=FeedbackStatus.PENDING,
+        nullable=False,
+        index=True
+    )
 
     # Subject of Feedback
     delivery_id = Column(Integer, ForeignKey("deliveries.id", ondelete="CASCADE"), index=True)
@@ -65,7 +78,10 @@ class CustomerFeedback(BaseModel):
     # Feedback Content
     feedback_title = Column(String(200))
     feedback_text = Column(Text, nullable=False)
-    sentiment = Column(SQLEnum(FeedbackSentiment), comment="AI-analyzed sentiment")
+    sentiment = Column(
+        SQLEnum(FeedbackSentiment, values_callable=lambda obj: [e.value for e in obj]),
+        comment="AI-analyzed sentiment"
+    )
 
     # Categories and Tags
     category = Column(String(100), index=True, comment="Feedback category")
@@ -151,14 +167,21 @@ class FeedbackTemplate(BaseModel):
     # Template Details
     template_code = Column(String(50), unique=True, nullable=False, index=True)
     template_name = Column(String(200), nullable=False)
-    template_type = Column(SQLEnum(FeedbackType), nullable=False, index=True)
+    template_type = Column(
+        SQLEnum(FeedbackType, values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+        index=True
+    )
 
     # Content
     subject = Column(String(200))
     body = Column(Text, nullable=False)
 
     # Usage
-    sentiment_type = Column(SQLEnum(FeedbackSentiment), comment="Which sentiment this template is for")
+    sentiment_type = Column(
+        SQLEnum(FeedbackSentiment, values_callable=lambda obj: [e.value for e in obj]),
+        comment="Which sentiment this template is for"
+    )
     is_active = Column(Boolean, default=True)
     usage_count = Column(Integer, default=0)
 

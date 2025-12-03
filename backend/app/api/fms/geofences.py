@@ -3,7 +3,7 @@ FMS Geofences API Routes
 Provides endpoints for geofence/zone management from machinettalk.
 """
 from fastapi import APIRouter, Depends, Query, HTTPException
-from app.api.deps import get_current_user
+from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.fms import get_fms_client
 

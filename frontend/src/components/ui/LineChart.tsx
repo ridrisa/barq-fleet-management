@@ -2,7 +2,7 @@ import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tool
 import { Card, CardContent } from './Card'
 
 interface LineChartProps {
-  data: any[]
+  data: Record<string, unknown>[]
   xKey: string
   yKey: string | string[]
   title?: string
@@ -11,8 +11,8 @@ interface LineChartProps {
   color?: string // Alias for single color
   showGrid?: boolean
   showLegend?: boolean
-  formatYAxis?: (value: any) => string
-  formatXAxis?: (value: any) => string
+  formatYAxis?: (value: number | string) => string
+  formatXAxis?: (value: number | string) => string
 }
 
 export function LineChart({

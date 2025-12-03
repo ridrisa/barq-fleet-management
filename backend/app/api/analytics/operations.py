@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from datetime import date, datetime, timedelta, time
 
-from app.api.deps import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.analytics.common import (
     TrendDataPoint,

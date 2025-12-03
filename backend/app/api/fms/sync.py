@@ -5,7 +5,7 @@ Provides endpoints for syncing FMS data with BARQ database.
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.api.deps import get_current_user, get_db
+from app.core.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.services.fms.sync import get_sync_service
 

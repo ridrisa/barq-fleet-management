@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from decimal import Decimal
 import logging
 
-from app.api.deps import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.hr import (
     LoanCreate, LoanUpdate, LoanResponse, LoanStatus

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.hr.asset import asset as crud_asset
 from app.schemas.hr.asset import AssetCreate, AssetUpdate, AssetResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_asset(
             detail="Asset not found"
         )
     crud_asset.remove(db, id=asset_id)
+    return None

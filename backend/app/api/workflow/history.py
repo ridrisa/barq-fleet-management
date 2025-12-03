@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import datetime
 
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 from app.crud.workflow import workflow_history, workflow_step_history
 from app.schemas.workflow import (
     WorkflowHistoryResponse,

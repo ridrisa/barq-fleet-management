@@ -27,7 +27,7 @@ from sqlalchemy.pool import StaticPool
 # Add app to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app.config.database import Base
+from app.core.database import Base
 from app.core.database import get_db
 from app.core.security import TokenManager, PasswordHasher
 from app.models.user import User

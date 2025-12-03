@@ -102,7 +102,6 @@ export default function Layout() {
         { label: 'Performance Metrics', path: '/ops/performance-metrics', icon: null },
         { label: 'Service Levels (SLA)', path: '/ops/sla', icon: null },
         { label: 'Quality Control', path: '/ops/quality', icon: null },
-        { label: 'Incidents', path: '/ops/incidents', icon: null },
         { label: 'Incident Reporting', path: '/ops/incident-reporting', icon: null },
         { label: 'Customer Feedback', path: '/ops/feedback', icon: null },
         { label: 'Priority Queue', path: '/ops/priority-queue', icon: null },
@@ -315,9 +314,10 @@ export default function Layout() {
         <header className="bg-white border-b border-gray-200 h-16 flex items-center px-4 gap-4">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-blue-600 shadow-sm active:scale-95 transition-all"
+            aria-label="Toggle menu"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6" />
           </button>
           <div className="flex-1" />
           <button

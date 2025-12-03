@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.fleet.inspection import inspection as crud_inspection
 from app.schemas.fleet.inspection import InspectionCreate, InspectionUpdate, InspectionResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_inspection(
             detail="Inspection not found"
         )
     crud_inspection.remove(db, id=inspection_id)
+    return None

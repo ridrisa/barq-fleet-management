@@ -1,10 +1,11 @@
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.crud.fleet import vehicle as crud_vehicle
 from app.schemas.fleet.vehicle import VehicleCreate, VehicleUpdate, VehicleResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.models.fleet.vehicle import Vehicle
 
 router = APIRouter()
 
@@ -75,6 +76,7 @@ def delete_vehicle(
             detail="Vehicle not found"
         )
     crud_vehicle.remove(db, id=vehicle_id)
+    return None
 
 
 def model_to_dict(obj):
@@ -100,41 +102,53 @@ def get_vehicle_history(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Get complete history for a vehicle including maintenance, fuel logs, accidents, etc."""
-    # Verify vehicle exists
-    vehicle = crud_vehicle.get(db, id=vehicle_id)
+    """Get complete history for a vehicle including maintenance, fuel logs, accidents, etc.
+
+    Uses eager loading (selectinload) to avoid N+1 query problem by fetching
+    all related records in a single query instead of separate queries.
+    """
+    # Use eager loading to fetch vehicle with all related records in one query
+    vehicle = db.query(Vehicle).options(
+        selectinload(Vehicle.maintenance_records),
+        selectinload(Vehicle.fuel_logs),
+        selectinload(Vehicle.accident_logs),
+        selectinload(Vehicle.vehicle_logs),
+        selectinload(Vehicle.assignment_history)
+    ).filter(Vehicle.id == vehicle_id).first()
+
     if not vehicle:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vehicle not found"
         )
 
-    # Get all related records
-    from app.models.fleet.maintenance import VehicleMaintenance
-    from app.models.fleet.fuel_log import FuelLog
-    from app.models.fleet.accident_log import AccidentLog
-    from app.models.fleet.vehicle_log import VehicleLog
-    from app.models.fleet.assignment import CourierVehicleAssignment
-
-    maintenance_records = db.query(VehicleMaintenance).filter(
-        VehicleMaintenance.vehicle_id == vehicle_id
-    ).order_by(VehicleMaintenance.created_at.desc()).all()
-
-    fuel_logs = db.query(FuelLog).filter(
-        FuelLog.vehicle_id == vehicle_id
-    ).order_by(FuelLog.created_at.desc()).all()
-
-    accident_logs = db.query(AccidentLog).filter(
-        AccidentLog.vehicle_id == vehicle_id
-    ).order_by(AccidentLog.created_at.desc()).all()
-
-    vehicle_logs = db.query(VehicleLog).filter(
-        VehicleLog.vehicle_id == vehicle_id
-    ).order_by(VehicleLog.created_at.desc()).all()
-
-    assignments = db.query(CourierVehicleAssignment).filter(
-        CourierVehicleAssignment.vehicle_id == vehicle_id
-    ).order_by(CourierVehicleAssignment.created_at.desc()).all()
+    # Sort related records by created_at descending (done in Python since
+    # we already loaded them with eager loading)
+    maintenance_records = sorted(
+        vehicle.maintenance_records,
+        key=lambda x: x.created_at or x.id,
+        reverse=True
+    )
+    fuel_logs = sorted(
+        vehicle.fuel_logs,
+        key=lambda x: x.created_at or x.id,
+        reverse=True
+    )
+    accident_logs = sorted(
+        vehicle.accident_logs,
+        key=lambda x: x.created_at or x.id,
+        reverse=True
+    )
+    vehicle_logs = sorted(
+        vehicle.vehicle_logs,
+        key=lambda x: x.created_at or x.id,
+        reverse=True
+    )
+    assignments = sorted(
+        vehicle.assignment_history,
+        key=lambda x: x.created_at or x.id,
+        reverse=True
+    )
 
     return {
         "vehicle": model_to_dict(vehicle),

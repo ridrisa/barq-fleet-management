@@ -6,7 +6,7 @@ from app.crud.operations import incident as crud_incident
 from app.schemas.operations.incident import (
     IncidentCreate, IncidentUpdate, IncidentResponse
 )
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -108,6 +108,7 @@ def delete_incident(
             detail="Incident not found"
         )
     crud_incident.remove(db, id=incident_id)
+    return None
 
 
 @router.post("/{incident_id}/resolve", response_model=IncidentResponse)

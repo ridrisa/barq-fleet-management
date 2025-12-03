@@ -35,18 +35,19 @@ interface DynamicFormProps<T> {
   renderBeforeActions?: React.ReactNode;
 }
 
-const renderField = (
+const renderField = <T extends object>(
   fieldConfig: FormFieldConfig,
-  formData: any,
-  handleChange: (field: string, value: any) => void
+  formData: T,
+  handleChange: (field: string, value: unknown) => void
 ) => {
   const { name, type, placeholder, options } = fieldConfig;
 
+  const data = formData as Record<string, unknown>;
   switch (type) {
     case 'select':
       return (
         <Select
-          value={formData[name]}
+          value={String(data[name] || '')}
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChange(name, e.target.value)}
           options={options || []}
           disabled={fieldConfig.disabled}
@@ -55,7 +56,7 @@ const renderField = (
     case 'textarea':
         return (
             <Textarea
-                value={formData[name]}
+                value={String(data[name] || '')}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange(name, e.target.value)}
                 placeholder={placeholder}
                 disabled={fieldConfig.disabled}
@@ -65,7 +66,7 @@ const renderField = (
         return(
             <Input
                 type="date"
-                value={formData[name]}
+                value={String(data[name] || '')}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange(name, e.target.value)}
                 disabled={fieldConfig.disabled}
             />
@@ -73,7 +74,7 @@ const renderField = (
     case 'checkbox':
         return (
             <Checkbox
-                checked={formData[name]}
+                checked={Boolean(data[name])}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange(name, e.target.checked)}
                 disabled={fieldConfig.disabled}
             />
@@ -82,7 +83,7 @@ const renderField = (
       return (
         <Input
           type={type}
-          value={formData[name]}
+          value={String(data[name] || '')}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange(name, e.target.value)}
           placeholder={placeholder}
           disabled={fieldConfig.disabled}
@@ -91,7 +92,7 @@ const renderField = (
   }
 };
 
-export const DynamicForm = <T extends {}>({
+export const DynamicForm = <T extends object>({
   formConfig,
   initialData,
   validationSchema,

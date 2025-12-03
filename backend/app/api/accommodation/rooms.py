@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.accommodation import room as crud_room
 from app.schemas.accommodation.room import RoomCreate, RoomUpdate, RoomResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_room(
             detail="Room not found"
         )
     crud_room.remove(db, id=room_id)
+    return None

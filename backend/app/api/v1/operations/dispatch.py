@@ -7,7 +7,7 @@ from app.schemas.operations.dispatch import (
     DispatchReassignment, DispatchAcceptance, CourierAvailability,
     DispatchRecommendation, DispatchMetrics
 )
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from decimal import Decimal
 

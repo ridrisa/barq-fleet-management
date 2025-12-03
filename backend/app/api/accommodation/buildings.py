@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.accommodation import building as crud_building
 from app.schemas.accommodation.building import BuildingCreate, BuildingUpdate, BuildingResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_building(
             detail="Building not found"
         )
     crud_building.remove(db, id=building_id)
+    return None

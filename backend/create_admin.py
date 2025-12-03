@@ -4,7 +4,7 @@ Create initial admin user for BARQ Fleet Management System
 """
 import asyncio
 from sqlalchemy.orm import Session
-from app.config.database import SessionLocal, engine
+from app.core.database import SessionLocal, engine
 from app.models.user import User
 from app.models.base import Base
 from passlib.context import CryptContext

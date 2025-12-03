@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlalchemy.orm import Session
-from app.config.database import SessionLocal
+from app.core.database import SessionLocal
 from app.crud.user import crud_user
 from app.schemas.user import UserCreate
 from app.core.security import get_password_hash

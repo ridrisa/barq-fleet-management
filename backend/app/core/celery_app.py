@@ -42,7 +42,7 @@ def process_daily_attendance():
     Daily task to aggregate attendance data
     Runs at midnight every day
     """
-    from app.config.database import SessionLocal
+    from app.core.database import SessionLocal
     from app.services.hr.attendance_service import attendance_service
 
     logger.info("Starting daily attendance processing")
@@ -73,7 +73,7 @@ def process_monthly_payroll():
     Monthly task to process payroll
     Runs on the 28th of each month
     """
-    from app.config.database import SessionLocal
+    from app.core.database import SessionLocal
     from app.services.hr import payroll_engine_service
 
     logger.info("Starting monthly payroll processing")
@@ -122,7 +122,7 @@ def check_document_expiry():
     Sends notifications for documents expiring soon
     Runs daily at 9 AM
     """
-    from app.config.database import SessionLocal
+    from app.core.database import SessionLocal
     from app.models.fleet.courier import Courier
     from app.services import email_notification_service, sms_notification_service
     from datetime import date, timedelta
@@ -210,7 +210,7 @@ def clean_old_audit_logs():
     Keeps logs for 1 year
     Runs on the 1st of each month at 2 AM
     """
-    from app.config.database import SessionLocal
+    from app.core.database import SessionLocal
     from app.services import audit_log_service
 
     logger.info("Cleaning old audit logs")
@@ -242,7 +242,7 @@ def generate_monthly_reports():
     Monthly task to generate and email reports
     Runs on the 1st of each month at 8 AM
     """
-    from app.config.database import SessionLocal
+    from app.core.database import SessionLocal
     from app.services.analytics import fleet_analytics_service, hr_analytics_service
     from app.services.hr import payroll_engine_service
 

@@ -17,7 +17,7 @@ from app.schemas.operations.settings import (
     NotificationSettingCreate, NotificationSettingUpdate, NotificationSettingResponse,
     ZoneDefaultCreate, ZoneDefaultUpdate, ZoneDefaultResponse
 )
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.hr import leave as crud_leave
 from app.schemas.hr.leave import LeaveCreate, LeaveUpdate, LeaveResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_leave(
             detail="Leave request not found"
         )
     crud_leave.remove(db, id=leave_id)
+    return None

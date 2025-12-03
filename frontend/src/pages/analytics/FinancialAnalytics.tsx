@@ -23,7 +23,6 @@ export default function FinancialAnalytics() {
   })
 
   const handleExport = () => {
-    console.log('Exporting financial analytics...')
     // TODO: Implement export functionality
   }
 
@@ -172,7 +171,7 @@ export default function FinancialAnalytics() {
           title="Revenue vs Expenses"
           height={300}
           colors={['#10b981', '#ef4444']}
-          formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+          formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
         />
 
         <PieChart
@@ -191,7 +190,7 @@ export default function FinancialAnalytics() {
           title="Profit Margin Trend"
           height={300}
           colors={['#3b82f6']}
-          formatYAxis={(value) => `${value}%`}
+          formatYAxis={(value) => `${Number(value)}%`}
         />
 
         <AreaChart
@@ -201,7 +200,7 @@ export default function FinancialAnalytics() {
           title="Cash Flow Analysis"
           height={300}
           colors={['#10b981', '#ef4444', '#3b82f6']}
-          formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+          formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
         />
 
         <BarChart
@@ -211,7 +210,7 @@ export default function FinancialAnalytics() {
           title="Budget vs Actual (Per Department)"
           height={300}
           colors={['#10b981', '#ef4444']}
-          formatYAxis={(value) => `${(value / 1000).toFixed(0)}K`}
+          formatYAxis={(value) => `${(Number(value) / 1000).toFixed(0)}K`}
         />
       </div>
 

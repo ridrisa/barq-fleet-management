@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -57,4 +57,4 @@ def delete_budget(
     current_user = Depends(get_current_user)
 ):
     """Delete budget - stub implementation"""
-    pass
+    return None

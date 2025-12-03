@@ -30,7 +30,7 @@ export default function Contracts() {
   const [showModal, setShowModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
-  const [documents, setDocuments] = useState<File[]>([])
+  const [_documents, setDocuments] = useState<File[]>([])
 
   const [formData, setFormData] = useState({
     building_id: 0,
@@ -113,7 +113,7 @@ export default function Contracts() {
       ]
       setContracts(mockContracts)
     } catch (error) {
-      console.error('Failed to fetch contracts:', error)
+      // Error fetching contracts
     } finally {
       setLoading(false)
     }
@@ -122,24 +122,22 @@ export default function Contracts() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      console.log('Creating contract:', formData)
       // API call would go here
       fetchData()
       handleCloseModal()
     } catch (error) {
-      console.error('Failed to create contract:', error)
+      // Error creating contract
     }
   }
 
   const handleUploadDocument = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      console.log('Uploading document for contract:', selectedContract, documents)
       // API call would go here
       fetchData()
       handleCloseUploadModal()
     } catch (error) {
-      console.error('Failed to upload document:', error)
+      // Error uploading document
     }
   }
 

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.fleet.accident_log import accident_log as crud_accident_log
 from app.schemas.fleet.accident_log import AccidentLogCreate, AccidentLogUpdate, AccidentLogResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_accident_log(
             detail="Accident log not found"
         )
     crud_accident_log.remove(db, id=accident_log_id)
+    return None

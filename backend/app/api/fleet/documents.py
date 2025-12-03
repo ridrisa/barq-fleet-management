@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from app.crud.fleet.document import document as crud_document
 from app.schemas.fleet.document import DocumentCreate, DocumentUpdate, DocumentResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -104,3 +104,4 @@ def delete_document(
             detail="Document not found"
         )
     crud_document.remove(db, id=document_id)
+    return None

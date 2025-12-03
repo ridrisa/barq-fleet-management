@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import date, timedelta
 from app.crud.fleet.maintenance import maintenance as crud_maintenance
 from app.schemas.fleet.maintenance import MaintenanceCreate, MaintenanceUpdate, MaintenanceResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.fleet.maintenance import VehicleMaintenance, MaintenanceStatus
 
@@ -95,3 +95,4 @@ def delete_maintenance(
             detail="Maintenance record not found"
         )
     crud_maintenance.remove(db, id=maintenance_id)
+    return None

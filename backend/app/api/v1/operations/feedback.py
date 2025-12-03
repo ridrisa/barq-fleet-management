@@ -14,7 +14,7 @@ from app.schemas.operations.feedback import (
     FeedbackTemplateCreate, FeedbackTemplateUpdate, FeedbackTemplateResponse,
     FeedbackMetrics, FeedbackSummary
 )
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -575,3 +575,4 @@ def delete_feedback_template(
             detail="Template not found"
         )
     feedback_template.remove(db, id=template_id)
+    return None

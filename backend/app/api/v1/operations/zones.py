@@ -5,7 +5,7 @@ from app.crud.operations import zone as crud_zone
 from app.schemas.operations.zone import (
     ZoneCreate, ZoneUpdate, ZoneResponse, ZoneMetrics
 )
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -153,6 +153,7 @@ def delete_zone(
         )
 
     crud_zone.remove(db, id=zone_id)
+    return None
 
 
 @router.get("/{zone_id}/metrics", response_model=ZoneMetrics)

@@ -4,7 +4,7 @@ from sqlalchemy import func, case, and_, or_, extract
 from datetime import datetime, timedelta, date
 from typing import Optional
 
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 from app.models.user import User
 from app.models.fleet.vehicle import Vehicle
 from app.models.fleet.courier import Courier, CourierStatus, SponsorshipStatus, ProjectType

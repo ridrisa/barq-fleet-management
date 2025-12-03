@@ -18,6 +18,9 @@ from fastapi.responses import JSONResponse
 from app.api.api import api_router
 from app.config.settings import settings
 from app.core.exceptions import AppException, get_exception_handlers
+from strawberry.fastapi import GraphQLRouter
+from app.graphql import schema
+from app.core.database import get_db
 from app.core.logging import (
     RequestLogger,
     get_logger,
@@ -131,6 +134,20 @@ def create_app() -> FastAPI:
 
     # Include API routes
     app.include_router(api_router, prefix=settings.API_V1_STR)
+
+    # GraphQL endpoint with context for database session
+    async def get_context():
+        db = next(get_db())
+        try:
+            return {"db": db}
+        finally:
+            pass  # Session cleanup handled by dependency
+
+    graphql_app = GraphQLRouter(
+        schema,
+        context_getter=get_context,
+    )
+    app.include_router(graphql_app, prefix="/graphql")
 
     # Root endpoint
     @app.get("/", tags=["root"])

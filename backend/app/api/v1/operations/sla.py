@@ -7,7 +7,7 @@ from app.schemas.operations.sla import (
     SLATrackingCreate, SLATrackingUpdate, SLATrackingResponse,
     SLABreachReport, SLAComplianceReport, SLAType
 )
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()

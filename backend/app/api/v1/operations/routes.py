@@ -5,7 +5,7 @@ from app.crud.operations import route as crud_route
 from app.schemas.operations.route import (
     RouteCreate, RouteUpdate, RouteResponse, RouteOptimize, RouteAssign, RouteMetrics
 )
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -95,6 +95,7 @@ def delete_route(
             detail="Route not found"
         )
     crud_route.remove(db, id=route_id)
+    return None
 
 
 @router.post("/optimize", response_model=RouteResponse)

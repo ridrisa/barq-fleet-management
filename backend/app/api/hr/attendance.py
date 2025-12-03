@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.hr import attendance as crud_attendance
 from app.schemas.hr.attendance import AttendanceCreate, AttendanceUpdate, AttendanceResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_attendance(
             detail="Attendance record not found"
         )
     crud_attendance.remove(db, id=attendance_id)
+    return None

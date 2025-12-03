@@ -125,6 +125,11 @@ export default function Vehicles() {
       },
     },
     {
+      key: 'current_mileage',
+      header: 'Mileage (km)',
+      render: (row: any) => row.current_mileage?.toLocaleString() || 'N/A',
+    },
+    {
       key: 'status',
       header: 'Status',
       render: (row: any) => (

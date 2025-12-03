@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.core.dependencies import get_db
 from app.crud.workflow import approval_chain, approval_request
 from app.schemas.workflow import (
     ApprovalChainCreate,

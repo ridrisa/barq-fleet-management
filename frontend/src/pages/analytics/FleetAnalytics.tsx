@@ -95,7 +95,6 @@ export default function FleetAnalytics() {
   const utilizationRate = totalVehicles > 0 ? ((activeVehicles / totalVehicles) * 100).toFixed(1) : '0.0'
 
   const handleExport = () => {
-    console.log('Exporting fleet analytics data...')
     // TODO: Implement export functionality
   }
 

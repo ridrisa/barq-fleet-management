@@ -2,7 +2,7 @@ import { AreaChart as RechartsAreaChart, Area, XAxis, YAxis, CartesianGrid, Tool
 import { Card, CardContent } from './Card'
 
 interface AreaChartProps {
-  data: any[]
+  data: Record<string, unknown>[]
   xKey: string
   yKey: string | string[]
   title?: string
@@ -11,8 +11,8 @@ interface AreaChartProps {
   showGrid?: boolean
   showLegend?: boolean
   stacked?: boolean
-  formatYAxis?: (value: any) => string
-  formatXAxis?: (value: any) => string
+  formatYAxis?: (value: number | string) => string
+  formatXAxis?: (value: number | string) => string
 }
 
 export function AreaChart({

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.crud.fleet.vehicle_log import vehicle_log as crud_vehicle_log
 from app.schemas.fleet.vehicle_log import VehicleLogCreate, VehicleLogUpdate, VehicleLogResponse
-from app.config.database import get_db
+from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter()
@@ -75,3 +75,4 @@ def delete_vehicle_log(
             detail="Vehicle log not found"
         )
     crud_vehicle_log.remove(db, id=vehicle_log_id)
+    return None
