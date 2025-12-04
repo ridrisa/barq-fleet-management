@@ -12,6 +12,13 @@ from app.api.v1.fleet import (
     vehicles,
 )
 
+# Additional v1 routers
+from app.api.v1.fleet import (
+    fuel_logs,
+    courier_performance,
+    documents,
+)
+
 # Create main fleet router
 fleet_router = APIRouter()
 
@@ -27,5 +34,12 @@ fleet_router.include_router(inspections.router, prefix="/inspections", tags=["fl
 fleet_router.include_router(
     accident_logs.router, prefix="/accident-logs", tags=["fleet-accident-logs"]
 )
+
+# Include additional v1 routers
+fleet_router.include_router(fuel_logs.router, prefix="/fuel-logs", tags=["fleet-fuel-logs"])
+fleet_router.include_router(
+    courier_performance.router, prefix="/courier-performance", tags=["fleet-courier-performance"]
+)
+fleet_router.include_router(documents.router, prefix="/documents", tags=["fleet-documents"])
 
 __all__ = ["fleet_router"]

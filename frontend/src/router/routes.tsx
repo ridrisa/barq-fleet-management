@@ -1,4 +1,4 @@
-import { RouteObject } from 'react-router-dom'
+import { RouteObject, Navigate } from 'react-router-dom'
 import { lazyWithRetry } from '@/utils/lazyWithRetry'
 import Layout from '@/components/Layout'
 
@@ -123,11 +123,7 @@ const Backups = lazyWithRetry(() => import('@/pages/admin/Backups'))
 const Integrations = lazyWithRetry(() => import('@/pages/admin/Integrations'))
 const APIKeys = lazyWithRetry(() => import('@/pages/admin/APIKeys'))
 
-// Settings Module
-const UserSettings = lazyWithRetry(() => import('@/pages/settings/UserSettings'))
-const SystemSettings = lazyWithRetry(() => import('@/pages/settings/SystemSettings'))
-const GeneralSettings = lazyWithRetry(() => import('@/pages/settings/GeneralSettings'))
-const NotificationSettings = lazyWithRetry(() => import('@/pages/settings/NotificationSettings'))
+// Settings Module (consolidated - UserSettings, SystemSettings, GeneralSettings, NotificationSettings → Preferences)
 const Preferences = lazyWithRetry(() => import('@/pages/settings/Preferences'))
 const Profile = lazyWithRetry(() => import('@/pages/settings/Profile'))
 const OrganizationSettings = lazyWithRetry(() => import('@/pages/settings/OrganizationSettings'))
@@ -263,13 +259,60 @@ export const routes: RouteObject[] = [
       { path: 'admin/api-keys', element: <APIKeys /> },
 
       // Settings routes
-      { path: 'settings/user', element: <UserSettings /> },
-      { path: 'settings/system', element: <SystemSettings /> },
-      { path: 'settings/general', element: <GeneralSettings /> },
-      { path: 'settings/notifications', element: <NotificationSettings /> },
+      { path: 'settings/user', element: <Preferences /> },
+      { path: 'settings/system', element: <Preferences /> },
+      { path: 'settings/general', element: <Preferences /> },
+      { path: 'settings/notifications', element: <Preferences /> },
       { path: 'settings/preferences', element: <Preferences /> },
       { path: 'settings/profile', element: <Profile /> },
       { path: 'settings/organization', element: <OrganizationSettings /> },
+
+      // ============================================
+      // REDIRECTS: Old URLs → New consolidated pages
+      // ============================================
+
+      // HR & Finance redirects
+      { path: 'hr/gosi', element: <Navigate to="/hr/salary" replace /> },
+      { path: 'finance/reports', element: <Navigate to="/finance/dashboard" replace /> },
+
+      // Operations redirects (removed redundant pages)
+      { path: 'ops/delivery-history', element: <Navigate to="/ops/deliveries" replace /> },
+      { path: 'ops/route-optimization', element: <Navigate to="/ops/routes" replace /> },
+      { path: 'ops/cod-reconciliation', element: <Navigate to="/ops/cod" replace /> },
+      { path: 'ops/performance', element: <Navigate to="/ops/performance-metrics" replace /> },
+      { path: 'ops/documents', element: <Navigate to="/ops/settings" replace /> },
+
+      // Accommodation redirects (removed placeholder/redundant pages)
+      { path: 'accommodation/bed-assignment', element: <Navigate to="/accommodation/beds" replace /> },
+      { path: 'accommodation/allocations', element: <Navigate to="/accommodation/beds" replace /> },
+      { path: 'accommodation/occupancy', element: <Navigate to="/accommodation/buildings" replace /> },
+      { path: 'accommodation/maintenance-requests', element: <Navigate to="/accommodation/maintenance" replace /> },
+      { path: 'accommodation/utilities', element: <Navigate to="/accommodation/buildings" replace /> },
+      { path: 'accommodation/inventory', element: <Navigate to="/accommodation/buildings" replace /> },
+      { path: 'accommodation/contracts', element: <Navigate to="/accommodation/buildings" replace /> },
+      { path: 'accommodation/reports', element: <Navigate to="/accommodation/buildings" replace /> },
+
+      // Workflows redirects (removed redundant/placeholder pages)
+      { path: 'workflows/active', element: <Navigate to="/workflows/instances" replace /> },
+      { path: 'workflows/pending-approvals', element: <Navigate to="/workflows/approvals" replace /> },
+      { path: 'workflows/automations', element: <Navigate to="/workflows/templates" replace /> },
+      { path: 'workflows/triggers', element: <Navigate to="/workflows/templates" replace /> },
+      { path: 'workflows/history', element: <Navigate to="/workflows/instances" replace /> },
+      { path: 'workflows/notifications', element: <Navigate to="/workflows/settings" replace /> },
+
+      // Support redirects (removed redundant pages)
+      { path: 'support/faq', element: <Navigate to="/support/kb" replace /> },
+      { path: 'support/chat', element: <Navigate to="/support/tickets" replace /> },
+      { path: 'support/contact', element: <Navigate to="/support/tickets" replace /> },
+
+      // Analytics redirects (removed redundant pages)
+      { path: 'analytics/kpi', element: <Navigate to="/analytics/overview" replace /> },
+      { path: 'analytics/courier-performance', element: <Navigate to="/analytics/fleet" replace /> },
+      { path: 'analytics/deliveries', element: <Navigate to="/analytics/operations" replace /> },
+      { path: 'analytics/performance-reports', element: <Navigate to="/analytics/custom" replace /> },
+
+      // Admin redirects (removed placeholder)
+      { path: 'admin/monitoring', element: <Navigate to="/admin/integrations" replace /> },
     ],
   },
 ]

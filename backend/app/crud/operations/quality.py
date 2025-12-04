@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -20,36 +20,103 @@ from app.schemas.operations.quality import (
 
 
 class CRUDQualityMetric(CRUDBase[QualityMetric, QualityMetricCreate, QualityMetricUpdate]):
-    def get_by_code(self, db: Session, *, metric_code: str) -> Optional[QualityMetric]:
+    def get_multi(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        organization_id: Optional[int] = None,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[QualityMetric]:
+        """Get multiple metrics with organization filter"""
+        query = db.query(self.model)
+        if organization_id:
+            query = query.filter(self.model.organization_id == organization_id)
+        if filters:
+            for key, value in filters.items():
+                if hasattr(self.model, key):
+                    query = query.filter(getattr(self.model, key) == value)
+        return query.offset(skip).limit(limit).all()
+
+    def get_by_code(
+        self, db: Session, *, metric_code: str, organization_id: Optional[int] = None
+    ) -> Optional[QualityMetric]:
         """Get metric by code"""
-        return db.query(QualityMetric).filter(QualityMetric.metric_code == metric_code).first()
+        query = db.query(QualityMetric).filter(QualityMetric.metric_code == metric_code)
+        if organization_id:
+            query = query.filter(QualityMetric.organization_id == organization_id)
+        return query.first()
 
-    def get_active_metrics(self, db: Session) -> List[QualityMetric]:
+    def get_active_metrics(
+        self, db: Session, *, organization_id: Optional[int] = None
+    ) -> List[QualityMetric]:
         """Get all active quality metrics"""
-        return db.query(QualityMetric).filter(QualityMetric.is_active == True).all()
+        query = db.query(QualityMetric).filter(QualityMetric.is_active == True)
+        if organization_id:
+            query = query.filter(QualityMetric.organization_id == organization_id)
+        return query.all()
 
-    def get_by_type(self, db: Session, *, metric_type: QualityMetricType) -> List[QualityMetric]:
+    def get_by_type(
+        self, db: Session, *, metric_type: QualityMetricType, organization_id: Optional[int] = None
+    ) -> List[QualityMetric]:
         """Get metrics by type"""
-        return (
-            db.query(QualityMetric)
-            .filter(QualityMetric.metric_type == metric_type, QualityMetric.is_active == True)
-            .all()
+        query = db.query(QualityMetric).filter(
+            QualityMetric.metric_type == metric_type, QualityMetric.is_active == True
         )
+        if organization_id:
+            query = query.filter(QualityMetric.organization_id == organization_id)
+        return query.all()
 
-    def get_critical_metrics(self, db: Session) -> List[QualityMetric]:
+    def get_critical_metrics(
+        self, db: Session, *, organization_id: Optional[int] = None
+    ) -> List[QualityMetric]:
         """Get critical quality metrics"""
-        return (
-            db.query(QualityMetric)
-            .filter(QualityMetric.is_critical == True, QualityMetric.is_active == True)
-            .all()
+        query = db.query(QualityMetric).filter(
+            QualityMetric.is_critical == True, QualityMetric.is_active == True
         )
+        if organization_id:
+            query = query.filter(QualityMetric.organization_id == organization_id)
+        return query.all()
+
+    def create(
+        self, db: Session, *, obj_in: QualityMetricCreate, organization_id: Optional[int] = None
+    ) -> QualityMetric:
+        """Create a new quality metric"""
+        obj_in_data = obj_in.model_dump()
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
+        db_obj = QualityMetric(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
 
 
 class CRUDQualityInspection(
     CRUDBase[QualityInspection, QualityInspectionCreate, QualityInspectionUpdate]
 ):
+    def get_multi(
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        organization_id: Optional[int] = None,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[QualityInspection]:
+        """Get multiple inspections with organization filter"""
+        query = db.query(self.model)
+        if organization_id:
+            query = query.filter(self.model.organization_id == organization_id)
+        if filters:
+            for key, value in filters.items():
+                if hasattr(self.model, key):
+                    query = query.filter(getattr(self.model, key) == value)
+        return query.order_by(self.model.id.desc()).offset(skip).limit(limit).all()
+
     def create_with_number(
-        self, db: Session, *, obj_in: QualityInspectionCreate
+        self, db: Session, *, obj_in: QualityInspectionCreate, organization_id: Optional[int] = None
     ) -> QualityInspection:
         """Create inspection with auto-generated number"""
         last_inspection = db.query(QualityInspection).order_by(QualityInspection.id.desc()).first()
@@ -57,80 +124,87 @@ class CRUDQualityInspection(
         inspection_number = f"QI-{datetime.now().strftime('%Y%m%d')}-{next_number:04d}"
 
         obj_in_data = obj_in.model_dump()
+        if organization_id:
+            obj_in_data["organization_id"] = organization_id
         db_obj = QualityInspection(**obj_in_data, inspection_number=inspection_number)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
         return db_obj
 
-    def get_by_number(self, db: Session, *, inspection_number: str) -> Optional[QualityInspection]:
+    def get_by_number(
+        self, db: Session, *, inspection_number: str, organization_id: Optional[int] = None
+    ) -> Optional[QualityInspection]:
         """Get inspection by number"""
-        return (
-            db.query(QualityInspection)
-            .filter(QualityInspection.inspection_number == inspection_number)
-            .first()
+        query = db.query(QualityInspection).filter(
+            QualityInspection.inspection_number == inspection_number
         )
+        if organization_id:
+            query = query.filter(QualityInspection.organization_id == organization_id)
+        return query.first()
 
     def get_by_courier(
-        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
+        self,
+        db: Session,
+        *,
+        courier_id: int,
+        skip: int = 0,
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[QualityInspection]:
         """Get inspections for a courier"""
-        return (
-            db.query(QualityInspection)
-            .filter(QualityInspection.courier_id == courier_id)
-            .order_by(QualityInspection.scheduled_date.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(QualityInspection).filter(QualityInspection.courier_id == courier_id)
+        if organization_id:
+            query = query.filter(QualityInspection.organization_id == organization_id)
+        return query.order_by(QualityInspection.scheduled_date.desc()).offset(skip).limit(limit).all()
 
     def get_by_vehicle(
-        self, db: Session, *, vehicle_id: int, skip: int = 0, limit: int = 100
+        self,
+        db: Session,
+        *,
+        vehicle_id: int,
+        skip: int = 0,
+        limit: int = 100,
+        organization_id: Optional[int] = None,
     ) -> List[QualityInspection]:
         """Get inspections for a vehicle"""
-        return (
-            db.query(QualityInspection)
-            .filter(QualityInspection.vehicle_id == vehicle_id)
-            .order_by(QualityInspection.scheduled_date.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(QualityInspection).filter(QualityInspection.vehicle_id == vehicle_id)
+        if organization_id:
+            query = query.filter(QualityInspection.organization_id == organization_id)
+        return query.order_by(QualityInspection.scheduled_date.desc()).offset(skip).limit(limit).all()
 
-    def get_scheduled_for_date(self, db: Session, *, target_date: date) -> List[QualityInspection]:
+    def get_scheduled_for_date(
+        self, db: Session, *, target_date: date, organization_id: Optional[int] = None
+    ) -> List[QualityInspection]:
         """Get inspections scheduled for a specific date"""
-        return (
-            db.query(QualityInspection)
-            .filter(
-                QualityInspection.scheduled_date == target_date,
-                QualityInspection.status == InspectionStatus.SCHEDULED,
-            )
-            .all()
+        query = db.query(QualityInspection).filter(
+            QualityInspection.scheduled_date == target_date,
+            QualityInspection.status == InspectionStatus.SCHEDULED,
         )
+        if organization_id:
+            query = query.filter(QualityInspection.organization_id == organization_id)
+        return query.all()
 
-    def get_requiring_followup(self, db: Session) -> List[QualityInspection]:
+    def get_requiring_followup(
+        self, db: Session, *, organization_id: Optional[int] = None
+    ) -> List[QualityInspection]:
         """Get inspections requiring follow-up"""
-        return (
-            db.query(QualityInspection)
-            .filter(
-                QualityInspection.requires_followup == True,
-                QualityInspection.followup_completed == False,
-            )
-            .all()
+        query = db.query(QualityInspection).filter(
+            QualityInspection.requires_followup == True,
+            QualityInspection.followup_completed == False,
         )
+        if organization_id:
+            query = query.filter(QualityInspection.organization_id == organization_id)
+        return query.all()
 
     def get_failed_inspections(
-        self, db: Session, *, skip: int = 0, limit: int = 100
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: Optional[int] = None
     ) -> List[QualityInspection]:
         """Get all failed inspections"""
-        return (
-            db.query(QualityInspection)
-            .filter(QualityInspection.passed == False)
-            .order_by(QualityInspection.inspection_date.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(QualityInspection).filter(QualityInspection.passed == False)
+        if organization_id:
+            query = query.filter(QualityInspection.organization_id == organization_id)
+        return query.order_by(QualityInspection.inspection_date.desc()).offset(skip).limit(limit).all()
 
     def complete_inspection(
         self, db: Session, *, inspection_id: int, score: float, passed: bool

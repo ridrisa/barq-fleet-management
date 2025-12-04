@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.finance import budgets, expenses, reports, tax
+from app.api.v1.finance import budgets, expenses, reports, tax
 
 router = APIRouter()
 

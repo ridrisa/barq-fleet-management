@@ -6,9 +6,8 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlalchemy.orm import Session
-from app.core.database import SessionLocal
-from app.crud.user import crud_user
-from app.schemas.user import UserCreate
+from app.core.database import db_manager
+from app.models.user import User
 from app.core.security import get_password_hash
 
 
@@ -17,29 +16,35 @@ def seed_users(db: Session) -> None:
     print("Seeding users...")
 
     # Check if admin user exists
-    admin = crud_user.get_by_email(db, email="admin@barq.com")
+    admin = db.query(User).filter(User.email == "admin@barq.com").first()
     if not admin:
-        admin_in = UserCreate(
+        admin = User(
             email="admin@barq.com",
-            password="admin123",
+            hashed_password=get_password_hash("admin123"),
             full_name="Admin User",
-            role="admin"
+            role="admin",
+            is_active=True,
+            is_superuser=True
         )
-        admin = crud_user.create(db, obj_in=admin_in)
+        db.add(admin)
+        db.flush()
         print(f"✓ Created admin user: {admin.email}")
     else:
         print(f"✓ Admin user already exists: {admin.email}")
 
     # Check if regular user exists
-    user = crud_user.get_by_email(db, email="user@barq.com")
+    user = db.query(User).filter(User.email == "user@barq.com").first()
     if not user:
-        user_in = UserCreate(
+        user = User(
             email="user@barq.com",
-            password="user123",
+            hashed_password=get_password_hash("user123"),
             full_name="Regular User",
-            role="user"
+            role="user",
+            is_active=True,
+            is_superuser=False
         )
-        user = crud_user.create(db, obj_in=user_in)
+        db.add(user)
+        db.flush()
         print(f"✓ Created regular user: {user.email}")
     else:
         print(f"✓ Regular user already exists: {user.email}")
@@ -49,7 +54,7 @@ def main() -> None:
     """Main seeding function"""
     print("Starting database seeding...")
 
-    db = SessionLocal()
+    db = db_manager.SessionLocal()
     try:
         seed_users(db)
         db.commit()

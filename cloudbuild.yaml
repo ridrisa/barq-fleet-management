@@ -3,12 +3,11 @@
 # Deploys to: Cloud Run (staging/production)
 
 substitutions:
-  _REGION: us-central1
+  _REGION: me-central1
   _REPOSITORY: barq-fleet
   _SERVICE_BACKEND: barq-api
   _SERVICE_FRONTEND: barq-web
-  _DATABASE_URL: ${_DATABASE_URL}  # Set in Cloud Build trigger
-  _SECRET_KEY: ${_SECRET_KEY}      # Set in Secret Manager
+  _TAG: latest  # Overridden by SHORT_SHA when triggered from repo
 
 options:
   machineType: 'E2_HIGHCPU_8'
@@ -107,7 +106,7 @@ steps:
     dir: 'frontend'
     args: ['run', 'build']
     env:
-      - 'VITE_API_URL=https://${_SERVICE_BACKEND}-${SHORT_SHA}---${_REGION}.run.app/api/v1'
+      - 'VITE_API_URL=https://${_SERVICE_BACKEND}-${_TAG}---${_REGION}.run.app/api/v1'
       - 'NODE_ENV=production'
     waitFor: ['frontend-test']
 
@@ -119,9 +118,11 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${_TAG}'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:latest'
+      - '-f'
+      - './backend/Dockerfile.prod'
       - '--cache-from'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:latest'
       - '--build-arg'
@@ -135,7 +136,7 @@ steps:
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${_TAG}'
       - '-t'
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:latest'
       - '-f'
@@ -155,7 +156,7 @@ steps:
       - '--exit-code'
       - '0'  # Don't fail build on vulnerabilities
       - '--no-progress'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${_TAG}'
     waitFor: ['build-backend-image']
 
   - name: 'aquasec/trivy:latest'
@@ -167,7 +168,7 @@ steps:
       - '--exit-code'
       - '0'
       - '--no-progress'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${_TAG}'
     waitFor: ['build-frontend-image']
 
   # ==============================================================================
@@ -200,14 +201,16 @@ steps:
       - 'deploy'
       - '${_SERVICE_BACKEND}-staging'
       - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${_TAG}'
       - '--region'
       - '${_REGION}'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
       - '--set-env-vars'
-      - 'POSTGRES_SERVER=${_DATABASE_URL},SECRET_KEY=${_SECRET_KEY},ENVIRONMENT=staging'
+      - 'ENVIRONMENT=staging,POSTGRES_USER=postgres,POSTGRES_DB=barq_fleet'
+      - '--set-secrets'
+      - 'SECRET_KEY=barq-secret-key:latest,POSTGRES_PASSWORD=barq-postgres-password:latest'
       - '--min-instances'
       - '1'
       - '--max-instances'
@@ -219,7 +222,7 @@ steps:
       - '--timeout'
       - '300s'
       - '--tag'
-      - '${SHORT_SHA}'
+      - '${_TAG}'
       - '--no-traffic'  # Deploy without traffic initially
     waitFor: ['push-backend-image']
 
@@ -231,7 +234,7 @@ steps:
       - 'deploy'
       - '${_SERVICE_FRONTEND}-staging'
       - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${SHORT_SHA}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${_TAG}'
       - '--region'
       - '${_REGION}'
       - '--platform'
@@ -246,7 +249,7 @@ steps:
       - '--memory'
       - '512Mi'
       - '--tag'
-      - '${SHORT_SHA}'
+      - '${_TAG}'
       - '--no-traffic'
     waitFor: ['push-frontend-image']
 
@@ -263,7 +266,7 @@ steps:
       - '10'
       - '--retry-max-time'
       - '60'
-      - 'https://${_SERVICE_BACKEND}-staging-${SHORT_SHA}---${_REGION}.run.app/api/v1/health'
+      - 'https://${_SERVICE_BACKEND}-staging-${_TAG}---${_REGION}.run.app/api/v1/health'
     waitFor: ['deploy-backend-staging']
 
   - name: 'curlimages/curl:latest'
@@ -274,7 +277,7 @@ steps:
       - '5'
       - '--retry-delay'
       - '10'
-      - 'https://${_SERVICE_FRONTEND}-staging-${SHORT_SHA}---${_REGION}.run.app/'
+      - 'https://${_SERVICE_FRONTEND}-staging-${_TAG}---${_REGION}.run.app/'
     waitFor: ['deploy-frontend-staging']
 
   # ==============================================================================
@@ -289,7 +292,7 @@ steps:
       - 'update-traffic'
       - '${_SERVICE_BACKEND}-staging'
       - '--to-revisions'
-      - '${SHORT_SHA}=25'
+      - '${_TAG}=25'
       - '--region'
       - '${_REGION}'
     waitFor: ['smoke-test-backend']
@@ -310,12 +313,12 @@ steps:
         sleep 300
 
         # Check error rate (simplified)
-        ERROR_COUNT=$(gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=${_SERVICE_BACKEND}-staging AND severity>=ERROR" --limit=100 --format="value(timestamp)" | wc -l)
+        error_count=$$(gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=${_SERVICE_BACKEND}-staging AND severity>=ERROR" --limit=100 --format="value(timestamp)" | wc -l)
 
-        echo "Error count in last 5 minutes: $ERROR_COUNT"
+        echo "Error count in last 5 minutes: $$error_count"
 
-        if [ "$ERROR_COUNT" -gt 10 ]; then
-          echo "❌ High error rate detected! Rolling back..."
+        if [ "$$error_count" -gt 10 ]; then
+          echo "High error rate detected! Rolling back..."
           exit 1
         fi
 
@@ -368,8 +371,8 @@ steps:
         echo "Frontend URL: https://${_SERVICE_FRONTEND}-staging---${_REGION}.run.app"
         echo ""
         echo "Image Tags:"
-        echo "  - Backend: ${SHORT_SHA}"
-        echo "  - Frontend: ${SHORT_SHA}"
+        echo "  - Backend: ${_TAG}"
+        echo "  - Frontend: ${_TAG}"
         echo ""
         echo "✅ Deployment completed successfully!"
         echo "======================================"
@@ -377,9 +380,9 @@ steps:
 
 # Images to be pushed to Artifact Registry
 images:
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:latest'
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:latest'
 
 # Artifacts to be stored

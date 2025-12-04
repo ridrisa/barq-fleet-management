@@ -28,6 +28,18 @@ ENV/
 .coverage
 htmlcov/
 .tox/
+backend/tests/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# GCP Service Account Keys
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.*.json
+!frontend/**/*.json
+!backend/**/*.json
 
 # IDEs
 .vscode/

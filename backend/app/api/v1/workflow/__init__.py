@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.workflow import (
+    approval_chains,
     instance,
     template,
 )
@@ -13,5 +14,6 @@ workflow_router = APIRouter()
 # Include all sub-routers
 workflow_router.include_router(template.router, prefix="/template", tags=["workflow-template"])
 workflow_router.include_router(instance.router, prefix="/instance", tags=["workflow-instance"])
+workflow_router.include_router(approval_chains.router, prefix="/approval-chains", tags=["workflow-approval-chains"])
 
 __all__ = ["workflow_router"]

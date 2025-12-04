@@ -1,10 +1,16 @@
-from typing import List, Optional
+from datetime import date
+from decimal import Decimal
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_organization, get_current_user, get_db
 from app.models.fleet import Vehicle, VehicleStatus, VehicleType
+from app.models.fleet.maintenance import VehicleMaintenance
+from app.models.fleet.fuel_log import FuelLog
+from app.models.fleet.assignment import CourierVehicleAssignment
 from app.models.tenant.organization import Organization
 from app.models.user import User
 from app.schemas.fleet import (
@@ -142,6 +148,119 @@ def get_expiring_documents(
     return vehicle_service.get_expiring_documents(
         db, days_threshold=days, organization_id=current_org.id
     )
+
+
+@router.get("/{vehicle_id}/history")
+def get_vehicle_history(
+    vehicle_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+) -> Dict[str, Any]:
+    """Get vehicle history including maintenance, fuel logs, and assignments"""
+    # Verify vehicle belongs to the organization
+    vehicle = vehicle_service.get(db, id=vehicle_id)
+    if not vehicle or vehicle.organization_id != current_org.id:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+
+    # Get maintenance records
+    maintenance_records = (
+        db.query(VehicleMaintenance)
+        .filter(
+            VehicleMaintenance.vehicle_id == vehicle_id,
+            VehicleMaintenance.organization_id == current_org.id,
+        )
+        .order_by(VehicleMaintenance.scheduled_date.desc())
+        .limit(50)
+        .all()
+    )
+
+    # Get fuel logs
+    fuel_logs = (
+        db.query(FuelLog)
+        .filter(
+            FuelLog.vehicle_id == vehicle_id,
+            FuelLog.organization_id == current_org.id,
+        )
+        .order_by(FuelLog.fuel_date.desc())
+        .limit(50)
+        .all()
+    )
+
+    # Get assignment history with courier info
+    assignments = (
+        db.query(CourierVehicleAssignment)
+        .filter(
+            CourierVehicleAssignment.vehicle_id == vehicle_id,
+            CourierVehicleAssignment.organization_id == current_org.id,
+        )
+        .order_by(CourierVehicleAssignment.start_date.desc())
+        .limit(50)
+        .all()
+    )
+
+    # Calculate summary statistics
+    total_maintenance_cost = sum(
+        float(m.total_cost or 0) for m in maintenance_records
+    )
+    total_fuel_cost = sum(float(f.fuel_cost or 0) for f in fuel_logs)
+    total_fuel_quantity = sum(float(f.fuel_quantity or 0) for f in fuel_logs)
+
+    # Calculate average fuel efficiency
+    avg_fuel_efficiency = 0.0
+    if fuel_logs and total_fuel_quantity > 0:
+        odometer_readings = [float(f.odometer_reading) for f in fuel_logs if f.odometer_reading]
+        if len(odometer_readings) >= 2:
+            distance = max(odometer_readings) - min(odometer_readings)
+            if distance > 0:
+                avg_fuel_efficiency = round(distance / total_fuel_quantity, 2)
+
+    # Format maintenance records
+    maintenance_data = [
+        {
+            "date": str(m.scheduled_date) if m.scheduled_date else str(m.created_at.date()),
+            "type": m.maintenance_type.value if m.maintenance_type else "unknown",
+            "cost": float(m.total_cost or 0),
+            "mileage": float(m.mileage_at_service or 0),
+        }
+        for m in maintenance_records
+    ]
+
+    # Format fuel logs
+    fuel_data = [
+        {
+            "date": str(f.fuel_date) if f.fuel_date else str(f.created_at.date()),
+            "liters": float(f.fuel_quantity or 0),
+            "cost": float(f.fuel_cost or 0),
+            "odometer": float(f.odometer_reading or 0),
+        }
+        for f in fuel_logs
+    ]
+
+    # Format assignments
+    assignment_data = []
+    for a in assignments:
+        duration_days = a.duration_days
+        duration_str = f"{duration_days} days" if duration_days else "Ongoing"
+        courier_name = a.courier.full_name if a.courier else "Unknown"
+        assignment_data.append({
+            "courier": courier_name,
+            "startDate": str(a.start_date) if a.start_date else "",
+            "endDate": str(a.end_date) if a.end_date else "",
+            "duration": duration_str,
+        })
+
+    return {
+        "summary": {
+            "mileage": float(vehicle.current_mileage or 0),
+            "total_maintenance_cost": total_maintenance_cost,
+            "total_fuel_cost": total_fuel_cost,
+            "avg_fuel_efficiency": avg_fuel_efficiency,
+        },
+        "maintenance": maintenance_data,
+        "fuel_logs": fuel_data,
+        "assignments": assignment_data,
+    }
 
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse)

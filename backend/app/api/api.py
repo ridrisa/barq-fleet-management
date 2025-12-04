@@ -2,7 +2,7 @@
 API Router Configuration
 
 This module configures the main API router with all v1 endpoints.
-Legacy (non-v1) routers have been removed as part of the API consolidation.
+All routes are now consolidated under v1.
 """
 
 from fastapi import APIRouter
@@ -20,6 +20,11 @@ from app.api.v1.operations import router as operations_router
 from app.api.v1.accommodation import router as accommodation_router
 from app.api.v1.workflow import workflow_router
 from app.api.v1.tenant import tenant_router
+
+# V1 Analytics, Finance, FMS routers
+from app.api.v1.analytics import router as analytics_router
+from app.api.v1.finance import router as finance_router
+from app.api.v1.fms import router as fms_router
 
 api_router = APIRouter()
 
@@ -42,3 +47,8 @@ api_router.include_router(operations_router, prefix="/operations", tags=["operat
 api_router.include_router(accommodation_router, prefix="/accommodation", tags=["accommodation"])
 api_router.include_router(workflow_router, prefix="/workflow", tags=["workflow"])
 api_router.include_router(support_router, prefix="/support", tags=["support"])
+
+# Analytics, Finance, FMS routes
+api_router.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(finance_router, prefix="/finance", tags=["finance"])
+api_router.include_router(fms_router, prefix="/fms", tags=["fms"])

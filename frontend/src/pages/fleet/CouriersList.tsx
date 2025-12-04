@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Edit, Trash2, Eye } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Eye, Filter, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Table } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
@@ -21,17 +22,20 @@ export default function CouriersList() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCourier, setEditingCourier] = useState<any>(null)
 
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [cityFilter, setCityFilter] = useState<string>('')
+  const [nationalityFilter, setNationalityFilter] = useState<string>('')
+
   // Use the reusable data table hook
   const {
     isLoading,
     error,
     currentPage,
     pageSize,
-    totalPages,
     searchTerm,
     setSearchTerm,
     setCurrentPage,
-    paginatedData: couriers,
     filteredData,
   } = useDataTable({
     queryKey: 'couriers',
@@ -47,6 +51,51 @@ export default function CouriersList() {
     update: couriersAPI.update,
     delete: couriersAPI.delete,
   })
+
+  // Extract unique cities and nationalities for filter dropdowns
+  const uniqueCities = useMemo(() => {
+    const cities = [...new Set(filteredData.map((c: any) => c.city).filter(Boolean))]
+    return cities.sort()
+  }, [filteredData])
+
+  const uniqueNationalities = useMemo(() => {
+    const nationalities = [...new Set(filteredData.map((c: any) => c.nationality).filter(Boolean))]
+    return nationalities.sort()
+  }, [filteredData])
+
+  // Apply filters to data
+  const finalFilteredData = useMemo(() => {
+    let result = filteredData
+
+    if (statusFilter) {
+      result = result.filter((c: any) => c.status === statusFilter)
+    }
+    if (cityFilter) {
+      result = result.filter((c: any) => c.city === cityFilter)
+    }
+    if (nationalityFilter) {
+      result = result.filter((c: any) => c.nationality === nationalityFilter)
+    }
+
+    return result
+  }, [filteredData, statusFilter, cityFilter, nationalityFilter])
+
+  // Paginate final filtered data
+  const finalPaginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    const end = start + pageSize
+    return finalFilteredData.slice(start, end)
+  }, [finalFilteredData, currentPage, pageSize])
+
+  const finalTotalPages = Math.ceil(finalFilteredData.length / pageSize)
+
+  const hasActiveFilters = statusFilter || cityFilter || nationalityFilter
+
+  const clearFilters = () => {
+    setStatusFilter('')
+    setCityFilter('')
+    setNationalityFilter('')
+  }
 
   const handleOpenCreateModal = () => {
     setEditingCourier(null)
@@ -149,10 +198,31 @@ export default function CouriersList() {
     )
   }
 
-  // Calculate status counts for KPI cards
+  // Calculate status counts for KPI cards (using all data, not filtered)
   const activeCouriers = filteredData.filter((c: any) => c.status === 'active').length
   const onLeaveCouriers = filteredData.filter((c: any) => c.status === 'on_leave').length
   const terminatedCouriers = filteredData.filter((c: any) => c.status === 'terminated').length
+
+  // Status options for filter
+  const statusOptions = [
+    { value: '', label: 'All Statuses' },
+    { value: 'active', label: 'Active' },
+    { value: 'on_leave', label: 'On Leave' },
+    { value: 'terminated', label: 'Terminated' },
+    { value: 'inactive', label: 'Inactive' },
+  ]
+
+  // City options for filter
+  const cityOptions = [
+    { value: '', label: 'All Cities' },
+    ...uniqueCities.map((city: string) => ({ value: city, label: city })),
+  ]
+
+  // Nationality options for filter
+  const nationalityOptions = [
+    { value: '', label: 'All Nationalities' },
+    ...uniqueNationalities.map((nat: string) => ({ value: nat, label: nat })),
+  ]
 
   return (
     <div className="space-y-6">
@@ -166,7 +236,7 @@ export default function CouriersList() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters() }}>
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-gray-900">{filteredData.length}</p>
@@ -174,7 +244,7 @@ export default function CouriersList() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('active') }}>
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">{activeCouriers}</p>
@@ -182,7 +252,7 @@ export default function CouriersList() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('on_leave') }}>
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-yellow-600">{onLeaveCouriers}</p>
@@ -190,7 +260,7 @@ export default function CouriersList() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('terminated') }}>
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-red-600">{terminatedCouriers}</p>
@@ -202,23 +272,67 @@ export default function CouriersList() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Couriers</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>All Couriers</CardTitle>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
+          {/* Search and Filters */}
+          <div className="mb-4 space-y-4">
             <Input
               placeholder="Search couriers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               leftIcon={<Search className="h-4 w-4 text-gray-400" />}
             />
+
+            {/* Filter Row */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Filter className="h-4 w-4" />
+                <span>Filters:</span>
+              </div>
+              <div className="w-40">
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  options={statusOptions}
+                />
+              </div>
+              <div className="w-40">
+                <Select
+                  value={cityFilter}
+                  onChange={(e) => setCityFilter(e.target.value)}
+                  options={cityOptions}
+                />
+              </div>
+              <div className="w-48">
+                <Select
+                  value={nationalityFilter}
+                  onChange={(e) => setNationalityFilter(e.target.value)}
+                  options={nationalityOptions}
+                />
+              </div>
+              {hasActiveFilters && (
+                <span className="text-sm text-gray-500">
+                  Showing {finalFilteredData.length} of {filteredData.length} couriers
+                </span>
+              )}
+            </div>
           </div>
-          <Table data={couriers} columns={columns} />
+
+          <Table data={finalPaginatedData} columns={columns} />
           <Pagination
             currentPage={currentPage}
-            totalPages={totalPages}
+            totalPages={finalTotalPages}
             onPageChange={setCurrentPage}
-            totalItems={filteredData.length}
+            totalItems={finalFilteredData.length}
             pageSize={pageSize}
           />
         </CardContent>

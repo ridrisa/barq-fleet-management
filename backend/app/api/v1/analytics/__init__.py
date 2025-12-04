@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.analytics import (
+from app.api.v1.analytics import (
     export,
     financial,
     fleet,

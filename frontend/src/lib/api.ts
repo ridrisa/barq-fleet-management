@@ -15,6 +15,23 @@ export const api = axios.create({
   },
 })
 
+// Helper to safely call APIs that may not exist yet
+// Returns fallback on 404 errors (endpoint not implemented)
+export const safeApiCall = async <T>(
+  apiCall: () => Promise<T>,
+  fallback: T
+): Promise<T> => {
+  try {
+    return await apiCall()
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      console.warn('API endpoint not implemented, using fallback')
+      return fallback
+    }
+    throw error
+  }
+}
+
 // Request interceptor to add auth token
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
@@ -23,6 +40,22 @@ api.interceptors.request.use((config) => {
   }
   return config
 })
+
+// Response interceptor to handle 401 errors and redirect to login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear token and redirect to login
+      localStorage.removeItem('token')
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 export const authAPI = {
   login: async (email: string, password: string) => {
@@ -181,8 +214,10 @@ export const assignmentsAPI = {
 
 export const fuelTrackingAPI = {
   getAll: async () => {
-    const { data } = await api.get('/fleet/fuel-logs')
-    return data
+    return safeApiCall(async () => {
+      const { data } = await api.get('/fleet/fuel-logs')
+      return data
+    }, [])
   },
   create: async (fuelLogData: any) => {
     const { data } = await api.post('/fleet/fuel-logs', fuelLogData)
@@ -197,11 +232,13 @@ export const fuelTrackingAPI = {
     return data
   },
   getSummary: async (startDate?: string, endDate?: string) => {
-    const params = new URLSearchParams()
-    if (startDate) params.append('start_date', startDate)
-    if (endDate) params.append('end_date', endDate)
-    const { data } = await api.get(`/fleet/fuel-logs/summary?${params}`)
-    return data
+    return safeApiCall(async () => {
+      const params = new URLSearchParams()
+      if (startDate) params.append('start_date', startDate)
+      if (endDate) params.append('end_date', endDate)
+      const { data } = await api.get(`/fleet/fuel-logs/summary?${params}`)
+      return data
+    }, { total_fuel: 0, total_cost: 0, average_efficiency: 0 })
   },
 }
 
@@ -230,8 +267,10 @@ export const maintenanceAPI = {
 
 export const courierPerformanceAPI = {
   getAll: async (skip: number, limit: number, startDate: string, endDate: string) => {
-    const { data } = await api.get(`/fleet/courier-performance?skip=${skip}&limit=${limit}&start_date=${startDate}&end_date=${endDate}`)
-    return data
+    return safeApiCall(async () => {
+      const { data } = await api.get(`/fleet/courier-performance?skip=${skip}&limit=${limit}&start_date=${startDate}&end_date=${endDate}`)
+      return data
+    }, { items: [], total: 0 })
   },
   exportToExcel: async (startDate: string, endDate: string) => {
     const { data } = await api.get(`/fleet/courier-performance/export?start_date=${startDate}&end_date=${endDate}`, {
@@ -243,19 +282,19 @@ export const courierPerformanceAPI = {
 
 export const documentsAPI = {
   getAll: async () => {
-    const { data } = await api.get('/fleet/documents')
+    const { data } = await api.get('/operations/documents')
     return data
   },
   create: async (documentData: any) => {
-    const { data } = await api.post('/fleet/documents', documentData)
+    const { data } = await api.post('/operations/documents', documentData)
     return data
   },
   update: async (id: number, documentData: any) => {
-    const { data } = await api.put(`/fleet/documents/${id}`, documentData)
+    const { data } = await api.put(`/operations/documents/${id}`, documentData)
     return data
   },
   delete: async (id: number) => {
-    const { data } = await api.delete(`/fleet/documents/${id}`)
+    const { data } = await api.delete(`/operations/documents/${id}`)
     return data
   },
 }
@@ -269,38 +308,38 @@ export const vehicleHistoryAPI = {
 
 export const leavesAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/leaves')
+    const { data } = await api.get('/hr/leave')
     return data
   },
   create: async (leaveData: any) => {
-    const { data } = await api.post('/hr/leaves', leaveData)
+    const { data } = await api.post('/hr/leave', leaveData)
     return data
   },
   update: async (id: number, leaveData: any) => {
-    const { data } = await api.put(`/hr/leaves/${id}`, leaveData)
+    const { data } = await api.put(`/hr/leave/${id}`, leaveData)
     return data
   },
   delete: async (id: number) => {
-    const { data } = await api.delete(`/hr/leaves/${id}`)
+    const { data } = await api.delete(`/hr/leave/${id}`)
     return data
   },
 }
 
 export const loansAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/loans')
+    const { data } = await api.get('/hr/loan')
     return data
   },
   create: async (loanData: any) => {
-    const { data } = await api.post('/hr/loans', loanData)
+    const { data } = await api.post('/hr/loan', loanData)
     return data
   },
   update: async (id: number, loanData: any) => {
-    const { data } = await api.put(`/hr/loans/${id}`, loanData)
+    const { data } = await api.put(`/hr/loan/${id}`, loanData)
     return data
   },
   delete: async (id: number) => {
-    const { data } = await api.delete(`/hr/loans/${id}`)
+    const { data } = await api.delete(`/hr/loan/${id}`)
     return data
   },
 }
@@ -368,8 +407,10 @@ export const vehicleLogsAPI = {
 
 export const penaltiesAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/penalties')
-    return data
+    return safeApiCall(async () => {
+      const { data } = await api.get('/hr/penalties')
+      return data
+    }, [])
   },
   create: async (penaltyData: any) => {
     const { data } = await api.post('/hr/penalties', penaltyData)
@@ -387,23 +428,23 @@ export const penaltiesAPI = {
 
 export const assetsAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/assets')
+    const { data } = await api.get('/hr/asset')
     return data
   },
   getByCourier: async (courierId: number) => {
-    const { data } = await api.get(`/hr/assets?courier_id=${courierId}`)
+    const { data } = await api.get(`/hr/asset?courier_id=${courierId}`)
     return data
   },
   create: async (assetData: any) => {
-    const { data } = await api.post('/hr/assets', assetData)
+    const { data } = await api.post('/hr/asset', assetData)
     return data
   },
   update: async (id: number, assetData: any) => {
-    const { data } = await api.put(`/hr/assets/${id}`, assetData)
+    const { data } = await api.put(`/hr/asset/${id}`, assetData)
     return data
   },
   delete: async (id: number) => {
-    const { data } = await api.delete(`/hr/assets/${id}`)
+    const { data } = await api.delete(`/hr/asset/${id}`)
     return data
   },
 }
@@ -431,8 +472,10 @@ export const payrollAPI = {
 
 export const bonusesAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/bonuses')
-    return data
+    return safeApiCall(async () => {
+      const { data } = await api.get('/hr/bonuses')
+      return data
+    }, [])
   },
   create: async (bonusData: any) => {
     const { data } = await api.post('/hr/bonuses', bonusData)
@@ -744,12 +787,18 @@ export const feedbackAPI = {
 
 export const performanceAPI = {
   getCourierPerformance: async (courierId?: number) => {
-    const url = courierId ? `/operations/performance/courier/${courierId}` : '/operations/performance/couriers'
+    // Backend uses /fleet/courier-performance for courier metrics
+    const url = courierId ? `/fleet/courier-performance?courier_id=${courierId}` : '/fleet/courier-performance'
     const { data } = await api.get(url)
     return data
   },
   getOperationsMetrics: async () => {
-    const { data } = await api.get('/operations/performance/metrics')
+    // Backend has system performance at /performance/metrics and dispatch metrics at /operations/dispatch/metrics
+    const { data } = await api.get('/operations/dispatch/metrics')
+    return data
+  },
+  getSystemMetrics: async () => {
+    const { data } = await api.get('/performance/metrics')
     return data
   },
 }
@@ -775,15 +824,16 @@ export const operationsSettingsAPI = {
 
 export const deliveryAssignmentsAPI = {
   getAll: async () => {
-    const { data } = await api.get('/operations/assignments')
+    // Backend uses /operations/dispatch for dispatch assignments
+    const { data } = await api.get('/operations/dispatch')
     return data
   },
   assign: async (deliveryId: number, courierId: number) => {
-    const { data } = await api.post(`/operations/assignments`, { delivery_id: deliveryId, courier_id: courierId })
+    const { data } = await api.post('/operations/dispatch', { delivery_id: deliveryId, courier_id: courierId })
     return data
   },
   reassign: async (deliveryId: number, courierId: number) => {
-    const { data } = await api.put(`/operations/assignments/${deliveryId}`, { courier_id: courierId })
+    const { data } = await api.post(`/operations/dispatch/${deliveryId}/reassign`, { new_courier_id: courierId, reassignment_reason: 'Manual reassignment' })
     return data
   },
   updateStatus: async (deliveryId: number, status: string) => {
@@ -794,38 +844,66 @@ export const deliveryAssignmentsAPI = {
 
 export const qualityControlAPI = {
   getAll: async () => {
-    const { data } = await api.get('/operations/quality-control')
+    // Backend uses /operations/quality/inspections for quality inspections
+    const { data } = await api.get('/operations/quality/inspections')
+    return data
+  },
+  getMetrics: async () => {
+    const { data } = await api.get('/operations/quality/metrics')
     return data
   },
   create: async (inspectionData: any) => {
-    const { data } = await api.post('/operations/quality-control', inspectionData)
+    const { data } = await api.post('/operations/quality/inspections', inspectionData)
     return data
   },
   update: async (id: number, inspectionData: any) => {
-    const { data } = await api.put(`/operations/quality-control/${id}`, inspectionData)
+    const { data } = await api.put(`/operations/quality/inspections/${id}`, inspectionData)
     return data
   },
   delete: async (id: number) => {
-    const { data } = await api.delete(`/operations/quality-control/${id}`)
+    const { data } = await api.delete(`/operations/quality/inspections/${id}`)
+    return data
+  },
+  complete: async (id: number, completionData: any) => {
+    const { data } = await api.post(`/operations/quality/inspections/${id}/complete`, completionData)
     return data
   },
 }
 
 export const serviceLevelsAPI = {
   getAll: async () => {
-    const { data } = await api.get('/operations/service-levels')
+    // Backend uses /operations/sla/definitions for SLA definitions
+    const { data } = await api.get('/operations/sla/definitions')
+    return data
+  },
+  getTracking: async (status?: string) => {
+    const params = status ? `?status=${status}` : ''
+    const { data } = await api.get(`/operations/sla/tracking${params}`)
+    return data
+  },
+  getAtRisk: async () => {
+    const { data } = await api.get('/operations/sla/tracking/at-risk')
+    return data
+  },
+  getBreached: async () => {
+    const { data } = await api.get('/operations/sla/tracking/breached')
     return data
   },
   create: async (slaData: any) => {
-    const { data } = await api.post('/operations/service-levels', slaData)
+    const { data } = await api.post('/operations/sla/definitions', slaData)
     return data
   },
   update: async (id: number, slaData: any) => {
-    const { data } = await api.put(`/operations/service-levels/${id}`, slaData)
+    const { data } = await api.put(`/operations/sla/definitions/${id}`, slaData)
     return data
   },
   delete: async (id: number) => {
-    const { data } = await api.delete(`/operations/service-levels/${id}`)
+    const { data } = await api.delete(`/operations/sla/definitions/${id}`)
+    return data
+  },
+  getComplianceReport: async (period?: string) => {
+    const params = period ? `?period=${period}` : ''
+    const { data } = await api.get(`/operations/sla/compliance/report${params}`)
     return data
   },
 }
@@ -1023,58 +1101,58 @@ export const contractsAPI = {
 // Workflows Module APIs
 export const workflowTemplatesAPI = {
   getAll: async () => {
-    const { data } = await api.get('/workflow/templates')
+    const { data } = await api.get('/workflow/template')
     return data
   },
   create: async (templateData: any) => {
-    const { data } = await api.post('/workflow/templates', templateData)
+    const { data } = await api.post('/workflow/template', templateData)
     return data
   },
   update: async (id: number, templateData: any) => {
-    const { data } = await api.put(`/workflow/templates/${id}`, templateData)
+    const { data } = await api.put(`/workflow/template/${id}`, templateData)
     return data
   },
   delete: async (id: number) => {
-    const { data } = await api.delete(`/workflow/templates/${id}`)
+    const { data } = await api.delete(`/workflow/template/${id}`)
     return data
   },
   activate: async (id: number) => {
-    const { data } = await api.post(`/workflow/templates/${id}/activate`)
+    const { data } = await api.post(`/workflow/template/${id}/activate`)
     return data
   },
   deactivate: async (id: number) => {
-    const { data } = await api.post(`/workflow/templates/${id}/deactivate`)
+    const { data } = await api.post(`/workflow/template/${id}/deactivate`)
     return data
   },
 }
 
 export const workflowInstancesAPI = {
   getAll: async () => {
-    const { data } = await api.get('/workflow/instances')
+    const { data } = await api.get('/workflow/instance')
     return data
   },
   create: async (instanceData: any) => {
-    const { data } = await api.post('/workflow/instances', instanceData)
+    const { data } = await api.post('/workflow/instance', instanceData)
     return data
   },
   get: async (id: number) => {
-    const { data } = await api.get(`/workflow/instances/${id}`)
+    const { data } = await api.get(`/workflow/instance/${id}`)
     return data
   },
   update: async (id: number, instanceData: any) => {
-    const { data } = await api.put(`/workflow/instances/${id}`, instanceData)
+    const { data } = await api.put(`/workflow/instance/${id}`, instanceData)
     return data
   },
   delete: async (id: number) => {
-    const { data } = await api.delete(`/workflow/instances/${id}`)
+    const { data } = await api.delete(`/workflow/instance/${id}`)
     return data
   },
   approve: async (id: number) => {
-    const { data } = await api.post(`/workflow/instances/${id}/approve`)
+    const { data } = await api.post(`/workflow/instance/${id}/approve`)
     return data
   },
   reject: async (id: number, reason: string) => {
-    const { data } = await api.post(`/workflow/instances/${id}/reject`, { reason })
+    const { data } = await api.post(`/workflow/instance/${id}/reject`, { reason })
     return data
   },
 }
@@ -1284,11 +1362,11 @@ export const permissionsAPI = {
 
 export const auditLogsAPI = {
   getAll: async () => {
-    const { data } = await api.get('/admin/audit')
+    const { data } = await api.get('/admin/audit-logs')
     return data
   },
   export: async (startDate: string, endDate: string) => {
-    const { data } = await api.get(`/admin/audit/export?start_date=${startDate}&end_date=${endDate}`, {
+    const { data } = await api.get(`/admin/audit-logs/export?start_date=${startDate}&end_date=${endDate}`, {
       responseType: 'blob',
     })
     return data
