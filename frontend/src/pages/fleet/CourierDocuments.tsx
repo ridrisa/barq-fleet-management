@@ -24,7 +24,7 @@ export default function CourierDocuments() {
   // Fetch couriers for the form dropdown
   const { data: couriersData } = useQuery({
     queryKey: ['couriers'],
-    queryFn: couriersAPI.getAll,
+    queryFn: () => couriersAPI.getAll(),
   })
 
   const couriers = couriersData?.map((courier: any) => ({

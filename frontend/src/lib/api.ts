@@ -140,8 +140,12 @@ export const dashboardAPI = {
 }
 
 export const couriersAPI = {
-  getAll: async () => {
-    const { data } = await api.get('/fleet/couriers')
+  getAll: async (skip?: number, limit?: number) => {
+    const params = new URLSearchParams()
+    if (skip !== undefined) params.append('skip', skip.toString())
+    // Default to high limit to fetch all couriers for filter options
+    params.append('limit', (limit ?? 1000).toString())
+    const { data } = await api.get(`/fleet/couriers?${params.toString()}`)
     return data
   },
   getById: async (id: number) => {

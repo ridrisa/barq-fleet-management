@@ -48,12 +48,12 @@ export default function Handovers() {
   // Fetch couriers and vehicles for the form
   const { data: couriers = [], isLoading: couriersLoading } = useQuery({
     queryKey: ['couriers'],
-    queryFn: couriersAPI.getAll,
+    queryFn: () => couriersAPI.getAll(),
   })
 
   const { data: vehicles = [], isLoading: vehiclesLoading } = useQuery({
     queryKey: ['vehicles'],
-    queryFn: vehiclesAPI.getAll,
+    queryFn: () => vehiclesAPI.getAll(),
   })
 
   const handleOpenCreateModal = () => {

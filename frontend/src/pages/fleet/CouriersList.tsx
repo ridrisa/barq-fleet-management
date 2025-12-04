@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Plus, Search, Edit, Trash2, Eye, Filter, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -12,7 +13,6 @@ import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
 import { couriersAPI } from '@/lib/api'
-import { useDataTable } from '@/hooks/useDataTable'
 import { useCRUD } from '@/hooks/useCRUD'
 import { CourierForm, CourierFormData } from '@/components/forms/CourierForm'
 
@@ -26,22 +26,31 @@ export default function CouriersList() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [cityFilter, setCityFilter] = useState<string>('')
   const [nationalityFilter, setNationalityFilter] = useState<string>('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
-  // Use the reusable data table hook
+  // Fetch ALL couriers - use direct useQuery instead of useDataTable
+  // This ensures we get all data for filter dropdowns
   const {
+    data: allCouriers = [],
     isLoading,
     error,
-    currentPage,
-    pageSize,
-    searchTerm,
-    setSearchTerm,
-    setCurrentPage,
-    filteredData,
-  } = useDataTable({
-    queryKey: 'couriers',
-    queryFn: couriersAPI.getAll,
-    pageSize: 10,
+  } = useQuery({
+    queryKey: ['couriers'],
+    queryFn: () => couriersAPI.getAll(), // Uses default limit=1000
   })
+
+  // Apply search filter to all data
+  const filteredData = useMemo(() => {
+    if (!searchTerm) return allCouriers
+    const lowerSearchTerm = searchTerm.toLowerCase()
+    return allCouriers.filter((item: any) =>
+      Object.values(item).some((value) =>
+        String(value).toLowerCase().includes(lowerSearchTerm)
+      )
+    )
+  }, [allCouriers, searchTerm])
 
   // Use the reusable CRUD hook with toast notifications
   const { handleCreate, handleUpdate, handleDelete, isLoading: isMutating } = useCRUD({
@@ -53,15 +62,16 @@ export default function CouriersList() {
   })
 
   // Extract unique cities and nationalities for filter dropdowns
+  // Use allCouriers (not filteredData) to ensure all options are available
   const uniqueCities = useMemo(() => {
-    const cities = [...new Set(filteredData.map((c: any) => c.city).filter(Boolean))]
+    const cities = [...new Set(allCouriers.map((c: any) => c.city).filter(Boolean))] as string[]
     return cities.sort()
-  }, [filteredData])
+  }, [allCouriers])
 
   const uniqueNationalities = useMemo(() => {
-    const nationalities = [...new Set(filteredData.map((c: any) => c.nationality).filter(Boolean))]
+    const nationalities = [...new Set(allCouriers.map((c: any) => c.nationality).filter(Boolean))] as string[]
     return nationalities.sort()
-  }, [filteredData])
+  }, [allCouriers])
 
   // Apply filters to data
   const finalFilteredData = useMemo(() => {
@@ -199,9 +209,9 @@ export default function CouriersList() {
   }
 
   // Calculate status counts for KPI cards (using all data, not filtered)
-  const activeCouriers = filteredData.filter((c: any) => c.status === 'active').length
-  const onLeaveCouriers = filteredData.filter((c: any) => c.status === 'on_leave').length
-  const terminatedCouriers = filteredData.filter((c: any) => c.status === 'terminated').length
+  const activeCouriers = allCouriers.filter((c: any) => c.status === 'active').length
+  const onLeaveCouriers = allCouriers.filter((c: any) => c.status === 'on_leave').length
+  const terminatedCouriers = allCouriers.filter((c: any) => c.status === 'terminated').length
 
   // Status options for filter
   const statusOptions = [
@@ -239,7 +249,7 @@ export default function CouriersList() {
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters() }}>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{filteredData.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{allCouriers.length}</p>
               <p className="text-sm text-gray-600">Total Couriers</p>
             </div>
           </CardContent>
@@ -321,7 +331,7 @@ export default function CouriersList() {
               </div>
               {hasActiveFilters && (
                 <span className="text-sm text-gray-500">
-                  Showing {finalFilteredData.length} of {filteredData.length} couriers
+                  Showing {finalFilteredData.length} of {allCouriers.length} couriers
                 </span>
               )}
             </div>

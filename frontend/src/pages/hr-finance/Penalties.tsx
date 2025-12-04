@@ -44,7 +44,7 @@ export default function Penalties() {
 
   const { data: couriers = [] } = useQuery({
     queryKey: ['couriers'],
-    queryFn: couriersAPI.getAll,
+    queryFn: () => couriersAPI.getAll(),
   })
 
   const handleEdit = (penalty: any) => {

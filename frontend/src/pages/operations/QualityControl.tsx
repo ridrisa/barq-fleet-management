@@ -50,7 +50,7 @@ export default function QualityControl() {
   // Fetch couriers (as inspectors) and deliveries for the form
   const { data: couriers = [], isLoading: couriersLoading } = useQuery({
     queryKey: ['couriers'],
-    queryFn: couriersAPI.getAll,
+    queryFn: () => couriersAPI.getAll(),
   })
 
   const handleOpenCreateModal = () => {

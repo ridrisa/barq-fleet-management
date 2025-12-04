@@ -45,7 +45,7 @@ export default function Bonuses() {
 
   const { data: couriers = [] } = useQuery({
     queryKey: ['couriers'],
-    queryFn: couriersAPI.getAll,
+    queryFn: () => couriersAPI.getAll(),
   })
 
   const handleEdit = (bonus: any) => {

@@ -67,6 +67,15 @@ export default function VehicleHistory() {
     [historyQuery.data]
   )
 
+  const vehicleOptions = useMemo(
+    () =>
+      (vehiclesQuery.data ?? []).map((v) => ({
+        value: String(v.id),
+        label: `${v.make} ${v.model} - ${v.plate_number}`,
+      })),
+    [vehiclesQuery.data]
+  )
+
   const maintenanceHistory = historyQuery.data?.maintenance ?? []
   const fuelHistory = historyQuery.data?.fuel_logs ?? []
   const assignmentHistory = historyQuery.data?.assignments ?? []
@@ -134,15 +143,6 @@ export default function VehicleHistory() {
       </div>
     )
   }
-
-  const vehicleOptions = useMemo(
-    () =>
-      (vehiclesQuery.data ?? []).map((v) => ({
-        value: String(v.id),
-        label: `${v.make} ${v.model} - ${v.plate_number}`,
-      })),
-    [vehiclesQuery.data]
-  )
 
   if (!vehicleOptions.length) {
     return (
