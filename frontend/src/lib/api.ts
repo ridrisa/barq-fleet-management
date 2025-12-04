@@ -1286,42 +1286,81 @@ export const contactSupportAPI = {
 }
 
 export const supportAnalyticsAPI = {
-  // These endpoints don't exist in the backend - using safeApiCall with fallbacks
-  getStats: async () => {
+  // Use the comprehensive dashboard endpoint that returns all metrics
+  getDashboard: async (days: number = 30) => {
     return safeApiCall(async () => {
-      const { data } = await api.get('/support/analytics/tickets')
+      const { data } = await api.get(`/support/analytics/dashboard?days=${days}`)
       return data
-    }, { total: 0, open: 0, closed: 0, avg_resolution_time: 0 })
+    }, {
+      period: { start_date: '', end_date: '', days },
+      tickets: { total_tickets: 0, open_tickets: 0, closed_tickets: 0, resolved_tickets: 0 },
+      response_times: { avg_first_response_hours: 0, avg_resolution_hours: 0 },
+      sla: { sla_compliance_rate: 0 },
+      customer_satisfaction: { satisfaction_score: 0, response_count: 0 },
+    })
   },
-  getSummary: async (_startDate: string, _endDate: string) => {
+  // Get ticket metrics
+  getTickets: async (startDate?: string, endDate?: string) => {
     return safeApiCall(async () => {
-      const { data } = await api.get('/support/analytics/tickets')
-      return {
-        totalTickets: data.total_tickets || 0,
-        openTickets: data.open_tickets || 0,
-        avgResolutionTime: data.avg_resolution_hours || 0,
-        customerSatisfaction: 85,
-      }
-    }, { totalTickets: 0, openTickets: 0, avgResolutionTime: 0, customerSatisfaction: 0 })
+      const params = new URLSearchParams()
+      if (startDate) params.append('start_date', startDate)
+      if (endDate) params.append('end_date', endDate)
+      const query = params.toString() ? `?${params}` : ''
+      const { data } = await api.get(`/support/analytics/tickets${query}`)
+      return data
+    }, { total_tickets: 0, open_tickets: 0, closed_tickets: 0, resolved_tickets: 0 })
   },
-  getTicketsOverTime: async (_startDate: string, _endDate: string) => {
+  // Get response time metrics
+  getResponseTimes: async (startDate?: string, endDate?: string) => {
     return safeApiCall(async () => {
-      const { data } = await api.get('/support/analytics/trends')
+      const params = new URLSearchParams()
+      if (startDate) params.append('start_date', startDate)
+      if (endDate) params.append('end_date', endDate)
+      const query = params.toString() ? `?${params}` : ''
+      const { data } = await api.get(`/support/analytics/response-times${query}`)
+      return data
+    }, { avg_first_response_hours: 0, avg_resolution_hours: 0 })
+  },
+  // Get customer satisfaction
+  getCustomerSatisfaction: async (startDate?: string, endDate?: string) => {
+    return safeApiCall(async () => {
+      const params = new URLSearchParams()
+      if (startDate) params.append('start_date', startDate)
+      if (endDate) params.append('end_date', endDate)
+      const query = params.toString() ? `?${params}` : ''
+      const { data } = await api.get(`/support/analytics/customer-satisfaction${query}`)
+      return data
+    }, { satisfaction_score: 0, response_count: 0 })
+  },
+  // Get trend data (requires start_date and end_date)
+  getTrends: async (startDate: string, endDate: string) => {
+    return safeApiCall(async () => {
+      const { data } = await api.get(`/support/analytics/trends?start_date=${startDate}&end_date=${endDate}`)
       return data
     }, [])
   },
-  getTicketsByCategory: async (_startDate: string, _endDate: string) => {
-    // Return empty array as endpoint doesn't exist
-    return []
+  // Legacy compatibility methods for SupportAnalytics page
+  getSummary: async (_startDate: string, _endDate: string) => {
+    return safeApiCall(async () => {
+      const { data } = await api.get('/support/analytics/dashboard?days=30')
+      return {
+        totalTickets: data.tickets?.total_tickets || 0,
+        openTickets: data.tickets?.open_tickets || 0,
+        avgResolutionTime: data.response_times?.avg_resolution_hours || 0,
+        customerSatisfaction: data.customer_satisfaction?.satisfaction_score || 0,
+      }
+    }, { totalTickets: 0, openTickets: 0, avgResolutionTime: 0, customerSatisfaction: 0 })
   },
-  getResolutionTimeByCategory: async (_startDate: string, _endDate: string) => {
-    // Return empty array as endpoint doesn't exist
-    return []
+  getTicketsOverTime: async (startDate: string, endDate: string) => {
+    return safeApiCall(async () => {
+      const { data } = await api.get(`/support/analytics/trends?start_date=${startDate}&end_date=${endDate}`)
+      return Array.isArray(data) ? data : []
+    }, [])
   },
-  getCommonIssues: async (_startDate: string, _endDate: string) => {
-    // Return empty array as endpoint doesn't exist
-    return []
-  },
+  // These endpoints don't exist - return empty arrays
+  getTicketsByCategory: async (_startDate?: string, _endDate?: string) => [],
+  getResolutionTimeByCategory: async (_startDate?: string, _endDate?: string) => [],
+  getCommonIssues: async (_startDate?: string, _endDate?: string) => [],
 }
 
 // Admin Module APIs
@@ -1425,12 +1464,22 @@ export const apiKeysAPI = {
 
 export const adminAPI = {
   getSystemMonitoring: async () => {
-    const { data } = await api.get('/admin/monitoring')
-    return data
+    // Use the working resources endpoint instead of non-existent /monitoring
+    return safeApiCall(async () => {
+      const { data } = await api.get('/admin/monitoring/resources')
+      return data
+    }, {
+      cpu_count: 0,
+      cpu_usage_percent: 0,
+      memory_usage_percent: 0,
+      disk_usage_percent: 0,
+    })
   },
   getIntegrations: async () => {
-    const { data } = await api.get('/admin/integrations')
-    return data
+    return safeApiCall(async () => {
+      const { data } = await api.get('/admin/integrations')
+      return data
+    }, [])
   },
 }
 
