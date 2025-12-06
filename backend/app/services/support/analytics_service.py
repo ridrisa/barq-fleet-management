@@ -33,11 +33,11 @@ class SupportAnalyticsService:
 
         total_tickets = query.count()
 
-        # By status
-        open_tickets = query.filter(Ticket.status == TicketStatus.OPEN).count()
-        in_progress_tickets = query.filter(Ticket.status == TicketStatus.IN_PROGRESS).count()
-        resolved_tickets = query.filter(Ticket.status == TicketStatus.RESOLVED).count()
-        closed_tickets = query.filter(Ticket.status == TicketStatus.CLOSED).count()
+        # By status - use .value for native PostgreSQL enum comparison
+        open_tickets = query.filter(Ticket.status == TicketStatus.OPEN.value).count()
+        in_progress_tickets = query.filter(Ticket.status == TicketStatus.IN_PROGRESS.value).count()
+        resolved_tickets = query.filter(Ticket.status == TicketStatus.RESOLVED.value).count()
+        closed_tickets = query.filter(Ticket.status == TicketStatus.CLOSED.value).count()
 
         # By priority
         by_priority = dict(
@@ -54,7 +54,7 @@ class SupportAnalyticsService:
         )
 
         # Waiting tickets
-        waiting_tickets = query.filter(Ticket.status == TicketStatus.WAITING).count()
+        pending_tickets = query.filter(Ticket.status == TicketStatus.PENDING.value).count()
 
         # By escalation
         by_escalation = dict(
@@ -63,7 +63,7 @@ class SupportAnalyticsService:
             .all()
         )
 
-        escalated_count = query.filter(Ticket.escalation_level != EscalationLevel.NONE).count()
+        escalated_count = query.filter(Ticket.escalation_level != EscalationLevel.NONE.value).count()
 
         merged_count = query.filter(Ticket.is_merged == True).count()
 
@@ -71,7 +71,7 @@ class SupportAnalyticsService:
             "total_tickets": total_tickets,
             "open_tickets": open_tickets,
             "in_progress_tickets": in_progress_tickets,
-            "waiting_tickets": waiting_tickets,
+            "pending_tickets": pending_tickets,
             "resolved_tickets": resolved_tickets,
             "closed_tickets": closed_tickets,
             "by_priority": {k.value: v for k, v in by_priority.items()},
@@ -132,7 +132,7 @@ class SupportAnalyticsService:
             .with_entities(
                 Ticket.assigned_to,
                 func.count(Ticket.id).label("total"),
-                func.sum(func.case((Ticket.status == TicketStatus.RESOLVED, 1), else_=0)).label(
+                func.sum(func.case((Ticket.status == TicketStatus.RESOLVED.value, 1), else_=0)).label(
                     "resolved"
                 ),
             )
@@ -223,7 +223,7 @@ class SupportAnalyticsService:
 
         total_articles = db.query(KBArticle).count()
         published_articles = (
-            db.query(KBArticle).filter(KBArticle.status == ArticleStatus.PUBLISHED).count()
+            db.query(KBArticle).filter(KBArticle.status == ArticleStatus.PUBLISHED.value).count()
         )
 
         total_views = db.query(func.sum(KBArticle.view_count)).scalar() or 0
@@ -246,7 +246,7 @@ class SupportAnalyticsService:
         # Top articles
         top_articles = (
             db.query(KBArticle)
-            .filter(KBArticle.status == ArticleStatus.PUBLISHED)
+            .filter(KBArticle.status == ArticleStatus.PUBLISHED.value)
             .order_by(KBArticle.view_count.desc())
             .limit(10)
             .all()
@@ -255,7 +255,7 @@ class SupportAnalyticsService:
         # By category
         articles_by_category = dict(
             db.query(KBArticle.category, func.count(KBArticle.id))
-            .filter(KBArticle.status == ArticleStatus.PUBLISHED)
+            .filter(KBArticle.status == ArticleStatus.PUBLISHED.value)
             .group_by(KBArticle.category)
             .all()
         )
@@ -285,7 +285,7 @@ class SupportAnalyticsService:
             )
 
         total_sessions = query.count()
-        active_sessions = query.filter(ChatSession.status == ChatStatus.ACTIVE).count()
+        active_sessions = query.filter(ChatSession.status == ChatStatus.ACTIVE.value).count()
 
         # Calculate wait times
         waiting_sessions = query.filter(
@@ -356,7 +356,7 @@ class SupportAnalyticsService:
                 Ticket.sla_breached == False,
                 Ticket.sla_due_at <= now + hours_threshold,
                 Ticket.status.in_(
-                    [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING]
+                    [TicketStatus.OPEN.value, TicketStatus.IN_PROGRESS.value, TicketStatus.PENDING.value]
                 ),
             )
         ).count()
@@ -364,7 +364,7 @@ class SupportAnalyticsService:
         # SLA by priority
         by_priority = {}
         for priority in TicketPriority:
-            priority_query = query.filter(Ticket.priority == priority)
+            priority_query = query.filter(Ticket.priority == priority.value)
             priority_total = priority_query.count()
             priority_breached = priority_query.filter(Ticket.sla_breached == True).count()
             by_priority[priority.value] = {
@@ -395,7 +395,7 @@ class SupportAnalyticsService:
         self, db: Session, *, start_date: date = None, end_date: date = None
     ) -> Dict:
         """Get escalation analytics"""
-        query = db.query(Ticket).filter(Ticket.escalation_level != EscalationLevel.NONE)
+        query = db.query(Ticket).filter(Ticket.escalation_level != EscalationLevel.NONE.value)
 
         if start_date and end_date:
             query = query.filter(

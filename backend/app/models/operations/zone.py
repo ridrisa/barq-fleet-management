@@ -45,7 +45,7 @@ class Zone(TenantMixin, BaseModel):
     business_density = Column(String(20), comment="low, medium, high")
 
     # Operational Details
-    status = Column(SQLEnum(ZoneStatus), default=ZoneStatus.ACTIVE, nullable=False, index=True)
+    status = Column(SQLEnum(ZoneStatus, values_callable=lambda e: [m.value for m in e]), default=ZoneStatus.ACTIVE, nullable=False, index=True)
     priority_level = Column(Integer, default=1, comment="1=lowest, 5=highest")
     max_couriers = Column(Integer, default=10, comment="Maximum couriers allowed in zone")
     current_couriers = Column(Integer, default=0, comment="Current active couriers")

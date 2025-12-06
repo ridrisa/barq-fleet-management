@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Select'
-import { BarChart } from '@/components/charts/BarChart'
+import { BarChart } from '@/components/ui/BarChart'
 import { serviceLevelsAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 import { useCRUD } from '@/hooks/useCRUD'
@@ -327,7 +327,7 @@ export default function ServiceLevels() {
                 'Actual': sla.current_performance || 0,
               }))}
               xKey="name"
-              yKeys={['Target', 'Actual']}
+              yKey={['Target', 'Actual']}
               colors={['#3b82f6', '#22c55e']}
               height={280}
             />

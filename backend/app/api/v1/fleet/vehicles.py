@@ -23,6 +23,7 @@ from app.schemas.fleet import (
     VehicleStats,
     VehicleUpdate,
 )
+from app.schemas.analytics import VehicleStatisticsResponse, VehicleStatusBreakdown
 from app.services.fleet import vehicle_service
 
 router = APIRouter()
@@ -127,14 +128,58 @@ def get_vehicle_options(
     ]
 
 
-@router.get("/statistics")
+@router.get("/statistics", response_model=VehicleStatisticsResponse)
 def get_vehicle_statistics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
-):
-    """Get vehicle statistics"""
-    return vehicle_service.get_statistics(db, organization_id=current_org.id)
+) -> VehicleStatisticsResponse:
+    """Get vehicle statistics with typed response"""
+    stats = vehicle_service.get_statistics(db, organization_id=current_org.id)
+
+    # Convert raw statistics to typed response
+    status_breakdown = stats.get("status_breakdown", {})
+    total = stats.get("total", 0)
+    assigned = stats.get("assigned", 0)
+    available = stats.get("available", 0)
+
+    # Extract counts from status breakdown (keys might be enum values)
+    available_count = 0
+    assigned_count = 0
+    maintenance_count = 0
+    out_of_service_count = 0
+
+    for status_key, count in status_breakdown.items():
+        status_value = status_key.value if hasattr(status_key, "value") else str(status_key)
+        if status_value == "available":
+            available_count = count
+        elif status_value == "assigned":
+            assigned_count = count
+        elif status_value == "maintenance":
+            maintenance_count = count
+        elif status_value == "out_of_service":
+            out_of_service_count = count
+
+    # Calculate active/inactive vehicles
+    active_vehicles = available_count + assigned_count
+    inactive_vehicles = maintenance_count + out_of_service_count
+
+    # Calculate utilization rate
+    utilization_rate = round((assigned / total * 100) if total > 0 else 0, 1)
+
+    return VehicleStatisticsResponse(
+        total_vehicles=total,
+        active_vehicles=active_vehicles,
+        inactive_vehicles=inactive_vehicles,
+        maintenance_due=maintenance_count,
+        status_breakdown=VehicleStatusBreakdown(
+            available=available_count,
+            assigned=assigned_count,
+            maintenance=maintenance_count,
+            out_of_service=out_of_service_count,
+        ),
+        utilization_rate=utilization_rate,
+    )
 
 
 @router.get("/documents/expiring", response_model=List[VehicleDocumentStatus])

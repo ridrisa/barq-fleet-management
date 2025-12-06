@@ -42,7 +42,7 @@ class TicketStatus(str, enum.Enum):
 
     OPEN = "open"
     IN_PROGRESS = "in_progress"
-    WAITING = "waiting"
+    PENDING = "pending"  # Was WAITING - aligned with PostgreSQL enum value
     RESOLVED = "resolved"
     CLOSED = "closed"
 
@@ -96,17 +96,18 @@ class Ticket(TenantMixin, BaseModel):
 
     # Ticket Details
     category = Column(
-        SQLEnum(TicketCategory), nullable=False, index=True, comment="Ticket category for routing"
+        SQLEnum(TicketCategory, values_callable=lambda e: [m.value for m in e]),
+        nullable=False, index=True, comment="Ticket category for routing"
     )
     priority = Column(
-        SQLEnum(TicketPriority),
+        SQLEnum(TicketPriority, values_callable=lambda e: [m.value for m in e]),
         default=TicketPriority.MEDIUM,
         nullable=False,
         index=True,
         comment="Ticket priority level",
     )
     status = Column(
-        SQLEnum(TicketStatus),
+        SQLEnum(TicketStatus, values_callable=lambda e: [m.value for m in e]),
         default=TicketStatus.OPEN,
         nullable=False,
         index=True,
@@ -134,7 +135,7 @@ class Ticket(TenantMixin, BaseModel):
 
     # Escalation
     escalation_level = Column(
-        SQLEnum(EscalationLevel),
+        SQLEnum(EscalationLevel, values_callable=lambda e: [m.value for m in e]),
         default=EscalationLevel.NONE,
         nullable=False,
         index=True,
@@ -210,7 +211,7 @@ class Ticket(TenantMixin, BaseModel):
     @property
     def is_open(self) -> bool:
         """Check if ticket is open or in progress"""
-        return self.status in [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING]
+        return self.status in [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.PENDING]
 
     @property
     def is_resolved(self) -> bool:

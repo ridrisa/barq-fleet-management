@@ -66,10 +66,10 @@ class AccidentLog(TenantMixin, BaseModel):
     # Accident Details
     accident_date = Column(Date, nullable=False, index=True)
     accident_time = Column(Time)
-    accident_type = Column(SQLEnum(AccidentType), nullable=False)
-    severity = Column(SQLEnum(AccidentSeverity), nullable=False, index=True)
+    accident_type = Column(SQLEnum(AccidentType, values_callable=lambda e: [m.value for m in e]), nullable=False)
+    severity = Column(SQLEnum(AccidentSeverity, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     status = Column(
-        SQLEnum(AccidentStatus), default=AccidentStatus.REPORTED, nullable=False, index=True
+        SQLEnum(AccidentStatus, values_callable=lambda e: [m.value for m in e]), default=AccidentStatus.REPORTED, nullable=False, index=True
     )
 
     # Location
@@ -86,7 +86,7 @@ class AccidentLog(TenantMixin, BaseModel):
     traffic_conditions = Column(String(100))
 
     # Fault & Liability
-    fault_status = Column(SQLEnum(FaultStatus), default=FaultStatus.PENDING, index=True)
+    fault_status = Column(SQLEnum(FaultStatus, values_callable=lambda e: [m.value for m in e]), default=FaultStatus.PENDING, index=True)
     our_vehicle_at_fault = Column(Boolean, default=False)
 
     # Description

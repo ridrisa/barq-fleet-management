@@ -1,5 +1,6 @@
 """Organization service for multi-tenant operations"""
 
+import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
@@ -15,6 +16,17 @@ from app.schemas.tenant.organization import (
     SubscriptionUpgrade,
 )
 from app.services.base import CRUDBase
+
+
+def generate_slug(name: str) -> str:
+    """Generate a URL-friendly slug from organization name"""
+    # Convert to lowercase and replace spaces/special chars with hyphens
+    slug = name.lower().strip()
+    slug = re.sub(r'[^\w\s-]', '', slug)  # Remove special characters
+    slug = re.sub(r'[\s_]+', '-', slug)   # Replace spaces/underscores with hyphens
+    slug = re.sub(r'-+', '-', slug)       # Remove multiple hyphens
+    slug = slug.strip('-')                 # Remove leading/trailing hyphens
+    return slug or 'organization'
 
 
 class OrganizationService(CRUDBase[Organization, OrganizationCreate, OrganizationUpdate]):
@@ -59,6 +71,17 @@ class OrganizationService(CRUDBase[Organization, OrganizationCreate, Organizatio
         org_data = obj_in.model_dump()
         org_data["trial_ends_at"] = trial_ends_at
         org_data["subscription_status"] = SubscriptionStatus.TRIAL
+
+        # Auto-generate slug from name if not provided
+        if not org_data.get("slug"):
+            base_slug = generate_slug(org_data["name"])
+            slug = base_slug
+            # Ensure unique slug by appending number if needed
+            counter = 1
+            while db.query(Organization).filter(Organization.slug == slug).first():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            org_data["slug"] = slug
 
         db_obj = Organization(**org_data)
         db.add(db_obj)

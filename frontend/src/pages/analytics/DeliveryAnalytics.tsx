@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SummaryCard, BarChart, PieChart, AreaChart, DateRangePicker } from '@/components/ui'
+import { KPICard, BarChart, PieChart, AreaChart, DateRangePicker } from '@/components/ui'
 
 export default function DeliveryAnalytics() {
   const [dateRange, setDateRange] = useState({
@@ -54,10 +54,10 @@ export default function DeliveryAnalytics() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard title="Success Rate" value="95.4%" color="green" trend={{ value: 2.3, label: 'vs last month' }} />
-        <SummaryCard title="Failed Deliveries" value="128" color="red" trend={{ value: -8.5, label: 'vs last month' }} />
-        <SummaryCard title="Avg Delivery Time" value="26 min" color="blue" trend={{ value: -5.2, label: 'vs last month' }} />
-        <SummaryCard title="Total Deliveries" value="2,856" color="purple" trend={{ value: 12.8, label: 'vs last month' }} />
+        <KPICard title="Success Rate" value="95.4%" color="green" change={2.3} />
+        <KPICard title="Failed Deliveries" value="128" color="red" change={-8.5} />
+        <KPICard title="Avg Delivery Time" value="26 min" color="blue" change={-5.2} />
+        <KPICard title="Total Deliveries" value="2,856" color="purple" change={12.8} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

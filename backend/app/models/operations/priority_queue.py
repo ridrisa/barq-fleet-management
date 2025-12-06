@@ -37,8 +37,8 @@ class PriorityQueueEntry(TenantMixin, BaseModel):
 
     # Queue Entry Details
     queue_number = Column(String(50), unique=True, nullable=False, index=True)
-    priority = Column(SQLEnum(QueuePriority), nullable=False, index=True)
-    status = Column(SQLEnum(QueueStatus), default=QueueStatus.QUEUED, nullable=False, index=True)
+    priority = Column(SQLEnum(QueuePriority, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
+    status = Column(SQLEnum(QueueStatus, values_callable=lambda e: [m.value for m in e]), default=QueueStatus.QUEUED, nullable=False, index=True)
 
     # Delivery Reference
     delivery_id = Column(

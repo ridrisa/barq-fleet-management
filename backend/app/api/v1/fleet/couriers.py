@@ -17,6 +17,12 @@ from app.schemas.fleet import (
     CourierStats,
     CourierUpdate,
 )
+from app.schemas.analytics import (
+    CourierStatisticsResponse,
+    CourierStatusBreakdown,
+    SponsorshipBreakdown,
+    ProjectBreakdown,
+)
 from app.services.fleet import courier_service
 
 router = APIRouter()
@@ -28,7 +34,7 @@ def get_couriers(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
+    limit: int = Query(100, ge=1, le=100),
     status: Optional[CourierStatus] = None,
     city: Optional[str] = None,
     search: Optional[str] = None,
@@ -95,14 +101,108 @@ def get_courier_options(
     ]
 
 
-@router.get("/statistics")
+@router.get("/statistics", response_model=CourierStatisticsResponse)
 def get_courier_statistics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
-):
-    """Get courier statistics"""
-    return courier_service.get_statistics(db, organization_id=current_org.id)
+) -> CourierStatisticsResponse:
+    """Get courier statistics with typed response"""
+    stats = courier_service.get_statistics(db, organization_id=current_org.id)
+
+    # Convert raw statistics to typed response
+    status_breakdown_raw = stats.get("status_breakdown", {})
+    sponsorship_breakdown_raw = stats.get("sponsorship_breakdown", {})
+    project_breakdown_raw = stats.get("project_breakdown", {})
+    total = stats.get("total", 0)
+    with_vehicle = stats.get("with_vehicle", 0)
+
+    # Helper function to get enum value
+    def get_enum_value(key) -> str:
+        return key.value if hasattr(key, "value") else str(key)
+
+    # Extract counts from status breakdown (keys might be enum values)
+    active_count = 0
+    inactive_count = 0
+    on_leave_count = 0
+    onboarding_count = 0
+    suspended_count = 0
+    terminated_count = 0
+
+    for status_key, count in status_breakdown_raw.items():
+        status_value = get_enum_value(status_key)
+        if status_value == "active":
+            active_count = count
+        elif status_value == "inactive":
+            inactive_count = count
+        elif status_value == "on_leave":
+            on_leave_count = count
+        elif status_value == "onboarding":
+            onboarding_count = count
+        elif status_value == "suspended":
+            suspended_count = count
+        elif status_value == "terminated":
+            terminated_count = count
+
+    # Extract sponsorship breakdown
+    ajeer_count = 0
+    inhouse_count = 0
+    freelancer_count = 0
+
+    for sponsor_key, count in sponsorship_breakdown_raw.items():
+        sponsor_value = get_enum_value(sponsor_key)
+        if sponsor_value == "ajeer":
+            ajeer_count = count
+        elif sponsor_value == "inhouse":
+            inhouse_count = count
+        elif sponsor_value == "freelancer":
+            freelancer_count = count
+
+    # Extract project breakdown
+    ecommerce_count = 0
+    food_count = 0
+    warehouse_count = 0
+    barq_count = 0
+
+    for project_key, count in project_breakdown_raw.items():
+        project_value = get_enum_value(project_key)
+        if project_value == "ecommerce":
+            ecommerce_count = count
+        elif project_value == "food":
+            food_count = count
+        elif project_value == "warehouse":
+            warehouse_count = count
+        elif project_value == "barq":
+            barq_count = count
+
+    # Calculate utilization rate (active couriers with vehicles)
+    utilization_rate = round((with_vehicle / active_count * 100) if active_count > 0 else 0, 1)
+
+    return CourierStatisticsResponse(
+        total_couriers=total,
+        active_couriers=active_count,
+        couriers_with_vehicle=with_vehicle,
+        status_breakdown=CourierStatusBreakdown(
+            active=active_count,
+            inactive=inactive_count,
+            on_leave=on_leave_count,
+            onboarding=onboarding_count,
+            suspended=suspended_count,
+            terminated=terminated_count,
+        ),
+        sponsorship_breakdown=SponsorshipBreakdown(
+            ajeer=ajeer_count,
+            inhouse=inhouse_count,
+            freelancer=freelancer_count,
+        ),
+        project_breakdown=ProjectBreakdown(
+            ecommerce=ecommerce_count,
+            food=food_count,
+            warehouse=warehouse_count,
+            barq=barq_count,
+        ),
+        utilization_rate=utilization_rate,
+    )
 
 
 @router.get("/documents/expiring", response_model=List[CourierDocumentStatus])

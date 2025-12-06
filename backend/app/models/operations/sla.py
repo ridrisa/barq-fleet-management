@@ -47,7 +47,7 @@ class SLADefinition(TenantMixin, BaseModel):
     # SLA Identification
     sla_code = Column(String(50), unique=True, nullable=False, index=True)
     sla_name = Column(String(200), nullable=False)
-    sla_type = Column(SQLEnum(SLAType), nullable=False, index=True)
+    sla_type = Column(SQLEnum(SLAType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     description = Column(Text)
 
     # Targets
@@ -59,7 +59,7 @@ class SLADefinition(TenantMixin, BaseModel):
     critical_threshold = Column(Numeric(10, 2), comment="Critical level")
 
     # Priority
-    priority = Column(SQLEnum(SLAPriority), default=SLAPriority.MEDIUM)
+    priority = Column(SQLEnum(SLAPriority, values_callable=lambda e: [m.value for m in e]), default=SLAPriority.MEDIUM)
 
     # Applicability
     applies_to_zone_id = Column(Integer, ForeignKey("zones.id", ondelete="CASCADE"), index=True)
@@ -110,7 +110,7 @@ class SLATracking(TenantMixin, BaseModel):
     actual_completion_time = Column(DateTime)
 
     # Status
-    status = Column(SQLEnum(SLAStatus), default=SLAStatus.ACTIVE, index=True)
+    status = Column(SQLEnum(SLAStatus, values_callable=lambda e: [m.value for m in e]), default=SLAStatus.ACTIVE, index=True)
 
     # Measurements
     target_value = Column(Numeric(10, 2), nullable=False)

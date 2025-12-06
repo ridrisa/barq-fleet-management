@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, Field, validator
 
 # Enums (matching SQLAlchemy enums)
 from app.models.fleet import CourierStatus, ProjectType, SponsorshipStatus
@@ -14,7 +14,7 @@ class CourierBase(BaseModel):
 
     barq_id: str = Field(..., min_length=1, max_length=50, description="Unique BARQ identifier")
     full_name: str = Field(..., min_length=2, max_length=200)
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Using str instead of EmailStr to handle legacy invalid emails
     mobile_number: str = Field(..., pattern=r"^\+?[0-9]{9,15}$")
 
     employee_id: Optional[str] = Field(None, max_length=50)
@@ -75,7 +75,7 @@ class CourierUpdate(BaseModel):
 
     barq_id: Optional[str] = Field(None, min_length=1, max_length=50)
     full_name: Optional[str] = Field(None, min_length=2, max_length=200)
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Using str instead of EmailStr to handle legacy invalid emails
     mobile_number: Optional[str] = Field(None, pattern=r"^\+?[0-9]{9,15}$")
 
     employee_id: Optional[str] = Field(None, max_length=50)
@@ -154,7 +154,7 @@ class CourierList(BaseModel):
     id: int
     barq_id: str
     full_name: str
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None  # Using str instead of EmailStr to handle legacy invalid emails
     mobile_number: str
     status: CourierStatus
     city: Optional[str] = None

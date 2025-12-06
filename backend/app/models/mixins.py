@@ -3,8 +3,9 @@ Multi-Tenancy Mixins for BARQ Fleet Management
 Provides tenant isolation through organization_id on all tenant-aware models
 """
 
-from sqlalchemy import Column, ForeignKey, Index, Integer
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer
 from sqlalchemy.orm import declared_attr, relationship
+from sqlalchemy.sql import func
 
 
 class TenantMixin:

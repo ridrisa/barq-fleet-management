@@ -7,13 +7,14 @@ export interface SelectOption {
   label: string
 }
 
-export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> {
   label?: string
   error?: string
   helperText?: string
   options?: SelectOption[]
   placeholder?: string
   leftIcon?: ReactNode
+  size?: 'sm' | 'md' | 'lg'
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
@@ -26,35 +27,60 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       options,
       placeholder,
       disabled,
+      required,
       children,
       leftIcon,
+      size = 'md',
       ...props
     },
     ref
   ) => {
+    const errorId = error ? `${props.id || 'select'}-error` : undefined
+    const helperId = helperText ? `${props.id || 'select'}-helper` : undefined
+    const describedBy = [errorId, helperId].filter(Boolean).join(' ') || undefined
+
+    const sizes = {
+      sm: 'h-[var(--input-height-sm)] text-[var(--font-size-sm)]',
+      md: 'h-[var(--input-height-md)] text-[var(--font-size-base)]',
+      lg: 'h-[var(--input-height-lg)] text-[var(--font-size-lg)]',
+    }
+
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            className={cn(
+              "block text-[var(--font-size-sm)] font-medium text-[var(--text-primary)] mb-1.5",
+              required && "after:content-['*'] after:ml-0.5 after:text-[var(--color-error)]"
+            )}
+            htmlFor={props.id}
+          >
             {label}
           </label>
         )}
         <div className="relative">
           {leftIcon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-muted)]">
               {leftIcon}
             </div>
           )}
           <select
             ref={ref}
             disabled={disabled}
+            required={required}
+            aria-describedby={describedBy}
+            aria-invalid={error ? 'true' : 'false'}
+            aria-required={required ? 'true' : 'false'}
             className={cn(
-              'block w-full rounded-lg border border-gray-300 py-2 pr-10 text-gray-900',
+              'block w-full rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-white pr-10',
               leftIcon ? 'pl-10' : 'px-4',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-              'disabled:bg-gray-100 disabled:cursor-not-allowed',
+              'text-[var(--text-primary)] transition-all duration-150 ease-in-out',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--barq-amber)] focus-visible:border-[var(--barq-amber)]',
+              'hover:border-[var(--border-strong)]',
+              'disabled:bg-[var(--gray-50)] disabled:text-[var(--text-disabled)] disabled:cursor-not-allowed disabled:border-[var(--border-subtle)]',
               'appearance-none',
-              error && 'border-red-500 focus:ring-red-500',
+              error && 'border-[var(--color-error)] focus-visible:ring-[var(--color-error)] focus-visible:border-[var(--color-error)]',
+              sizes[size],
               className
             )}
             {...props}
@@ -71,15 +97,22 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ))}
             {children}
           </select>
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <ChevronDown className="h-5 w-5 text-gray-400" />
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[var(--text-muted)]">
+            <ChevronDown className="h-5 w-5" aria-hidden="true" />
           </div>
         </div>
         {error && (
-          <p className="mt-1 text-sm text-red-600">{error}</p>
+          <p id={errorId} className="mt-1.5 text-[var(--font-size-sm)] text-[var(--color-error)] flex items-center gap-1" role="alert">
+            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            {error}
+          </p>
         )}
         {helperText && !error && (
-          <p className="mt-1 text-sm text-gray-500">{helperText}</p>
+          <p id={helperId} className="mt-1.5 text-[var(--font-size-sm)] text-[var(--text-secondary)]">
+            {helperText}
+          </p>
         )}
       </div>
     )

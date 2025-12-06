@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Spinner'
-import { LineChart } from '@/components/charts/LineChart'
-import { PieChart } from '@/components/charts/PieChart'
+import { LineChart } from '@/components/ui/LineChart'
+import { PieChart } from '@/components/ui/PieChart'
 import { deliveriesAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 import { exportToExcel } from '@/lib/export'
@@ -333,7 +333,7 @@ export default function PerformanceMetrics() {
               <LineChart
                 data={trendData}
                 xKey="date"
-                yKeys={['Success Rate', 'On-Time Rate']}
+                yKey={['Success Rate', 'On-Time Rate']}
                 colors={['#22c55e', '#3b82f6']}
                 height={280}
               />
@@ -353,6 +353,8 @@ export default function PerformanceMetrics() {
             {statusDistribution.length > 0 ? (
               <PieChart
                 data={statusDistribution}
+                dataKey="value"
+                nameKey="name"
                 height={280}
               />
             ) : (

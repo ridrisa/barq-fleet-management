@@ -33,11 +33,11 @@ class Document(TenantMixin, BaseModel):
     __tablename__ = "documents"
 
     # Entity reference
-    entity_type = Column(SQLEnum(DocumentEntity), nullable=False)
+    entity_type = Column(SQLEnum(DocumentEntity, values_callable=lambda e: [m.value for m in e]), nullable=False)
     entity_id = Column(Integer, nullable=False)
 
     # Document details
-    document_type = Column(SQLEnum(DocumentType), nullable=False)
+    document_type = Column(SQLEnum(DocumentType, values_callable=lambda e: [m.value for m in e]), nullable=False)
     document_number = Column(String(100))
     document_name = Column(String(200), nullable=False)
 

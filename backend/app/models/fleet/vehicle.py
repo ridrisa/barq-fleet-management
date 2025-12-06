@@ -11,39 +11,39 @@ from app.models.mixins import TenantMixin
 
 class VehicleStatus(str, enum.Enum):
     """Vehicle operational status"""
-
-    ACTIVE = "active"
-    MAINTENANCE = "maintenance"
-    INACTIVE = "inactive"
-    RETIRED = "retired"
-    REPAIR = "repair"
+    # Values match PostgreSQL enum (uppercase)
+    ACTIVE = "ACTIVE"
+    MAINTENANCE = "MAINTENANCE"
+    INACTIVE = "INACTIVE"
+    RETIRED = "RETIRED"
+    REPAIR = "REPAIR"
 
 
 class VehicleType(str, enum.Enum):
     """Vehicle category"""
-
-    MOTORCYCLE = "motorcycle"
-    CAR = "car"
-    VAN = "van"
-    TRUCK = "truck"
-    BICYCLE = "bicycle"
+    # Values match PostgreSQL enum (uppercase)
+    MOTORCYCLE = "MOTORCYCLE"
+    CAR = "CAR"
+    VAN = "VAN"
+    TRUCK = "TRUCK"
+    BICYCLE = "BICYCLE"
 
 
 class FuelType(str, enum.Enum):
     """Fuel type"""
-
-    GASOLINE = "gasoline"
-    DIESEL = "diesel"
-    ELECTRIC = "electric"
-    HYBRID = "hybrid"
+    # Values match PostgreSQL enum (uppercase)
+    GASOLINE = "GASOLINE"
+    DIESEL = "DIESEL"
+    ELECTRIC = "ELECTRIC"
+    HYBRID = "HYBRID"
 
 
 class OwnershipType(str, enum.Enum):
     """Vehicle ownership"""
-
-    OWNED = "owned"
-    LEASED = "leased"
-    RENTED = "rented"
+    # Values match PostgreSQL enum (uppercase)
+    OWNED = "OWNED"
+    LEASED = "LEASED"
+    RENTED = "RENTED"
 
 
 class Vehicle(TenantMixin, BaseModel):
@@ -55,7 +55,7 @@ class Vehicle(TenantMixin, BaseModel):
     plate_number = Column(
         String(20), unique=True, nullable=False, index=True, comment="License plate number"
     )
-    vehicle_type = Column(SQLEnum(VehicleType), nullable=False, index=True)
+    vehicle_type = Column(SQLEnum(VehicleType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     make = Column(String(100), nullable=False)  # Toyota, Honda, etc.
     model = Column(String(100), nullable=False)  # Corolla, Civic, etc.
     year = Column(Integer, nullable=False)
@@ -63,9 +63,9 @@ class Vehicle(TenantMixin, BaseModel):
 
     # Status
     status = Column(
-        SQLEnum(VehicleStatus), default=VehicleStatus.ACTIVE, nullable=False, index=True
+        SQLEnum(VehicleStatus, values_callable=lambda e: [m.value for m in e]), default=VehicleStatus.ACTIVE, nullable=False, index=True
     )
-    ownership_type = Column(SQLEnum(OwnershipType), default=OwnershipType.OWNED)
+    ownership_type = Column(SQLEnum(OwnershipType, values_callable=lambda e: [m.value for m in e]), default=OwnershipType.OWNED)
 
     # Registration & Documentation
     registration_number = Column(String(50), unique=True)
@@ -81,7 +81,7 @@ class Vehicle(TenantMixin, BaseModel):
     transmission = Column(String(20))  # Manual, Automatic
 
     # Fuel & Mileage
-    fuel_type = Column(SQLEnum(FuelType), default=FuelType.GASOLINE)
+    fuel_type = Column(SQLEnum(FuelType, values_callable=lambda e: [m.value for m in e]), default=FuelType.GASOLINE)
     current_mileage = Column(Numeric(10, 2), default=0.0)
     fuel_capacity = Column(Numeric(5, 2))  # Liters
 

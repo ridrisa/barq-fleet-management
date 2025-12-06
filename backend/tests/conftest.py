@@ -42,6 +42,8 @@ from app.models.operations.cod import COD, CODStatus
 from app.models.support.ticket import Ticket, TicketPriority, TicketStatus
 from app.models.workflow.instance import WorkflowInstance, WorkflowStatus
 from app.models.workflow.template import WorkflowTemplate
+from app.models.tenant.organization import Organization
+from app.models.tenant.organization_user import OrganizationUser
 
 # Set test environment
 os.environ["ENVIRONMENT"] = "testing"
@@ -270,6 +272,130 @@ def admin_headers(admin_token: str) -> Dict[str, str]:
     Create authorization headers for admin requests
     """
     return {"Authorization": f"Bearer {admin_token}"}
+
+
+# ==================== Organization Fixtures ====================
+
+@pytest.fixture
+def test_organization(db_session: Session) -> Organization:
+    """
+    Create a test organization
+    """
+    org = Organization(
+        name="Test Organization",
+        slug="test-org",
+        is_active=True
+    )
+    db_session.add(org)
+    db_session.commit()
+    db_session.refresh(org)
+    return org
+
+
+@pytest.fixture
+def second_organization(db_session: Session) -> Organization:
+    """
+    Create a second test organization for isolation tests
+    """
+    org = Organization(
+        name="Second Test Organization",
+        slug="second-test-org",
+        is_active=True
+    )
+    db_session.add(org)
+    db_session.commit()
+    db_session.refresh(org)
+    return org
+
+
+@pytest.fixture
+def test_org_user(
+    db_session: Session,
+    test_user: User,
+    test_organization: Organization
+) -> OrganizationUser:
+    """
+    Associate test user with test organization
+    """
+    org_user = OrganizationUser(
+        user_id=test_user.id,
+        organization_id=test_organization.id,
+        role="ADMIN",
+        is_active=True
+    )
+    db_session.add(org_user)
+    db_session.commit()
+    db_session.refresh(org_user)
+    return org_user
+
+
+@pytest.fixture
+def org_token(test_user: User, test_organization: Organization) -> str:
+    """
+    Generate JWT token with organization context for test user
+    """
+    return TokenManager.create_access_token(
+        data={
+            "sub": str(test_user.id),
+            "email": test_user.email,
+            "org_id": test_organization.id,
+            "org_role": "ADMIN"
+        }
+    )
+
+
+@pytest.fixture
+def org_headers(org_token: str) -> Dict[str, str]:
+    """
+    Create authorization headers with organization context
+    """
+    return {"Authorization": f"Bearer {org_token}"}
+
+
+@pytest.fixture
+def admin_org_token(admin_user: User, test_organization: Organization) -> str:
+    """
+    Generate JWT token with organization context for admin user
+    """
+    return TokenManager.create_access_token(
+        data={
+            "sub": str(admin_user.id),
+            "email": admin_user.email,
+            "role": "admin",
+            "org_id": test_organization.id,
+            "org_role": "OWNER"
+        }
+    )
+
+
+@pytest.fixture
+def admin_org_headers(admin_org_token: str) -> Dict[str, str]:
+    """
+    Create authorization headers for admin with organization context
+    """
+    return {"Authorization": f"Bearer {admin_org_token}"}
+
+
+@pytest.fixture
+def organization_factory(db_session: Session):
+    """
+    Factory for creating test organizations
+    """
+    def _create_org(**kwargs) -> Organization:
+        default_data = {
+            "name": f"Org-{datetime.now().timestamp()}",
+            "slug": f"org-{datetime.now().timestamp()}",
+            "is_active": True
+        }
+        default_data.update(kwargs)
+
+        org = Organization(**default_data)
+        db_session.add(org)
+        db_session.commit()
+        db_session.refresh(org)
+        return org
+
+    return _create_org
 
 
 # ==================== Model Factory Fixtures ====================

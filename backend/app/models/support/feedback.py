@@ -55,7 +55,8 @@ class Feedback(TenantMixin, BaseModel):
 
     # Categorization
     category = Column(
-        SQLEnum(FeedbackCategory), nullable=False, index=True, comment="Feedback category"
+        SQLEnum(FeedbackCategory, values_callable=lambda e: [m.value for m in e]),
+        nullable=False, index=True, comment="Feedback category"
     )
 
     # Rating
@@ -63,7 +64,7 @@ class Feedback(TenantMixin, BaseModel):
 
     # Status
     status = Column(
-        SQLEnum(FeedbackStatus),
+        SQLEnum(FeedbackStatus, values_callable=lambda e: [m.value for m in e]),
         default=FeedbackStatus.NEW,
         nullable=False,
         index=True,

@@ -51,7 +51,7 @@ class ChatSession(TenantMixin, BaseModel):
 
     # Status
     status = Column(
-        SQLEnum(ChatStatus),
+        SQLEnum(ChatStatus, values_callable=lambda e: [m.value for m in e]),
         default=ChatStatus.WAITING,
         nullable=False,
         index=True,

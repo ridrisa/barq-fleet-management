@@ -11,32 +11,32 @@ from app.models.mixins import TenantMixin
 
 class CourierStatus(str, enum.Enum):
     """Courier employment status"""
-
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    ON_LEAVE = "on_leave"
-    TERMINATED = "terminated"
-    ONBOARDING = "onboarding"
-    SUSPENDED = "suspended"
+    # Values match PostgreSQL enum (uppercase)
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    ON_LEAVE = "ON_LEAVE"
+    TERMINATED = "TERMINATED"
+    ONBOARDING = "ONBOARDING"
+    SUSPENDED = "SUSPENDED"
 
 
 class SponsorshipStatus(str, enum.Enum):
     """Sponsorship type"""
-
-    AJEER = "ajeer"
-    INHOUSE = "inhouse"
-    TRIAL = "trial"
-    FREELANCER = "freelancer"
+    # Values match PostgreSQL enum (uppercase)
+    AJEER = "AJEER"
+    INHOUSE = "INHOUSE"
+    TRIAL = "TRIAL"
+    FREELANCER = "FREELANCER"
 
 
 class ProjectType(str, enum.Enum):
     """Project/vertical assignment"""
-
-    ECOMMERCE = "ecommerce"
-    FOOD = "food"
-    WAREHOUSE = "warehouse"
-    BARQ = "barq"
-    MIXED = "mixed"
+    # Values match PostgreSQL enum (uppercase)
+    ECOMMERCE = "ECOMMERCE"
+    FOOD = "FOOD"
+    WAREHOUSE = "WAREHOUSE"
+    BARQ = "BARQ"
+    MIXED = "MIXED"
 
 
 class Courier(TenantMixin, BaseModel):
@@ -55,10 +55,10 @@ class Courier(TenantMixin, BaseModel):
     # Employment Details
     employee_id = Column(String(50), unique=True, index=True)
     status = Column(
-        SQLEnum(CourierStatus), default=CourierStatus.ONBOARDING, nullable=False, index=True
+        SQLEnum(CourierStatus, values_callable=lambda e: [m.value for m in e]), default=CourierStatus.ONBOARDING, nullable=False, index=True
     )
-    sponsorship_status = Column(SQLEnum(SponsorshipStatus), default=SponsorshipStatus.INHOUSE)
-    project_type = Column(SQLEnum(ProjectType), default=ProjectType.BARQ)
+    sponsorship_status = Column(SQLEnum(SponsorshipStatus, values_callable=lambda e: [m.value for m in e]), default=SponsorshipStatus.INHOUSE)
+    project_type = Column(SQLEnum(ProjectType, values_callable=lambda e: [m.value for m in e]), default=ProjectType.BARQ)
     position = Column(String(100), default="Courier")
     city = Column(String(100), index=True)
 

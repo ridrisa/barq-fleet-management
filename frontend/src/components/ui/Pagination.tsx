@@ -37,7 +37,15 @@ export const Pagination = ({
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
-      {/* Info */}
+      {/* Mobile: Show current page info */}
+      <div className="flex sm:hidden items-center">
+        <p className="text-sm text-gray-700">
+          Page <span className="font-medium">{currentPage}</span> of{' '}
+          <span className="font-medium">{totalPages}</span>
+        </p>
+      </div>
+
+      {/* Desktop: Show detailed info */}
       {pageSize && totalItems && (
         <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
           <div>
@@ -61,16 +69,21 @@ export const Pagination = ({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
+          aria-label="Previous page"
           className={cn(
-            'px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium',
+            // Touch-friendly size: 44x44 minimum
+            'min-w-[44px] min-h-[44px] flex items-center justify-center',
+            'rounded-lg border border-gray-300 text-sm font-medium',
+            'transition-colors active:scale-95',
             currentPage === 1
               ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400'
-              : 'bg-white text-gray-700 hover:bg-gray-50'
+              : 'bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100'
           )}
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-5 w-5" />
         </button>
 
+        {/* Page numbers - hidden on mobile */}
         <div className="hidden sm:flex gap-1">
           {getPageNumbers().map((page, index) => {
             if (page === '...') {
@@ -88,8 +101,11 @@ export const Pagination = ({
               <button
                 key={page}
                 onClick={() => onPageChange(page as number)}
+                aria-label={`Go to page ${page}`}
+                aria-current={currentPage === page ? 'page' : undefined}
                 className={cn(
-                  'px-3 py-2 rounded-lg border text-sm font-medium',
+                  'min-w-[40px] min-h-[40px] rounded-lg border text-sm font-medium',
+                  'transition-colors',
                   currentPage === page
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -104,14 +120,18 @@ export const Pagination = ({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
+          aria-label="Next page"
           className={cn(
-            'px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium',
+            // Touch-friendly size: 44x44 minimum
+            'min-w-[44px] min-h-[44px] flex items-center justify-center',
+            'rounded-lg border border-gray-300 text-sm font-medium',
+            'transition-colors active:scale-95',
             currentPage === totalPages
               ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400'
-              : 'bg-white text-gray-700 hover:bg-gray-50'
+              : 'bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100'
           )}
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-5 w-5" />
         </button>
       </div>
     </div>

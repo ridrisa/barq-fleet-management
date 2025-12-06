@@ -40,10 +40,10 @@ class CourierVehicleAssignment(TenantMixin, BaseModel):
 
     # Assignment Details
     assignment_type = Column(
-        SQLEnum(AssignmentType), default=AssignmentType.PERMANENT, nullable=False
+        SQLEnum(AssignmentType, values_callable=lambda e: [m.value for m in e]), default=AssignmentType.PERMANENT, nullable=False
     )
     status = Column(
-        SQLEnum(AssignmentStatus), default=AssignmentStatus.ACTIVE, nullable=False, index=True
+        SQLEnum(AssignmentStatus, values_callable=lambda e: [m.value for m in e]), default=AssignmentStatus.ACTIVE, nullable=False, index=True
     )
 
     # Dates

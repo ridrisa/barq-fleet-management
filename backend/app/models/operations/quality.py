@@ -39,7 +39,7 @@ class QualityMetric(TenantMixin, BaseModel):
     # Metric Identification
     metric_code = Column(String(50), unique=True, nullable=False, index=True)
     metric_name = Column(String(200), nullable=False)
-    metric_type = Column(SQLEnum(QualityMetricType), nullable=False, index=True)
+    metric_type = Column(SQLEnum(QualityMetricType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     description = Column(Text)
 
     # Target Values
@@ -68,8 +68,8 @@ class QualityInspection(TenantMixin, BaseModel):
 
     # Inspection Details
     inspection_number = Column(String(50), unique=True, nullable=False, index=True)
-    inspection_type = Column(SQLEnum(QualityMetricType), nullable=False, index=True)
-    status = Column(SQLEnum(InspectionStatus), default=InspectionStatus.SCHEDULED, index=True)
+    inspection_type = Column(SQLEnum(QualityMetricType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
+    status = Column(SQLEnum(InspectionStatus, values_callable=lambda e: [m.value for m in e]), default=InspectionStatus.SCHEDULED, index=True)
 
     # Subject of Inspection
     courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="CASCADE"), index=True)

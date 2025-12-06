@@ -38,9 +38,9 @@ class Handover(TenantMixin, BaseModel):
     handover_number = Column(
         String(50), unique=True, nullable=False, index=True, comment="Unique handover ID"
     )
-    handover_type = Column(SQLEnum(HandoverType), nullable=False, index=True)
+    handover_type = Column(SQLEnum(HandoverType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     status = Column(
-        SQLEnum(HandoverStatus), default=HandoverStatus.PENDING, nullable=False, index=True
+        SQLEnum(HandoverStatus, values_callable=lambda e: [m.value for m in e]), default=HandoverStatus.PENDING, nullable=False, index=True
     )
 
     # Couriers Involved

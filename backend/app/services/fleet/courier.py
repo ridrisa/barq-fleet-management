@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
-from app.models.fleet import Courier, CourierStatus
+from app.models.fleet import Courier, CourierStatus, SponsorshipStatus, ProjectType
 from app.schemas.fleet import CourierCreate, CourierDocumentStatus, CourierUpdate
 from app.services.base import CRUDBase
 
@@ -234,11 +234,27 @@ class CourierService(CRUDBase[Courier, CourierCreate, CourierUpdate]):
             .scalar()
         )
 
+        # Get sponsorship breakdown
+        sponsorship_counts = (
+            base_query.with_entities(Courier.sponsorship_status, func.count(Courier.id))
+            .group_by(Courier.sponsorship_status)
+            .all()
+        )
+
+        # Get project type breakdown
+        project_counts = (
+            base_query.with_entities(Courier.project_type, func.count(Courier.id))
+            .group_by(Courier.project_type)
+            .all()
+        )
+
         return {
             "total": total,
             "status_breakdown": dict(status_counts),
             "with_vehicle": with_vehicle,
             "without_vehicle": without_vehicle,
+            "sponsorship_breakdown": dict(sponsorship_counts),
+            "project_breakdown": dict(project_counts),
         }
 
     def search_couriers(

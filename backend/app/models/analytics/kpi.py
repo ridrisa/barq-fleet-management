@@ -58,11 +58,11 @@ class KPI(TenantMixin, BaseModel):
     critical_threshold = Column(Numeric(20, 4), nullable=True, comment="Critical threshold")
 
     # Trend analysis
-    trend = Column(SQLEnum(KPITrend), nullable=True, comment="Trend direction")
+    trend = Column(SQLEnum(KPITrend, values_callable=lambda e: [m.value for m in e]), nullable=True, comment="Trend direction")
     trend_percentage = Column(Numeric(10, 2), nullable=True, comment="Trend percentage change")
 
     # Period configuration
-    period = Column(SQLEnum(KPIPeriod), default=KPIPeriod.MONTHLY, nullable=False)
+    period = Column(SQLEnum(KPIPeriod, values_callable=lambda e: [m.value for m in e]), default=KPIPeriod.MONTHLY, nullable=False)
     period_start = Column(DateTime(timezone=True), nullable=True, comment="Period start date")
     period_end = Column(DateTime(timezone=True), nullable=True, comment="Period end date")
 

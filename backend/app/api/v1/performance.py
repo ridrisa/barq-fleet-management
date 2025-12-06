@@ -15,7 +15,7 @@ from app.core.cache import cache_manager
 from app.core.database import get_db
 from app.core.performance_config import performance_config
 from app.middleware.performance import performance_metrics
-from app.utils.query_optimizer import n1_detector, query_analyzer
+from app.core.query_optimizer import n1_detector, query_analyzer
 
 logger = logging.getLogger(__name__)
 

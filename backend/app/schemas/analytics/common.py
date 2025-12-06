@@ -156,20 +156,25 @@ class ExportRequest(BaseModel):
     sort_desc: bool = Field(False, description="Sort in descending order")
 
 
-class PaginationParams(BaseModel):
-    """Pagination parameters"""
+# Import shared pagination classes from common.base
+from app.schemas.common.base import PaginationParams, PaginatedResponse
 
-    page: int = Field(1, ge=1, description="Page number")
-    page_size: int = Field(50, ge=1, le=1000, description="Items per page")
-
-
-class PaginatedResponse(BaseModel):
-    """Paginated response wrapper"""
-
-    data: List[Any]
-    total: int
-    page: int
-    page_size: int
-    total_pages: int
-    has_next: bool
-    has_prev: bool
+# Re-export for backwards compatibility
+__all__ = [
+    "PeriodType",
+    "ComparisonType",
+    "TrendDirection",
+    "PerformanceCategory",
+    "DateRangeParams",
+    "MetricValue",
+    "TrendDataPoint",
+    "ComparisonData",
+    "KPICard",
+    "ChartData",
+    "TopPerformerItem",
+    "DistributionBucket",
+    "AlertItem",
+    "ExportRequest",
+    "PaginationParams",
+    "PaginatedResponse",
+]

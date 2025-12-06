@@ -11,7 +11,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
 import { Select } from '@/components/ui/Select'
-import { AreaChart } from '@/components/charts/AreaChart'
+import { AreaChart } from '@/components/ui/AreaChart'
 import { qualityControlAPI, couriersAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 import { useCRUD } from '@/hooks/useCRUD'
@@ -327,7 +327,7 @@ export default function QualityControl() {
                   }))
               })()}
               xKey="date"
-              yKeys={['Pass Rate', 'Inspections']}
+              yKey={['Pass Rate', 'Inspections']}
               colors={['#22c55e', '#3b82f6']}
               height={280}
             />

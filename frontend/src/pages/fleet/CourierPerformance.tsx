@@ -9,7 +9,7 @@ import { Table } from '@/components/ui/Table'
 import { Badge } from '@/components/ui/Badge'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
-import { BarChart } from '@/components/charts/BarChart'
+import { BarChart } from '@/components/ui/BarChart'
 import { courierPerformanceAPI, couriersAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 
@@ -319,7 +319,7 @@ export default function CourierPerformance() {
                   'On-Time %': item.on_time_rate || 0,
                 }))}
               xKey="name"
-              yKeys={['Deliveries', 'On-Time %']}
+              yKey={['Deliveries', 'On-Time %']}
               colors={['#3b82f6', '#22c55e']}
               height={280}
             />

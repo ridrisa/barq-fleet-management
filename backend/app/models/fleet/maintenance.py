@@ -47,11 +47,11 @@ class VehicleMaintenance(TenantMixin, BaseModel):
     )
 
     # Maintenance Details
-    maintenance_type = Column(SQLEnum(MaintenanceType), nullable=False, index=True)
+    maintenance_type = Column(SQLEnum(MaintenanceType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     status = Column(
-        SQLEnum(MaintenanceStatus), default=MaintenanceStatus.SCHEDULED, nullable=False, index=True
+        SQLEnum(MaintenanceStatus, values_callable=lambda e: [m.value for m in e]), default=MaintenanceStatus.SCHEDULED, nullable=False, index=True
     )
-    service_provider = Column(SQLEnum(ServiceProvider), default=ServiceProvider.THIRD_PARTY)
+    service_provider = Column(SQLEnum(ServiceProvider, values_callable=lambda e: [m.value for m in e]), default=ServiceProvider.THIRD_PARTY)
 
     # Dates
     scheduled_date = Column(Date, index=True)

@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/cn'
 import { OrganizationSelector } from '@/components/OrganizationSelector'
+import { BottomNav } from '@/components/layout/BottomNav'
+import { useMobile, useLockBodyScroll, useSwipe } from '@/hooks/useMobile'
 import {
   Home,
   Truck,
@@ -35,6 +37,37 @@ export default function Layout() {
   const { i18n } = useTranslation()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [expandedSections, setExpandedSections] = useState<string[]>([])
+  const isMobile = useMobile('lg') // < 1024px
+
+  // Lock body scroll when mobile sidebar is open
+  useLockBodyScroll(isMobile && isSidebarOpen)
+
+  // Swipe to close sidebar on mobile
+  const { onTouchStart, onTouchEnd } = useSwipe(
+    () => {
+      if (isMobile && isSidebarOpen) {
+        setIsSidebarOpen(false)
+      }
+    },
+    undefined,
+    undefined,
+    undefined,
+    50
+  )
+
+  // Close sidebar on route change (mobile only)
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarOpen(false)
+    }
+  }, [location.pathname, isMobile])
+
+  // Handle responsive sidebar state
+  useEffect(() => {
+    if (!isMobile) {
+      setIsSidebarOpen(true)
+    }
+  }, [isMobile])
 
   const handleLogout = () => {
     logout()
@@ -48,7 +81,7 @@ export default function Layout() {
   }
 
   // Streamlined navigation - removed redundant/placeholder pages
-  // Original: 120+ pages → Optimized: ~70 pages
+  // Original: 120+ pages - Optimized: ~70 pages
   const navItems: NavItem[] = [
     { label: 'Dashboard', path: '/', icon: <Home className="h-5 w-5" /> },
     {
@@ -188,9 +221,19 @@ export default function Layout() {
         <div key={item.label}>
           <button
             onClick={() => toggleSection(item.label)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                toggleSection(item.label)
+              }
+            }}
+            aria-expanded={isExpanded}
+            aria-label={`${item.label} menu`}
             className={cn(
-              'w-full flex items-center justify-between px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-              'text-gray-700 hover:bg-gray-100'
+              'w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium rounded-lg transition-colors',
+              'text-gray-700 hover:bg-gray-100 active:bg-gray-200',
+              // Touch-friendly sizing
+              'min-h-[44px]'
             )}
           >
             <div className="flex items-center gap-3">
@@ -202,6 +245,7 @@ export default function Layout() {
                 'h-4 w-4 transition-transform',
                 isExpanded && 'transform rotate-180'
               )}
+              aria-hidden="true"
             />
           </button>
           {isExpanded && (
@@ -218,10 +262,12 @@ export default function Layout() {
         key={item.path}
         to={item.path!}
         className={cn(
-          'flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+          'flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors',
+          // Touch-friendly sizing
+          'min-h-[44px]',
           isActive
             ? 'bg-blue-50 text-blue-600'
-            : 'text-gray-700 hover:bg-gray-100',
+            : 'text-gray-700 hover:bg-gray-100 active:bg-gray-200',
           level > 0 && 'pl-8'
         )}
       >
@@ -233,22 +279,52 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Skip to main content link for accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-amber-500 focus:text-gray-900 focus:rounded-lg focus:font-semibold focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
+      {/* Mobile Overlay */}
+      {isMobile && isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden animate-in fade-in duration-200"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={cn(
-          'bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-50 transition-transform duration-300',
-          isSidebarOpen ? 'w-64' : 'w-0 -translate-x-full'
+          'bg-white border-r border-gray-200 fixed inset-y-0 left-0 z-50',
+          'transition-transform duration-300 ease-in-out',
+          // Desktop width
+          'w-64',
+          // Mobile: slide in/out
+          isMobile && !isSidebarOpen && '-translate-x-full',
+          // Desktop: always visible when open
+          !isMobile && !isSidebarOpen && 'w-0 -translate-x-full'
         )}
+        onTouchStart={(e) => onTouchStart(e.nativeEvent)}
+        onTouchEnd={(e) => onTouchEnd(e.nativeEvent)}
       >
         <div className="h-full flex flex-col">
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
             <h1 className="text-xl font-bold text-blue-600">BARQ Fleet</h1>
+            {/* Mobile close button */}
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="lg:hidden"
+              className={cn(
+                'lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center',
+                'text-gray-500 hover:text-gray-700 -mr-2'
+              )}
+              aria-label="Close menu"
             >
-              <X className="h-5 w-5" />
+              <X className="h-6 w-6" aria-hidden="true" />
             </button>
           </div>
 
@@ -260,19 +336,23 @@ export default function Layout() {
           {/* User Section */}
           <div className="p-4 border-t border-gray-200">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-blue-600" />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="text-sm">
-                  <p className="font-medium text-gray-900">{user?.email}</p>
+                <div className="text-sm min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{user?.email}</p>
                 </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className={cn(
+                  'p-2.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors',
+                  'min-w-[44px] min-h-[44px] flex items-center justify-center'
+                )}
+                aria-label="Log out"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -280,31 +360,64 @@ export default function Layout() {
       </aside>
 
       {/* Main Content */}
-      <div className={cn('flex-1 transition-all duration-300', isSidebarOpen && 'lg:ml-64')}>
+      <div
+        className={cn(
+          'flex-1 transition-all duration-300 min-w-0',
+          // Desktop: margin when sidebar is open
+          !isMobile && isSidebarOpen && 'lg:ml-64'
+        )}
+      >
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 h-16 flex items-center px-4 gap-4">
+        <header className="bg-white border-b border-gray-200 h-16 flex items-center px-4 gap-3 sticky top-0 z-30">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-blue-600 shadow-sm active:scale-95 transition-all"
-            aria-label="Toggle menu"
+            className={cn(
+              'p-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg',
+              'text-blue-600 shadow-sm active:scale-95 transition-all',
+              'min-w-[44px] min-h-[44px] flex items-center justify-center'
+            )}
+            aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
           >
             <Menu className="h-6 w-6" />
           </button>
+
           <div className="flex-1" />
-          <OrganizationSelector />
+
+          {/* Organization Selector - hide on very small screens */}
+          <div className="hidden sm:block">
+            <OrganizationSelector />
+          </div>
+
           <button
             onClick={() => i18n.changeLanguage(i18n.language === 'en' ? 'ar' : 'en')}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+            className={cn(
+              'px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg',
+              'min-h-[44px] flex items-center justify-center'
+            )}
           >
-            {i18n.language === 'en' ? 'العربية' : 'English'}
+            {i18n.language === 'en' ? 'AR' : 'EN'}
           </button>
         </header>
 
         {/* Page Content */}
-        <main className="p-6">
+        <main
+          id="main-content"
+          className={cn(
+            'p-4 sm:p-6',
+            // Add bottom padding for mobile bottom nav
+            isMobile && 'pb-24'
+          )}
+        >
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <BottomNav
+          onMoreClick={() => setIsSidebarOpen(true)}
+        />
+      )}
     </div>
   )
 }

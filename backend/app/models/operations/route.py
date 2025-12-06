@@ -31,7 +31,7 @@ class Route(TenantMixin, BaseModel):
     # Route Identification
     route_number = Column(String(50), unique=True, index=True, comment="Unique route identifier")
     route_name = Column(String(200), nullable=False)
-    status = Column(SQLEnum(RouteStatus), default=RouteStatus.PLANNED, nullable=False, index=True)
+    status = Column(SQLEnum(RouteStatus, values_callable=lambda e: [m.value for m in e]), default=RouteStatus.PLANNED, nullable=False, index=True)
 
     # Courier Assignment
     courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="SET NULL"), index=True)

@@ -2,7 +2,7 @@ import { ButtonHTMLAttributes, forwardRef } from 'react'
 import { cn } from '@/lib/cn'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'outline'
+  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'ghost' | 'outline' | 'destructive'
   size?: 'sm' | 'md' | 'lg'
   isLoading?: boolean
   fullWidth?: boolean
@@ -24,21 +24,22 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+    const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none'
 
     const variants = {
-      primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-      secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500',
-      danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-      success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
-      ghost: 'bg-transparent hover:bg-gray-100 text-gray-700 focus:ring-gray-500',
-      outline: 'bg-transparent border-2 border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500',
+      primary: 'bg-[var(--barq-amber)] text-[var(--text-on-brand)] hover:bg-[var(--barq-amber-dark)] active:bg-[var(--barq-amber-darker)] focus-visible:ring-[var(--barq-amber)] shadow-[var(--shadow-brand-sm)] hover:shadow-[var(--shadow-brand-md)] disabled:shadow-none',
+      secondary: 'bg-white text-[var(--text-primary)] border border-[var(--border-default)] hover:bg-[var(--gray-50)] active:bg-[var(--gray-100)] focus-visible:ring-[var(--barq-amber)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]',
+      danger: 'bg-[var(--color-error)] text-white hover:bg-[var(--color-error-dark)] active:bg-[var(--color-error-dark)] focus-visible:ring-[var(--color-error)] shadow-sm hover:shadow-md',
+      destructive: 'bg-[var(--color-error)] text-white hover:bg-[var(--color-error-dark)] active:bg-[var(--color-error-dark)] focus-visible:ring-[var(--color-error)] shadow-sm hover:shadow-md',
+      success: 'bg-[var(--color-success)] text-white hover:bg-[var(--color-success-dark)] active:bg-[var(--color-success-dark)] focus-visible:ring-[var(--color-success)] shadow-sm hover:shadow-md',
+      ghost: 'bg-transparent hover:bg-[var(--gray-100)] active:bg-[var(--gray-200)] text-[var(--text-primary)] focus-visible:ring-[var(--barq-amber)]',
+      outline: 'bg-transparent border-2 border-[var(--barq-amber)] text-[var(--barq-amber)] hover:bg-[var(--barq-amber)] hover:text-[var(--text-on-brand)] active:bg-[var(--barq-amber-dark)] focus-visible:ring-[var(--barq-amber)]',
     }
 
     const sizes = {
-      sm: 'px-3 py-1.5 text-sm',
-      md: 'px-4 py-2 text-base',
-      lg: 'px-6 py-3 text-lg',
+      sm: 'h-[var(--button-height-sm)] px-3 text-[var(--font-size-sm)] min-w-[var(--button-height-sm)]',
+      md: 'h-[var(--button-height-md)] px-4 text-[var(--font-size-base)] min-w-[var(--button-height-md)]',
+      lg: 'h-[var(--button-height-lg)] px-6 text-[var(--font-size-lg)] min-w-[var(--button-height-lg)]',
     }
 
     return (

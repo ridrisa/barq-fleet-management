@@ -38,7 +38,7 @@ class OperationsDocument(TenantMixin, BaseModel):
     doc_name = Column(String(255), nullable=False, comment="Document title/name")
 
     # Categorization
-    category = Column(SQLEnum(DocumentCategory), default=DocumentCategory.OTHER, nullable=False)
+    category = Column(SQLEnum(DocumentCategory, values_callable=lambda e: [m.value for m in e]), default=DocumentCategory.OTHER, nullable=False)
 
     # File details
     file_name = Column(String(255), comment="Original file name")

@@ -38,9 +38,9 @@ class DispatchAssignment(TenantMixin, BaseModel):
     # Assignment Details
     assignment_number = Column(String(50), unique=True, nullable=False, index=True)
     status = Column(
-        SQLEnum(DispatchStatus), default=DispatchStatus.PENDING, nullable=False, index=True
+        SQLEnum(DispatchStatus, values_callable=lambda e: [m.value for m in e]), default=DispatchStatus.PENDING, nullable=False, index=True
     )
-    priority = Column(SQLEnum(DispatchPriority), default=DispatchPriority.NORMAL, index=True)
+    priority = Column(SQLEnum(DispatchPriority, values_callable=lambda e: [m.value for m in e]), default=DispatchPriority.NORMAL, index=True)
 
     # Delivery Reference
     delivery_id = Column(

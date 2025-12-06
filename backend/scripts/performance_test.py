@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.database import db_manager, get_db
 from app.core.cache import cache_manager
 from app.utils.batch import bulk_insert, bulk_update, ChunkedProcessor
-from app.utils.query_optimizer import track_queries, query_analyzer
+from app.core.query_optimizer import track_queries, query_analyzer
 from app.middleware.performance import performance_metrics
 
 

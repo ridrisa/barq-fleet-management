@@ -50,13 +50,13 @@ class Inspection(TenantMixin, BaseModel):
     inspector_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Inspection Details
-    inspection_type = Column(SQLEnum(InspectionType), nullable=False, index=True)
+    inspection_type = Column(SQLEnum(InspectionType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
     inspection_date = Column(Date, nullable=False, index=True)
     inspection_time = Column(DateTime)
 
     # Results
-    status = Column(SQLEnum(InspectionStatus), nullable=False, index=True)
-    overall_condition = Column(SQLEnum(VehicleCondition), default=VehicleCondition.GOOD)
+    status = Column(SQLEnum(InspectionStatus, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True)
+    overall_condition = Column(SQLEnum(VehicleCondition, values_callable=lambda e: [m.value for m in e]), default=VehicleCondition.GOOD)
 
     # Mileage
     mileage_at_inspection = Column(Numeric(10, 2))

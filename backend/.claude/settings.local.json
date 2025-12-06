@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(cp:*)",
+      "Bash(uvicorn:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill -9)",
+      "Bash(python -m uvicorn:*)",
+      "Bash(python app/main.py:*)",
+      "Bash(./venv/bin/python:*)",
+      "Bash(cd:*)",
+      "Bash(venv/bin/python:*)",
+      "Bash(find:*)",
+      "Bash(mypy:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

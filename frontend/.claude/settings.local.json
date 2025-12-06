@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(source:*)",
+      "Bash(python:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(uvicorn:*)",
+      "Bash(find:*)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pkill:*)",
+      "Bash(npm ls:*)",
+      "Bash(lsof:*)",
+      "Bash(tee:*)",
+      "Bash(timeout 120 python:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(xargs:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm install:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZXhwIjoxNzY1MTk4NDk2fQ.KYiqpYOJrjmOoUAezfozreoIkGj6pC7TWba0YalNJ8I\")",
+      "Bash(echo \"=== Testing Couriers Endpoint ===\" curl -s \"http://localhost:8000/api/v1/fleet/couriers/?limit=2\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(echo -e \"\\n\\n=== Testing Vehicle History Endpoint ===\" curl -s \"http://localhost:8000/api/v1/fleet/vehicles/1/history\" -H \"Authorization: Bearer $TOKEN\")",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(gh repo create:*)",
+      "Bash(python3 -m venv:*)",
+      "Bash(pip install:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

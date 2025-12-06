@@ -17,6 +17,7 @@ interface AuthState {
   isLoading: boolean
   error: string | null
   login: (email: string, password: string) => Promise<void>
+  loginWithGoogle: (credential: string) => Promise<void>
   logout: () => void
   loadUser: () => Promise<void>
   clearError: () => void
@@ -47,6 +48,30 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error: any) {
       set({
         error: error.response?.data?.detail || 'Login failed',
+        isLoading: false,
+      })
+      throw error
+    }
+  },
+
+  loginWithGoogle: async (credential: string) => {
+    set({ isLoading: true, error: null })
+    try {
+      const data = await authAPI.loginWithGoogle(credential)
+      localStorage.setItem('token', data.access_token)
+
+      // Load user data
+      const user = await authAPI.getCurrentUser()
+
+      set({
+        token: data.access_token,
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      })
+    } catch (error: any) {
+      set({
+        error: error.response?.data?.detail || 'Google login failed',
         isLoading: false,
       })
       throw error

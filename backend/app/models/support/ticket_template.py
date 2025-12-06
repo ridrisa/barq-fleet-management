@@ -28,10 +28,11 @@ class TicketTemplate(TenantMixin, BaseModel):
         Text, nullable=True, comment="Default description template (can include placeholders)"
     )
     default_category = Column(
-        SQLEnum(TicketCategory), nullable=True, comment="Default ticket category"
+        SQLEnum(TicketCategory, values_callable=lambda e: [m.value for m in e]),
+        nullable=True, comment="Default ticket category"
     )
     default_priority = Column(
-        SQLEnum(TicketPriority),
+        SQLEnum(TicketPriority, values_callable=lambda e: [m.value for m in e]),
         default=TicketPriority.MEDIUM,
         nullable=True,
         comment="Default ticket priority",

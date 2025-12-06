@@ -1,4 +1,7 @@
-/* Import centralized theme - Must come before Tailwind */
+/* Import design system variables - Must come first */
+@import './styles/variables.css';
+
+/* Import centralized theme */
 @import './styles/theme.css';
 
 @tailwind base;

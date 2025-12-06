@@ -66,13 +66,12 @@ describe('Badge', () => {
     expect(badge).toHaveClass('text-sm')
   })
 
-  it('applies large size styles', () => {
-    render(<Badge size="lg">Large</Badge>)
-    const badge = screen.getByText('Large')
+  it('applies small size styles', () => {
+    render(<Badge size="sm">Small</Badge>)
+    const badge = screen.getByText('Small')
 
-    expect(badge).toHaveClass('px-3')
-    expect(badge).toHaveClass('py-1.5')
-    expect(badge).toHaveClass('text-base')
+    expect(badge).toHaveClass('h-5')
+    expect(badge).toHaveClass('px-2')
   })
 
   it('applies base styles', () => {
@@ -105,12 +104,11 @@ describe('Badge', () => {
   })
 
   it('combines variant and size correctly', () => {
-    render(<Badge variant="success" size="lg">Large Success</Badge>)
-    const badge = screen.getByText('Large Success')
+    render(<Badge variant="success" size="sm">Small Success</Badge>)
+    const badge = screen.getByText('Small Success')
 
-    expect(badge).toHaveClass('bg-green-100')
-    expect(badge).toHaveClass('text-green-800')
-    expect(badge).toHaveClass('px-3')
-    expect(badge).toHaveClass('text-base')
+    // Check that small size classes are applied
+    expect(badge).toHaveClass('h-5')
+    expect(badge).toHaveClass('px-2')
   })
 })

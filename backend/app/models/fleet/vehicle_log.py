@@ -41,7 +41,7 @@ class VehicleLog(TenantMixin, BaseModel):
     )
 
     # Log Details
-    log_type = Column(SQLEnum(LogType), default=LogType.DAILY_LOG, nullable=False, index=True)
+    log_type = Column(SQLEnum(LogType, values_callable=lambda e: [m.value for m in e]), default=LogType.DAILY_LOG, nullable=False, index=True)
     log_date = Column(Date, nullable=False, index=True)
     log_time = Column(Time)
 
@@ -58,7 +58,7 @@ class VehicleLog(TenantMixin, BaseModel):
     # Fuel Information
     fuel_refilled = Column(Numeric(8, 2))  # Liters
     fuel_cost = Column(Numeric(10, 2))  # SAR
-    fuel_provider = Column(SQLEnum(FuelProvider), nullable=True)
+    fuel_provider = Column(SQLEnum(FuelProvider, values_callable=lambda e: [m.value for m in e]), nullable=True)
     fuel_station_location = Column(String(300))
     fuel_receipt_number = Column(String(100))
 

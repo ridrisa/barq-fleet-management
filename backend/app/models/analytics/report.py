@@ -55,11 +55,11 @@ class Report(TenantMixin, BaseModel):
     # Report metadata
     name = Column(String(255), nullable=False, index=True, comment="Report name")
     description = Column(Text, nullable=True, comment="Report description")
-    report_type = Column(SQLEnum(ReportType), nullable=False, index=True, comment="Type of report")
+    report_type = Column(SQLEnum(ReportType, values_callable=lambda e: [m.value for m in e]), nullable=False, index=True, comment="Type of report")
 
     # Generation details
-    status = Column(SQLEnum(ReportStatus), default=ReportStatus.PENDING, nullable=False, index=True)
-    format = Column(SQLEnum(ReportFormat), default=ReportFormat.PDF, nullable=False)
+    status = Column(SQLEnum(ReportStatus, values_callable=lambda e: [m.value for m in e]), default=ReportStatus.PENDING, nullable=False, index=True)
+    format = Column(SQLEnum(ReportFormat, values_callable=lambda e: [m.value for m in e]), default=ReportFormat.PDF, nullable=False)
 
     # Parameters and filters
     parameters = Column(

@@ -434,7 +434,7 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
                     self.model.sla_breached == False,
                     self.model.sla_due_at <= threshold_time,
                     self.model.status.in_(
-                        [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.WAITING]
+                        [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.PENDING]
                     ),
                 )
             )
