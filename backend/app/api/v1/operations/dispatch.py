@@ -1,10 +1,12 @@
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import get_async_db, get_db
 from app.core.dependencies import get_current_organization, get_current_user
 from app.crud.operations import dispatch_assignment as crud_dispatch
 from app.models.tenant.organization import Organization
@@ -18,6 +20,38 @@ from app.schemas.operations.dispatch import (
     DispatchReassignment,
     DispatchRecommendation,
 )
+
+
+# Auto-dispatch request/response models
+class AutoDispatchRequest(BaseModel):
+    """Request for auto-dispatching a single delivery"""
+    delivery_id: int
+    zone_id: Optional[int] = None
+
+
+class AutoDispatchBatchRequest(BaseModel):
+    """Request for auto-dispatching multiple deliveries"""
+    delivery_ids: List[int]
+    zone_id: Optional[int] = None
+
+
+class AutoDispatchResult(BaseModel):
+    """Result of auto-dispatch operation"""
+    success: bool
+    delivery_id: int
+    courier_id: Optional[int] = None
+    assignment_id: Optional[int] = None
+    score: Optional[float] = None
+    message: str
+    route: Optional[dict] = None
+
+
+class AutoDispatchBatchResult(BaseModel):
+    """Result of batch auto-dispatch operation"""
+    total: int
+    successful: int
+    failed: int
+    results: List[AutoDispatchResult]
 
 router = APIRouter()
 
@@ -416,3 +450,161 @@ def get_dispatch_metrics(
         avg_courier_load=0.0,
         zone_coverage_rate=0.0,
     )
+
+
+# ============================================================================
+# AUTO-DISPATCH ENDPOINTS
+# ============================================================================
+
+@router.post("/auto-dispatch", response_model=AutoDispatchResult)
+async def auto_dispatch_order(
+    request: AutoDispatchRequest,
+    async_db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+):
+    """
+    Auto-dispatch a single delivery to the best available courier.
+
+    Uses a multi-layer algorithm:
+    1. Layer 1: Fast local filtering (online status, shift, zone, Haversine)
+    2. Layer 2: Distance Matrix filtering (ETA to pickup threshold)
+    3. Layer 3: Approximate route feasibility (Haversine + SLA check)
+    4. Layer 4: Precise routing with scoring (Directions API + penalties)
+
+    The algorithm considers:
+    - Distance to pickup
+    - Current courier load (fairness)
+    - SLA deadline constraints
+    - Route optimization with multiple stops
+    """
+    from app.services.dispatch.service import DispatchService
+
+    try:
+        service = DispatchService(async_db)
+        assignment = await service.auto_assign_order(
+            delivery_id=request.delivery_id,
+            zone_id=request.zone_id
+        )
+
+        if assignment:
+            return AutoDispatchResult(
+                success=True,
+                delivery_id=request.delivery_id,
+                courier_id=assignment.courier_id,
+                assignment_id=assignment.id,
+                score=None,  # Score is internal
+                message=f"Successfully assigned to courier {assignment.courier_id}",
+                route={
+                    "distance_km": float(assignment.distance_to_pickup_km or 0),
+                    "estimated_minutes": assignment.estimated_time_minutes,
+                }
+            )
+        else:
+            return AutoDispatchResult(
+                success=False,
+                delivery_id=request.delivery_id,
+                message="No feasible courier found for this delivery"
+            )
+
+    except Exception as e:
+        return AutoDispatchResult(
+            success=False,
+            delivery_id=request.delivery_id,
+            message=f"Auto-dispatch failed: {str(e)}"
+        )
+
+
+@router.post("/auto-dispatch/batch", response_model=AutoDispatchBatchResult)
+async def auto_dispatch_batch(
+    request: AutoDispatchBatchRequest,
+    async_db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+):
+    """
+    Auto-dispatch multiple deliveries to available couriers.
+
+    Processes deliveries sequentially, updating courier loads
+    between each assignment for accurate capacity planning.
+
+    Use this for batch assignment of pending orders.
+    """
+    from app.services.dispatch.service import DispatchService
+
+    service = DispatchService(async_db)
+    results: List[AutoDispatchResult] = []
+    successful = 0
+    failed = 0
+
+    for delivery_id in request.delivery_ids:
+        try:
+            assignment = await service.auto_assign_order(
+                delivery_id=delivery_id,
+                zone_id=request.zone_id
+            )
+
+            if assignment:
+                results.append(AutoDispatchResult(
+                    success=True,
+                    delivery_id=delivery_id,
+                    courier_id=assignment.courier_id,
+                    assignment_id=assignment.id,
+                    message=f"Assigned to courier {assignment.courier_id}",
+                    route={
+                        "distance_km": float(assignment.distance_to_pickup_km or 0),
+                        "estimated_minutes": assignment.estimated_time_minutes,
+                    }
+                ))
+                successful += 1
+            else:
+                results.append(AutoDispatchResult(
+                    success=False,
+                    delivery_id=delivery_id,
+                    message="No feasible courier found"
+                ))
+                failed += 1
+
+        except Exception as e:
+            results.append(AutoDispatchResult(
+                success=False,
+                delivery_id=delivery_id,
+                message=f"Error: {str(e)}"
+            ))
+            failed += 1
+
+    return AutoDispatchBatchResult(
+        total=len(request.delivery_ids),
+        successful=successful,
+        failed=failed,
+        results=results
+    )
+
+
+@router.get("/auto-dispatch/config")
+def get_auto_dispatch_config(
+    current_user=Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+):
+    """
+    Get current auto-dispatch configuration.
+
+    Returns the algorithm parameters used for dispatch decisions.
+    """
+    from app.services.dispatch.config import DEFAULT_DISPATCH_CONFIG
+
+    config = DEFAULT_DISPATCH_CONFIG
+    return {
+        "max_haversine_radius_km": config.max_haversine_radius_km,
+        "max_pickup_eta_minutes": config.max_pickup_eta_minutes,
+        "average_speed_kmh": config.average_speed_kmh,
+        "sla_hours": config.sla_hours,
+        "sla_buffer_minutes": config.sla_buffer_minutes,
+        "target_orders_per_courier_per_day": config.target_orders_per_courier_per_day,
+        "penalties": {
+            "distance": config.penalties.distance,
+            "sla": config.penalties.sla,
+            "fairness": config.penalties.fairness,
+            "overload": config.penalties.overload,
+        },
+    }

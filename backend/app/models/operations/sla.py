@@ -12,31 +12,31 @@ from app.models.mixins import TenantMixin
 class SLAType(str, enum.Enum):
     """Type of SLA"""
 
-    DELIVERY_TIME = "delivery_time"
-    RESPONSE_TIME = "response_time"
-    PICKUP_TIME = "pickup_time"
-    RESOLUTION_TIME = "resolution_time"
-    UPTIME = "uptime"
-    QUALITY_SCORE = "quality_score"
+    DELIVERY_TIME = "DELIVERY_TIME"
+    RESPONSE_TIME = "RESPONSE_TIME"
+    PICKUP_TIME = "PICKUP_TIME"
+    RESOLUTION_TIME = "RESOLUTION_TIME"
+    UPTIME = "UPTIME"
+    QUALITY_SCORE = "QUALITY_SCORE"
 
 
 class SLAPriority(str, enum.Enum):
     """SLA priority level"""
 
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
+    CRITICAL = "CRITICAL"
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
 
 
 class SLAStatus(str, enum.Enum):
     """SLA tracking status"""
 
-    ACTIVE = "active"
-    BREACHED = "breached"
-    AT_RISK = "at_risk"
-    MET = "met"
-    EXPIRED = "expired"
+    ACTIVE = "ACTIVE"
+    BREACHED = "BREACHED"
+    AT_RISK = "AT_RISK"
+    MET = "MET"
+    EXPIRED = "EXPIRED"
 
 
 class SLADefinition(TenantMixin, BaseModel):

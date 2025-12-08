@@ -12,22 +12,22 @@ from app.models.mixins import TenantMixin
 class DispatchStatus(str, enum.Enum):
     """Dispatch request status"""
 
-    PENDING = "pending"
-    ASSIGNED = "assigned"
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    PENDING = "PENDING"
+    ASSIGNED = "ASSIGNED"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
 
 
 class DispatchPriority(str, enum.Enum):
     """Dispatch priority level"""
 
-    URGENT = "urgent"
-    HIGH = "high"
-    NORMAL = "normal"
-    LOW = "low"
+    URGENT = "URGENT"
+    HIGH = "HIGH"
+    NORMAL = "NORMAL"
+    LOW = "LOW"
 
 
 class DispatchAssignment(TenantMixin, BaseModel):

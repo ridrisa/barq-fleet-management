@@ -7,27 +7,27 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class SLAType(str, Enum):
-    DELIVERY_TIME = "delivery_time"
-    RESPONSE_TIME = "response_time"
-    PICKUP_TIME = "pickup_time"
-    RESOLUTION_TIME = "resolution_time"
-    UPTIME = "uptime"
-    QUALITY_SCORE = "quality_score"
+    DELIVERY_TIME = "DELIVERY_TIME"
+    RESPONSE_TIME = "RESPONSE_TIME"
+    PICKUP_TIME = "PICKUP_TIME"
+    RESOLUTION_TIME = "RESOLUTION_TIME"
+    UPTIME = "UPTIME"
+    QUALITY_SCORE = "QUALITY_SCORE"
 
 
 class SLAPriority(str, Enum):
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
+    CRITICAL = "CRITICAL"
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
 
 
 class SLAStatus(str, Enum):
-    ACTIVE = "active"
-    BREACHED = "breached"
-    AT_RISK = "at_risk"
-    MET = "met"
-    EXPIRED = "expired"
+    ACTIVE = "ACTIVE"
+    BREACHED = "BREACHED"
+    AT_RISK = "AT_RISK"
+    MET = "MET"
+    EXPIRED = "EXPIRED"
 
 
 # SLA Definition Schemas
