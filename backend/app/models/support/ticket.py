@@ -81,7 +81,7 @@ class Ticket(TenantMixin, BaseModel):
     )
     created_by = Column(
         Integer,
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
         comment="User who created the ticket",

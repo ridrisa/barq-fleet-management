@@ -145,7 +145,34 @@ def google_auth(*, db: Session = Depends(get_db), token_data: Dict[str, str] = B
     organization_role: Optional[str] = None
     org = None
 
-    if memberships:
+    # For Google users without any organization, create a default one
+    if not memberships:
+        from app.schemas.tenant.organization import OrganizationCreate
+        from app.schemas.tenant.organization_user import OrganizationUserCreate
+
+        # Generate organization name from user's name or email
+        user_display_name = name or user.full_name or ""
+        org_name_str = (
+            f"{user_display_name}'s Organization"
+            if user_display_name
+            else email.split("@")[0].title() + "'s Organization"
+        )
+
+        org_in = OrganizationCreate(name=org_name_str)
+        org = organization_service.create_organization(db, obj_in=org_in)
+
+        # Add user as owner
+        org_user_in = OrganizationUserCreate(
+            user_id=user.id,
+            role=OrganizationRole.OWNER,
+        )
+        organization_user_service.add_user(db, organization_id=org.id, obj_in=org_user_in)
+
+        organization_id = org.id
+        organization_name = org.name
+        organization_role = OrganizationRole.OWNER.value
+
+    else:
         # Use first active organization
         primary_membership = memberships[0]
         org = organization_service.get(db, primary_membership.organization_id)

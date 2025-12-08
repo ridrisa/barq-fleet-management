@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -19,7 +19,7 @@ class Delivery(TenantMixin, BaseModel):
     __tablename__ = "deliveries"
 
     tracking_number = Column(String, unique=True, nullable=False)
-    courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)
+    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="SET NULL"), nullable=True)
     pickup_address = Column(Text, nullable=False)
     delivery_address = Column(Text, nullable=False)
     status = Column(
@@ -28,7 +28,7 @@ class Delivery(TenantMixin, BaseModel):
     )
     pickup_time = Column(DateTime)
     delivery_time = Column(DateTime)
-    cod_amount = Column(Integer, default=0)
+    cod_amount = Column(Numeric(10, 2), default=0)
     notes = Column(Text)
 
-    courier = relationship("Courier")
+    courier = relationship("Courier", back_populates="deliveries")

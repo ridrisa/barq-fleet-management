@@ -103,12 +103,14 @@ class Courier(TenantMixin, BaseModel):
     )
     supervisor_name = Column(String(200))
 
-    # Accommodation (FK will be added in Accommodation module - Week 6)
+    # Accommodation - Current assigned location
     accommodation_building_id = Column(
-        Integer, nullable=True, comment="Will add FK to accommodation_buildings later"
+        Integer, ForeignKey("buildings.id", ondelete="SET NULL"), nullable=True,
+        comment="Current building assignment (use allocations for history)"
     )
     accommodation_room_id = Column(
-        Integer, nullable=True, comment="Will add FK to accommodation_rooms later"
+        Integer, ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True,
+        comment="Current room assignment (use allocations for history)"
     )
 
     # Additional Information
@@ -133,15 +135,23 @@ class Courier(TenantMixin, BaseModel):
     accident_logs = relationship(
         "AccidentLog", back_populates="courier", cascade="all, delete-orphan"
     )
-    # fuel_logs relationship - access via direct query: db.query(FuelLog).filter_by(courier_id=courier.id)
+    fuel_logs = relationship("FuelLog", back_populates="courier")
 
-    # HR module relationships (uncommented to fix bidirectional relationships)
+    # Accommodation relationships
+    allocations = relationship("Allocation", back_populates="courier")
+
+    # HR module relationships
     leaves = relationship("Leave", back_populates="courier")
     loans = relationship("Loan", back_populates="courier")
     attendance_records = relationship("Attendance", back_populates="courier")
     salaries = relationship("Salary", back_populates="courier")
     assets = relationship("Asset", back_populates="courier")
     bonuses = relationship("Bonus", back_populates="courier")
+
+    # Operations relationships
+    deliveries = relationship("Delivery", back_populates="courier")
+    cod_transactions = relationship("COD", back_populates="courier")
+    incidents = relationship("Incident", back_populates="courier")
 
     def __repr__(self):
         return f"<Courier {self.barq_id}: {self.full_name} ({self.status.value})>"

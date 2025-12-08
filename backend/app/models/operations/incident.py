@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Date, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -28,8 +28,8 @@ class Incident(TenantMixin, BaseModel):
     incident_type = Column(
         Enum(IncidentType, values_callable=lambda x: [e.value for e in x]), nullable=False
     )
-    courier_id = Column(Integer, ForeignKey("couriers.id"))
-    vehicle_id = Column(Integer, ForeignKey("vehicles.id"))
+    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="SET NULL"), nullable=True)
+    vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="SET NULL"), nullable=True)
     incident_date = Column(Date, nullable=False)
     description = Column(Text, nullable=False)
     status = Column(
@@ -37,7 +37,7 @@ class Incident(TenantMixin, BaseModel):
         default=IncidentStatus.REPORTED,
     )
     resolution = Column(Text)
-    cost = Column(Integer, default=0)
+    cost = Column(Numeric(10, 2), default=0)
 
-    courier = relationship("Courier")
-    vehicle = relationship("Vehicle")
+    courier = relationship("Courier", back_populates="incidents")
+    vehicle = relationship("Vehicle", back_populates="incidents")

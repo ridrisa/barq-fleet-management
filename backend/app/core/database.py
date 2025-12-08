@@ -437,12 +437,84 @@ class TenantContext:
 # Import text for SQL execution
 from sqlalchemy import text
 
+# ============================================================================
+# Async Database Support
+# ============================================================================
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+# Async engine and session factory (lazy initialization)
+_async_engine = None
+_async_session_factory = None
+
+
+def _get_async_engine():
+    """Get or create async engine"""
+    global _async_engine
+    if _async_engine is None:
+        # Convert sync URL to async URL
+        sync_url = settings.SQLALCHEMY_DATABASE_URI
+        if sync_url.startswith("postgresql://"):
+            async_url = sync_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif sync_url.startswith("postgres://"):
+            async_url = sync_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        else:
+            async_url = sync_url
+
+        _async_engine = create_async_engine(
+            async_url,
+            pool_size=performance_config.database.pool_size,
+            max_overflow=performance_config.database.max_overflow,
+            pool_timeout=performance_config.database.pool_timeout,
+            pool_recycle=performance_config.database.pool_recycle,
+            pool_pre_ping=performance_config.database.pool_pre_ping,
+            echo=performance_config.database.echo_queries,
+        )
+        logger.info("Created async database engine")
+    return _async_engine
+
+
+def _get_async_session_factory():
+    """Get or create async session factory"""
+    global _async_session_factory
+    if _async_session_factory is None:
+        _async_session_factory = async_sessionmaker(
+            bind=_get_async_engine(),
+            class_=AsyncSession,
+            autoflush=False,
+            autocommit=False,
+            expire_on_commit=performance_config.database.expire_on_commit,
+        )
+    return _async_session_factory
+
+
+async def get_async_db():
+    """
+    FastAPI dependency for async database session.
+
+    Usage:
+        @app.get("/users")
+        async def get_users(db: AsyncSession = Depends(get_async_db)):
+            result = await db.execute(select(User))
+            return result.scalars().all()
+    """
+    async_session_factory = _get_async_session_factory()
+    async with async_session_factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
 # Export commonly used items
 __all__ = [
     "Base",
     "db_manager",
     "get_db",
     "get_read_db",
+    "get_async_db",
     "get_tenant_db",
     "TenantContext",
     "OptimizedQuery",

@@ -32,7 +32,7 @@ class TicketAttachment(TenantMixin, BaseModel):
     )
     uploaded_by = Column(
         Integer,
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
         comment="User who uploaded the file",
     )

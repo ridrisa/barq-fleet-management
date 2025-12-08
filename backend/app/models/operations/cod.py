@@ -17,7 +17,7 @@ class CODStatus(str, enum.Enum):
 class COD(TenantMixin, BaseModel):
     __tablename__ = "cod_transactions"
 
-    courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)
+    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="SET NULL"), nullable=True)
     amount = Column(Numeric(10, 2), nullable=False)
     collection_date = Column(Date, nullable=False)
     deposit_date = Column(Date, nullable=True)
@@ -27,4 +27,4 @@ class COD(TenantMixin, BaseModel):
     reference_number = Column(String)
     notes = Column(String)
 
-    courier = relationship("Courier")
+    courier = relationship("Courier", back_populates="cod_transactions")

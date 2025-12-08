@@ -41,7 +41,7 @@ export default function Login() {
         })
         window.google.accounts.id.renderButton(
           document.getElementById('google-signin-button'),
-          { theme: 'outline', size: 'large', width: '100%', text: 'signin_with' }
+          { theme: 'outline', size: 'large', width: 320, text: 'signin_with' }
         )
       }
     }

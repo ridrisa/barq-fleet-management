@@ -24,7 +24,7 @@ class LeaveStatus(str, enum.Enum):
 class Leave(TenantMixin, BaseModel):
     __tablename__ = "leaves"
 
-    courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)
+    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="CASCADE"), nullable=False)
     leave_type = Column(
         Enum(LeaveType, values_callable=lambda x: [e.value for e in x]), nullable=False
     )

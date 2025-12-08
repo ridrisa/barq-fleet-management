@@ -26,6 +26,9 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.finance import router as finance_router
 from app.api.v1.fms import router as fms_router
 
+# Platform integration router
+from app.api.v1.platforms import router as platforms_router
+
 api_router = APIRouter()
 
 # Authentication & Core
@@ -52,3 +55,6 @@ api_router.include_router(support_router, prefix="/support", tags=["support"])
 api_router.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(finance_router, prefix="/finance", tags=["finance"])
 api_router.include_router(fms_router, prefix="/fms", tags=["fms"])
+
+# Platform integration routes
+api_router.include_router(platforms_router, tags=["platforms"])

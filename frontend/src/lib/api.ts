@@ -74,12 +74,12 @@ export const authAPI = {
     const { data } = await api.get('/auth/me')
     return data
   },
-  googleLogin: async (token: string) => {
-    const { data } = await api.post('/auth/google', { token })
+  googleLogin: async (credential: string) => {
+    const { data } = await api.post('/auth/google', { credential })
     return data
   },
   loginWithGoogle: async (credential: string) => {
-    const { data } = await api.post('/auth/google', { token: credential })
+    const { data } = await api.post('/auth/google', { credential })
     return data
   },
 }

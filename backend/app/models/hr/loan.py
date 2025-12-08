@@ -16,7 +16,7 @@ class LoanStatus(str, enum.Enum):
 class Loan(TenantMixin, BaseModel):
     __tablename__ = "loans"
 
-    courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)
+    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="RESTRICT"), nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
     outstanding_balance = Column(Numeric(10, 2), nullable=False)
     monthly_deduction = Column(Numeric(10, 2), nullable=False)

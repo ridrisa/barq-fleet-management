@@ -16,7 +16,7 @@ class RoomStatus(str, enum.Enum):
 class Room(TenantMixin, BaseModel):
     __tablename__ = "rooms"
 
-    building_id = Column(Integer, ForeignKey("buildings.id"), nullable=False)
+    building_id = Column(Integer, ForeignKey("buildings.id", ondelete="CASCADE"), nullable=False)
     room_number = Column(String, nullable=False)
     capacity = Column(Integer, nullable=False)
     occupied = Column(Integer, default=0)

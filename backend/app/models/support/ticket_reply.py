@@ -1,6 +1,6 @@
 """Ticket Reply Model - for ticket threading/conversations"""
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
@@ -25,7 +25,7 @@ class TicketReply(TenantMixin, BaseModel):
     )
     user_id = Column(
         Integer,
-        ForeignKey("users.id", ondelete="SET NULL"),
+        ForeignKey("users.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
         comment="User who created this reply",
@@ -34,7 +34,7 @@ class TicketReply(TenantMixin, BaseModel):
     # Content
     message = Column(Text, nullable=False, comment="Reply message content")
     is_internal = Column(
-        Integer, default=0, comment="Whether this is an internal note (1) or customer-facing (0)"
+        Boolean, default=False, comment="Whether this is an internal note (True) or customer-facing (False)"
     )
 
     # Relationships

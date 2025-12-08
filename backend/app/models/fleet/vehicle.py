@@ -138,6 +138,7 @@ class Vehicle(TenantMixin, BaseModel):
         "AccidentLog", back_populates="vehicle", cascade="all, delete-orphan"
     )
     fuel_logs = relationship("FuelLog", back_populates="vehicle", cascade="all, delete-orphan")
+    incidents = relationship("Incident", back_populates="vehicle")
 
     def __repr__(self):
         return f"<Vehicle {self.plate_number}: {self.make} {self.model} ({self.status.value})>"

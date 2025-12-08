@@ -16,7 +16,7 @@ class BedStatus(str, enum.Enum):
 class Bed(TenantMixin, BaseModel):
     __tablename__ = "beds"
 
-    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
+    room_id = Column(Integer, ForeignKey("rooms.id", ondelete="CASCADE"), nullable=False)
     bed_number = Column(Integer, nullable=False)
     status = Column(Enum(BedStatus), default=BedStatus.AVAILABLE)
 

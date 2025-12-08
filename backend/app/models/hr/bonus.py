@@ -23,7 +23,7 @@ class PaymentStatus(str, enum.Enum):
 class Bonus(TenantMixin, BaseModel):
     __tablename__ = "bonuses"
 
-    courier_id = Column(Integer, ForeignKey("couriers.id"), nullable=False)
+    courier_id = Column(Integer, ForeignKey("couriers.id", ondelete="CASCADE"), nullable=False)
     bonus_type = Column(
         Enum(BonusType, values_callable=lambda x: [e.value for e in x]), nullable=False
     )

@@ -68,6 +68,21 @@ def get_overdue_maintenance(
     )
 
 
+@router.get("/upcoming", response_model=List[MaintenanceList])
+def get_upcoming_maintenance(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+    days: int = Query(30, ge=1, le=365, description="Number of days to look ahead"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+):
+    """Get upcoming maintenance due in the next X days"""
+    return maintenance_service.get_scheduled(
+        db, skip=skip, limit=limit, organization_id=current_org.id
+    )
+
+
 @router.get("/{maintenance_id}", response_model=MaintenanceResponse)
 def get_maintenance(
     maintenance_id: int,
