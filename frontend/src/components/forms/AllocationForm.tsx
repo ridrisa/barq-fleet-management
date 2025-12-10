@@ -1,20 +1,14 @@
-import { useEffect, useState, FormEvent, ChangeEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Form, FormField, FormSection, FormActions } from './Form'
+import { allocationFormSchema, type AllocationFormData } from '@/schemas/admin.schema'
 
-export interface AllocationFormData {
-  courier_id: string
-  building_id: string
-  room_id: string
-  bed_id: string
-  start_date: string
-  end_date?: string
-  status: 'active' | 'pending' | 'ended'
-  notes?: string
-}
+export type { AllocationFormData }
 
 export interface AllocationFormProps {
   initialData?: Partial<AllocationFormData>
@@ -35,17 +29,6 @@ const formatDateInput = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
-const buildInitialFormData = (initialData?: Partial<AllocationFormData>): AllocationFormData => ({
-  courier_id: initialData?.courier_id ?? '',
-  building_id: initialData?.building_id ?? '',
-  room_id: initialData?.room_id ?? '',
-  bed_id: initialData?.bed_id ?? '',
-  start_date: initialData?.start_date ?? formatDateInput(new Date()),
-  end_date: initialData?.end_date,
-  status: initialData?.status ?? 'pending',
-  notes: initialData?.notes ?? '',
-})
-
 export const AllocationForm = ({
   initialData,
   onSubmit,
@@ -57,111 +40,97 @@ export const AllocationForm = ({
   rooms = [],
   beds = [],
 }: AllocationFormProps) => {
-  const [formData, setFormData] = useState<AllocationFormData>(buildInitialFormData(initialData))
-  const [errors, setErrors] = useState<Partial<Record<keyof AllocationFormData, string>>>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  useEffect(() => {
-    setFormData(buildInitialFormData(initialData))
-    setErrors({})
-    setSubmitError(null)
-  }, [initialData])
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AllocationFormData>({
+    resolver: zodResolver(allocationFormSchema),
+    defaultValues: {
+      courier_id: initialData?.courier_id ?? '',
+      building_id: initialData?.building_id ?? '',
+      room_id: initialData?.room_id ?? '',
+      bed_id: initialData?.bed_id ?? '',
+      start_date: initialData?.start_date ?? formatDateInput(new Date()),
+      end_date: initialData?.end_date,
+      status: initialData?.status ?? 'pending',
+      notes: initialData?.notes ?? '',
+    },
+    mode: 'onBlur',
+  })
+
+  const formIsLoading = isLoading || isSubmitting
+
+  // Watch values for dependent selects
+  const buildingId = watch('building_id')
+  const roomId = watch('room_id')
 
   // Filter rooms by selected building
-  const filteredRooms = formData.building_id
-    ? rooms.filter((room) => room.building_id === formData.building_id)
-    : []
+  const filteredRooms = useMemo(() =>
+    buildingId ? rooms.filter((room) => room.building_id === buildingId) : [],
+    [buildingId, rooms]
+  )
 
   // Filter beds by selected room
-  const filteredBeds = formData.room_id
-    ? beds.filter((bed) => bed.room_id === formData.room_id)
-    : []
+  const filteredBeds = useMemo(() =>
+    roomId ? beds.filter((bed) => bed.room_id === roomId) : [],
+    [roomId, beds]
+  )
 
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof AllocationFormData, string>> = {}
-
-    if (!formData.courier_id) {
-      newErrors.courier_id = 'Courier is required'
-    }
-
-    if (!formData.building_id) {
-      newErrors.building_id = 'Building is required'
-    }
-
-    if (!formData.room_id) {
-      newErrors.room_id = 'Room is required'
-    }
-
-    if (!formData.bed_id) {
-      newErrors.bed_id = 'Bed is required'
-    }
-
-    if (!formData.start_date) {
-      newErrors.start_date = 'Start date is required'
-    }
-
-    if (formData.status === 'ended' && !formData.end_date) {
-      newErrors.end_date = 'End date is required when status is ended'
-    }
-
-    if (formData.start_date && formData.end_date) {
-      const startDate = new Date(formData.start_date)
-      const endDate = new Date(formData.end_date)
-      if (endDate < startDate) {
-        newErrors.end_date = 'End date cannot be before start date'
+  // Reset dependent fields when parent selection changes
+  useEffect(() => {
+    const subscription = watch((_value, { name }) => {
+      if (name === 'building_id') {
+        setValue('room_id', '')
+        setValue('bed_id', '')
+      } else if (name === 'room_id') {
+        setValue('bed_id', '')
       }
-    }
+    })
+    return () => subscription.unsubscribe()
+  }, [watch, setValue])
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
+  // Reset form when initialData changes
+  useEffect(() => {
+    reset({
+      courier_id: initialData?.courier_id ?? '',
+      building_id: initialData?.building_id ?? '',
+      room_id: initialData?.room_id ?? '',
+      bed_id: initialData?.bed_id ?? '',
+      start_date: initialData?.start_date ?? formatDateInput(new Date()),
+      end_date: initialData?.end_date,
+      status: initialData?.status ?? 'pending',
+      notes: initialData?.notes ?? '',
+    })
     setSubmitError(null)
+  }, [initialData, reset])
 
-    if (isLoading || !validate()) {
-      return
-    }
-
+  const onFormSubmit = async (data: AllocationFormData) => {
+    setSubmitError(null)
     try {
-      await onSubmit(formData)
+      await onSubmit(data)
     } catch (err) {
       console.error('Allocation submission failed', err)
       setSubmitError('Failed to save allocation. Please try again.')
     }
   }
 
-  const handleChange = (field: keyof AllocationFormData, value: string) => {
-    setFormData((prev) => {
-      const updatedData = { ...prev, [field]: value }
-
-      // Reset dependent fields when parent selection changes
-      if (field === 'building_id') {
-        updatedData.room_id = ''
-        updatedData.bed_id = ''
-      } else if (field === 'room_id') {
-        updatedData.bed_id = ''
-      }
-
-      return updatedData
-    })
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
-  }
-
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="Allocation Information"
         description="Assign accommodation to a courier"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Courier" required error={errors.courier_id}>
+          <FormField label="Courier" required error={errors.courier_id?.message}>
             <Select
-              value={formData.courier_id}
-              onChange={(e) => handleChange('courier_id', e.target.value)}
+              value={watch('courier_id')}
+              onChange={(e) => setValue('courier_id', e.target.value, { shouldValidate: true })}
               options={[
                 { value: '', label: 'Select a courier...' },
                 ...couriers.map((c) => ({ value: c.id, label: c.name })),
@@ -172,8 +141,7 @@ export const AllocationForm = ({
 
           <FormField label="Status" required>
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              {...register('status')}
               options={[
                 { value: 'pending', label: 'Pending' },
                 { value: 'active', label: 'Active' },
@@ -189,10 +157,10 @@ export const AllocationForm = ({
         description="Select building, room, and bed"
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField label="Building" required error={errors.building_id}>
+          <FormField label="Building" required error={errors.building_id?.message}>
             <Select
-              value={formData.building_id}
-              onChange={(e) => handleChange('building_id', e.target.value)}
+              value={watch('building_id')}
+              onChange={(e) => setValue('building_id', e.target.value, { shouldValidate: true })}
               options={[
                 { value: '', label: 'Select a building...' },
                 ...buildings.map((b) => ({ value: b.id, label: b.name })),
@@ -200,27 +168,27 @@ export const AllocationForm = ({
             />
           </FormField>
 
-          <FormField label="Room" required error={errors.room_id}>
+          <FormField label="Room" required error={errors.room_id?.message}>
             <Select
-              value={formData.room_id}
-              onChange={(e) => handleChange('room_id', e.target.value)}
+              value={watch('room_id')}
+              onChange={(e) => setValue('room_id', e.target.value, { shouldValidate: true })}
               options={[
-                { value: '', label: formData.building_id ? 'Select a room...' : 'Select building first' },
+                { value: '', label: buildingId ? 'Select a room...' : 'Select building first' },
                 ...filteredRooms.map((r) => ({ value: r.id, label: r.name })),
               ]}
-              disabled={!formData.building_id}
+              disabled={!buildingId}
             />
           </FormField>
 
-          <FormField label="Bed" required error={errors.bed_id}>
+          <FormField label="Bed" required error={errors.bed_id?.message}>
             <Select
-              value={formData.bed_id}
-              onChange={(e) => handleChange('bed_id', e.target.value)}
+              value={watch('bed_id')}
+              onChange={(e) => setValue('bed_id', e.target.value, { shouldValidate: true })}
               options={[
-                { value: '', label: formData.room_id ? 'Select a bed...' : 'Select room first' },
+                { value: '', label: roomId ? 'Select a bed...' : 'Select room first' },
                 ...filteredBeds.map((b) => ({ value: b.id, label: b.name })),
               ]}
-              disabled={!formData.room_id}
+              disabled={!roomId}
             />
           </FormField>
         </div>
@@ -231,19 +199,17 @@ export const AllocationForm = ({
         description="Set the allocation dates"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Start Date" required error={errors.start_date}>
+          <FormField label="Start Date" required error={errors.start_date?.message}>
             <Input
               type="date"
-              value={formData.start_date}
-              onChange={(e) => handleChange('start_date', e.target.value)}
+              {...register('start_date')}
             />
           </FormField>
 
-          <FormField label="End Date" error={errors.end_date}>
+          <FormField label="End Date" error={errors.end_date?.message}>
             <Input
               type="date"
-              value={formData.end_date}
-              onChange={(e) => handleChange('end_date', e.target.value)}
+              {...register('end_date')}
               placeholder="Optional - leave empty for ongoing"
             />
           </FormField>
@@ -251,8 +217,7 @@ export const AllocationForm = ({
           <div className="md:col-span-2">
             <FormField label="Notes">
               <Textarea
-                value={formData.notes ?? ''}
-                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => handleChange('notes', e.target.value)}
+                {...register('notes')}
                 placeholder="Any additional notes about this allocation..."
                 rows={3}
               />
@@ -268,11 +233,11 @@ export const AllocationForm = ({
       )}
 
       <FormActions>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={formIsLoading}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : mode === 'create' ? 'Create Allocation' : 'Update Allocation'}
+        <Button type="submit" disabled={formIsLoading}>
+          {formIsLoading ? 'Saving...' : mode === 'create' ? 'Create Allocation' : 'Update Allocation'}
         </Button>
       </FormActions>
     </Form>

@@ -1,23 +1,12 @@
-import { useState, FormEvent } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Form, FormField, FormSection, FormActions } from './Form'
+import { assetFormSchema, type AssetFormData } from '@/schemas/admin.schema'
 
-export interface AssetFormData {
-  asset_name: string
-  asset_type: 'vehicle' | 'equipment' | 'device' | 'furniture' | 'other'
-  asset_code: string
-  purchase_date: string
-  value: number
-  assigned_to?: string
-  condition: 'new' | 'good' | 'fair' | 'poor'
-  status: 'available' | 'assigned' | 'maintenance' | 'disposed'
-  warranty_expiry?: string
-  supplier?: string
-  serial_number?: string
-  notes?: string
-}
+export type { AssetFormData }
 
 export interface AssetFormProps {
   initialData?: Partial<AssetFormData>
@@ -36,82 +25,50 @@ export const AssetForm = ({
   mode = 'create',
   couriers = [],
 }: AssetFormProps) => {
-  const [formData, setFormData] = useState<AssetFormData>({
-    asset_name: initialData?.asset_name || '',
-    asset_type: initialData?.asset_type || 'equipment',
-    asset_code: initialData?.asset_code || '',
-    purchase_date: initialData?.purchase_date || '',
-    value: initialData?.value || 0,
-    assigned_to: initialData?.assigned_to || '',
-    condition: initialData?.condition || 'new',
-    status: initialData?.status || 'available',
-    warranty_expiry: initialData?.warranty_expiry || '',
-    supplier: initialData?.supplier || '',
-    serial_number: initialData?.serial_number || '',
-    notes: initialData?.notes || '',
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<AssetFormData>({
+    resolver: zodResolver(assetFormSchema),
+    defaultValues: {
+      asset_name: initialData?.asset_name || '',
+      asset_type: initialData?.asset_type || 'equipment',
+      asset_code: initialData?.asset_code || '',
+      purchase_date: initialData?.purchase_date || '',
+      value: initialData?.value || 0,
+      assigned_to: initialData?.assigned_to || '',
+      condition: initialData?.condition || 'new',
+      status: initialData?.status || 'available',
+      warranty_expiry: initialData?.warranty_expiry || '',
+      supplier: initialData?.supplier || '',
+      serial_number: initialData?.serial_number || '',
+      notes: initialData?.notes || '',
+    },
+    mode: 'onBlur',
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof AssetFormData, string>>>({})
-
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof AssetFormData, string>> = {}
-
-    if (!formData.asset_name.trim()) {
-      newErrors.asset_name = 'Asset name is required'
-    }
-
-    if (!formData.asset_code.trim()) {
-      newErrors.asset_code = 'Asset code is required'
-    }
-
-    if (!formData.purchase_date) {
-      newErrors.purchase_date = 'Purchase date is required'
-    }
-
-    if (formData.value <= 0) {
-      newErrors.value = 'Asset value must be greater than zero'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    if (!validate()) {
-      return
-    }
-
-    await onSubmit(formData)
-  }
-
-  const handleChange = (field: keyof AssetFormData, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
-  }
+  const formIsLoading = isLoading || isSubmitting
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onSubmit)}>
       <FormSection
         title="Asset Information"
         description="Enter basic asset details"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Asset Name" required error={errors.asset_name}>
+          <FormField label="Asset Name" required error={errors.asset_name?.message}>
             <Input
-              value={formData.asset_name}
-              onChange={(e) => handleChange('asset_name', e.target.value)}
+              {...register('asset_name')}
               placeholder="Delivery Bike"
             />
           </FormField>
 
-          <FormField label="Asset Code" required error={errors.asset_code}>
+          <FormField label="Asset Code" required error={errors.asset_code?.message}>
             <Input
-              value={formData.asset_code}
-              onChange={(e) => handleChange('asset_code', e.target.value)}
+              {...register('asset_code')}
               placeholder="AST-001"
               disabled={mode === 'edit'}
             />
@@ -119,8 +76,7 @@ export const AssetForm = ({
 
           <FormField label="Asset Type" required>
             <Select
-              value={formData.asset_type}
-              onChange={(e) => handleChange('asset_type', e.target.value)}
+              {...register('asset_type')}
               options={[
                 { value: 'vehicle', label: 'Vehicle' },
                 { value: 'equipment', label: 'Equipment' },
@@ -133,34 +89,30 @@ export const AssetForm = ({
 
           <FormField label="Serial Number">
             <Input
-              value={formData.serial_number}
-              onChange={(e) => handleChange('serial_number', e.target.value)}
+              {...register('serial_number')}
               placeholder="SN123456789"
             />
           </FormField>
 
-          <FormField label="Purchase Date" required error={errors.purchase_date}>
+          <FormField label="Purchase Date" required error={errors.purchase_date?.message}>
             <Input
               type="date"
-              value={formData.purchase_date}
-              onChange={(e) => handleChange('purchase_date', e.target.value)}
+              {...register('purchase_date')}
             />
           </FormField>
 
-          <FormField label="Value" required error={errors.value}>
+          <FormField label="Value" required error={errors.value?.message}>
             <Input
               type="number"
               step="0.01"
-              value={formData.value}
-              onChange={(e) => handleChange('value', parseFloat(e.target.value))}
+              {...register('value', { valueAsNumber: true })}
               placeholder="5000.00"
             />
           </FormField>
 
           <FormField label="Supplier">
             <Input
-              value={formData.supplier}
-              onChange={(e) => handleChange('supplier', e.target.value)}
+              {...register('supplier')}
               placeholder="Supplier name"
             />
           </FormField>
@@ -168,8 +120,7 @@ export const AssetForm = ({
           <FormField label="Warranty Expiry">
             <Input
               type="date"
-              value={formData.warranty_expiry}
-              onChange={(e) => handleChange('warranty_expiry', e.target.value)}
+              {...register('warranty_expiry')}
             />
           </FormField>
         </div>
@@ -182,8 +133,7 @@ export const AssetForm = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Condition" required>
             <Select
-              value={formData.condition}
-              onChange={(e) => handleChange('condition', e.target.value)}
+              {...register('condition')}
               options={[
                 { value: 'new', label: 'New' },
                 { value: 'good', label: 'Good' },
@@ -195,8 +145,7 @@ export const AssetForm = ({
 
           <FormField label="Status" required>
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              {...register('status')}
               options={[
                 { value: 'available', label: 'Available' },
                 { value: 'assigned', label: 'Assigned' },
@@ -208,8 +157,8 @@ export const AssetForm = ({
 
           <FormField label="Assigned To">
             <Select
-              value={formData.assigned_to}
-              onChange={(e) => handleChange('assigned_to', e.target.value)}
+              value={watch('assigned_to') || ''}
+              onChange={(e) => setValue('assigned_to', e.target.value, { shouldValidate: true })}
               options={[
                 { value: '', label: 'Not assigned' },
                 ...couriers.map((c) => ({ value: c.id, label: c.name })),
@@ -225,19 +174,18 @@ export const AssetForm = ({
       >
         <FormField label="Notes">
           <Input
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
+            {...register('notes')}
             placeholder="Any additional notes about this asset..."
           />
         </FormField>
       </FormSection>
 
       <FormActions>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={formIsLoading}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : mode === 'create' ? 'Create Asset' : 'Update Asset'}
+        <Button type="submit" disabled={formIsLoading}>
+          {formIsLoading ? 'Saving...' : mode === 'create' ? 'Create Asset' : 'Update Asset'}
         </Button>
       </FormActions>
     </Form>

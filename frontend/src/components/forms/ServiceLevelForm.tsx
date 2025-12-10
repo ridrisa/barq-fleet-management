@@ -2,9 +2,13 @@ import { DynamicForm } from './DynamicForm'
 import {
   serviceLevelFormConfig,
   serviceLevelInitialData,
+} from './formConfigs'
+import {
   serviceLevelFormSchema,
   type ServiceLevelFormData
-} from './formConfigs'
+} from '@/schemas/operations.schema'
+
+export type { ServiceLevelFormData }
 
 export interface ServiceLevelFormProps {
   initialData?: Partial<ServiceLevelFormData> & { id?: string }

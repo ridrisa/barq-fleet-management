@@ -1,24 +1,12 @@
-import { useState, FormEvent } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Form, FormField, FormSection, FormActions } from './Form'
+import { workflowTemplateFormSchema, type WorkflowTemplateFormData } from '@/schemas/workflow.schema'
 
-export interface WorkflowTemplateFormData {
-  name: string
-  template_code: string
-  description: string
-  category: 'courier' | 'vehicle' | 'delivery' | 'hr' | 'finance' | 'general'
-  steps: string
-  approval_chain: string
-  estimated_duration: number
-  auto_assign: boolean
-  status: 'active' | 'draft' | 'archived'
-  trigger_type?: 'manual' | 'automatic' | 'scheduled'
-  conditions?: string
-  notifications?: string
-  notes?: string
-}
+export type { WorkflowTemplateFormData }
 
 export interface WorkflowTemplateFormProps {
   initialData?: Partial<WorkflowTemplateFormData>
@@ -35,93 +23,52 @@ export const WorkflowTemplateForm = ({
   isLoading = false,
   mode = 'create',
 }: WorkflowTemplateFormProps) => {
-  const [formData, setFormData] = useState<WorkflowTemplateFormData>({
-    name: initialData?.name || '',
-    template_code: initialData?.template_code || '',
-    description: initialData?.description || '',
-    category: initialData?.category || 'general',
-    steps: initialData?.steps || '',
-    approval_chain: initialData?.approval_chain || '',
-    estimated_duration: initialData?.estimated_duration || 0,
-    auto_assign: initialData?.auto_assign || false,
-    status: initialData?.status || 'draft',
-    trigger_type: initialData?.trigger_type || 'manual',
-    conditions: initialData?.conditions || '',
-    notifications: initialData?.notifications || '',
-    notes: initialData?.notes || '',
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<WorkflowTemplateFormData>({
+    resolver: zodResolver(workflowTemplateFormSchema),
+    defaultValues: {
+      name: initialData?.name || '',
+      template_code: initialData?.template_code || '',
+      description: initialData?.description || '',
+      category: initialData?.category || 'general',
+      steps: initialData?.steps || '',
+      approval_chain: initialData?.approval_chain || '',
+      estimated_duration: initialData?.estimated_duration || 0,
+      auto_assign: initialData?.auto_assign || false,
+      status: initialData?.status || 'draft',
+      trigger_type: initialData?.trigger_type || 'manual',
+      conditions: initialData?.conditions || '',
+      notifications: initialData?.notifications || '',
+      notes: initialData?.notes || '',
+    },
+    mode: 'onBlur',
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof WorkflowTemplateFormData, string>>>({})
-
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof WorkflowTemplateFormData, string>> = {}
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Workflow name is required'
-    }
-
-    if (!formData.template_code.trim()) {
-      newErrors.template_code = 'Template code is required'
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required'
-    } else if (formData.description.trim().length < 20) {
-      newErrors.description = 'Description must be at least 20 characters'
-    }
-
-    if (!formData.steps.trim()) {
-      newErrors.steps = 'Workflow steps are required'
-    }
-
-    if (!formData.approval_chain.trim()) {
-      newErrors.approval_chain = 'Approval chain is required'
-    }
-
-    if (formData.estimated_duration <= 0) {
-      newErrors.estimated_duration = 'Estimated duration must be greater than zero'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    if (!validate()) {
-      return
-    }
-
-    await onSubmit(formData)
-  }
-
-  const handleChange = (field: keyof WorkflowTemplateFormData, value: string | number | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
-  }
+  const formIsLoading = isLoading || isSubmitting
+  const autoAssignValue = watch('auto_assign')
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onSubmit)}>
       <FormSection
         title="Template Information"
         description="Define the workflow template basics"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Workflow Name" required error={errors.name}>
+          <FormField label="Workflow Name" required error={errors.name?.message}>
             <Input
-              value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
+              {...register('name')}
               placeholder="Courier Onboarding Workflow"
             />
           </FormField>
 
-          <FormField label="Template Code" required error={errors.template_code}>
+          <FormField label="Template Code" required error={errors.template_code?.message}>
             <Input
-              value={formData.template_code}
-              onChange={(e) => handleChange('template_code', e.target.value)}
+              {...register('template_code')}
               placeholder="WF-001"
               disabled={mode === 'edit'}
             />
@@ -129,8 +76,7 @@ export const WorkflowTemplateForm = ({
 
           <FormField label="Category" required>
             <Select
-              value={formData.category}
-              onChange={(e) => handleChange('category', e.target.value)}
+              {...register('category')}
               options={[
                 { value: 'courier', label: 'Courier' },
                 { value: 'vehicle', label: 'Vehicle' },
@@ -144,8 +90,7 @@ export const WorkflowTemplateForm = ({
 
           <FormField label="Status" required>
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              {...register('status')}
               options={[
                 { value: 'draft', label: 'Draft' },
                 { value: 'active', label: 'Active' },
@@ -156,8 +101,7 @@ export const WorkflowTemplateForm = ({
 
           <FormField label="Trigger Type">
             <Select
-              value={formData.trigger_type}
-              onChange={(e) => handleChange('trigger_type', e.target.value)}
+              {...register('trigger_type')}
               options={[
                 { value: 'manual', label: 'Manual' },
                 { value: 'automatic', label: 'Automatic' },
@@ -166,11 +110,10 @@ export const WorkflowTemplateForm = ({
             />
           </FormField>
 
-          <FormField label="Estimated Duration (hours)" required error={errors.estimated_duration}>
+          <FormField label="Estimated Duration (hours)" required error={errors.estimated_duration?.message}>
             <Input
               type="number"
-              value={formData.estimated_duration}
-              onChange={(e) => handleChange('estimated_duration', parseInt(e.target.value))}
+              {...register('estimated_duration', { valueAsNumber: true })}
               placeholder="24"
             />
           </FormField>
@@ -181,10 +124,9 @@ export const WorkflowTemplateForm = ({
         title="Description"
         description="Detailed description of the workflow"
       >
-        <FormField label="Description" required error={errors.description}>
+        <FormField label="Description" required error={errors.description?.message}>
           <Input
-            value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
+            {...register('description')}
             placeholder="Provide a detailed description of this workflow template..."
           />
         </FormField>
@@ -197,12 +139,11 @@ export const WorkflowTemplateForm = ({
         <FormField
           label="Steps"
           required
-          error={errors.steps}
+          error={errors.steps?.message}
           helperText="List workflow steps separated by semicolons (e.g., Step 1: Document review; Step 2: Manager approval)"
         >
           <Input
-            value={formData.steps}
-            onChange={(e) => handleChange('steps', e.target.value)}
+            {...register('steps')}
             placeholder="Step 1: Document collection; Step 2: Background check; Step 3: Final approval"
           />
         </FormField>
@@ -210,20 +151,19 @@ export const WorkflowTemplateForm = ({
         <FormField
           label="Approval Chain"
           required
-          error={errors.approval_chain}
+          error={errors.approval_chain?.message}
           helperText="List approvers in order, separated by commas (e.g., Team Lead, Department Manager, HR Director)"
         >
           <Input
-            value={formData.approval_chain}
-            onChange={(e) => handleChange('approval_chain', e.target.value)}
+            {...register('approval_chain')}
             placeholder="Team Lead, Department Manager, HR Director"
           />
         </FormField>
 
         <FormField label="Auto-Assign">
           <Select
-            value={formData.auto_assign ? 'true' : 'false'}
-            onChange={(e) => handleChange('auto_assign', e.target.value === 'true')}
+            value={autoAssignValue ? 'true' : 'false'}
+            onChange={(e) => setValue('auto_assign', e.target.value === 'true', { shouldValidate: true })}
             options={[
               { value: 'false', label: 'Manual Assignment' },
               { value: 'true', label: 'Auto-Assign' },
@@ -241,8 +181,7 @@ export const WorkflowTemplateForm = ({
           helperText="Define conditions that trigger this workflow (optional)"
         >
           <Input
-            value={formData.conditions}
-            onChange={(e) => handleChange('conditions', e.target.value)}
+            {...register('conditions')}
             placeholder="e.g., New courier hired, Vehicle maintenance due"
           />
         </FormField>
@@ -252,8 +191,7 @@ export const WorkflowTemplateForm = ({
           helperText="Who should be notified at each step (comma-separated)"
         >
           <Input
-            value={formData.notifications}
-            onChange={(e) => handleChange('notifications', e.target.value)}
+            {...register('notifications')}
             placeholder="Manager, HR, Requestor"
           />
         </FormField>
@@ -265,19 +203,18 @@ export const WorkflowTemplateForm = ({
       >
         <FormField label="Notes">
           <Input
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
+            {...register('notes')}
             placeholder="Any additional notes about this workflow template..."
           />
         </FormField>
       </FormSection>
 
       <FormActions>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={formIsLoading}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : mode === 'create' ? 'Create Workflow Template' : 'Update Workflow Template'}
+        <Button type="submit" disabled={formIsLoading}>
+          {formIsLoading ? 'Saving...' : mode === 'create' ? 'Create Workflow Template' : 'Update Workflow Template'}
         </Button>
       </FormActions>
     </Form>

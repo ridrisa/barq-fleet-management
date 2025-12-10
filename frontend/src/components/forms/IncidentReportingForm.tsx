@@ -1,11 +1,15 @@
-import { useState, FormEvent } from 'react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Form, FormField, FormSection, FormActions } from './Form'
 import { ImageUpload, type UploadedFile } from './FileUpload'
-import { type IncidentReportFormData } from './formConfigs'
+import { incidentFormSchema, type IncidentReportFormData } from '@/schemas/operations.schema'
+
+export type { IncidentReportFormData }
 
 export interface IncidentReportingFormProps {
   initialData?: Partial<IncidentReportFormData & { evidence_photos?: UploadedFile[] }> & { id?: string }
@@ -44,48 +48,35 @@ export const IncidentReportingForm = ({
   onCancel,
   isLoading = false
 }: IncidentReportingFormProps) => {
-  const [formData, setFormData] = useState({
-    title: initialData?.title || '',
-    incident_type: initialData?.incident_type || '',
-    severity: initialData?.severity || 'medium' as const,
-    location: initialData?.location || '',
-    description: initialData?.description || '',
-    status: initialData?.status || 'open' as const,
-    reported_by: initialData?.reported_by || '',
-    evidence_urls: initialData?.evidence_urls || [],
-  })
   const [evidencePhotos, setEvidencePhotos] = useState<UploadedFile[]>(
     initialData?.evidence_photos || []
   )
-  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
-    }
-  }
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<IncidentReportFormData>({
+    resolver: zodResolver(incidentFormSchema),
+    defaultValues: {
+      title: initialData?.title || '',
+      incident_type: initialData?.incident_type || '',
+      severity: initialData?.severity || 'medium',
+      location: initialData?.location || '',
+      description: initialData?.description || '',
+      status: initialData?.status || 'open',
+      reported_by: initialData?.reported_by || '',
+      evidence_urls: initialData?.evidence_urls || [],
+    },
+    mode: 'onBlur',
+  })
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {}
-    if (!formData.title.trim()) newErrors.title = 'Title is required'
-    if (!formData.incident_type) newErrors.incident_type = 'Incident type is required'
-    if (!formData.description.trim()) newErrors.description = 'Description is required'
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+  const formIsLoading = isLoading || isSubmitting
+  const severity = watch('severity')
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!validate()) return
-    await onSubmit({
-      ...formData,
-      evidence_photos: evidencePhotos,
-    })
-  }
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
+  const getSeverityColor = (sev: string) => {
+    switch (sev) {
       case 'low': return 'bg-green-100 text-green-800'
       case 'medium': return 'bg-yellow-100 text-yellow-800'
       case 'high': return 'bg-orange-100 text-orange-800'
@@ -94,65 +85,67 @@ export const IncidentReportingForm = ({
     }
   }
 
+  const onFormSubmit = async (data: IncidentReportFormData) => {
+    await onSubmit({
+      ...data,
+      evidence_photos: evidencePhotos,
+    })
+  }
+
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="Incident Details"
         description="Provide basic information about the incident"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <FormField label="Incident Title" error={errors.title} required>
+            <FormField label="Incident Title" error={errors.title?.message} required>
               <Input
-                value={formData.title}
-                onChange={(e) => handleChange('title', e.target.value)}
+                {...register('title')}
                 placeholder="Brief description of the incident..."
-                disabled={isLoading}
+                disabled={formIsLoading}
               />
             </FormField>
           </div>
 
-          <FormField label="Incident Type" error={errors.incident_type} required>
+          <FormField label="Incident Type" error={errors.incident_type?.message} required>
             <Select
-              value={formData.incident_type}
-              onChange={(e) => handleChange('incident_type', e.target.value)}
+              {...register('incident_type')}
               options={incidentTypeOptions}
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
 
           <FormField label="Severity" required>
             <Select
-              value={formData.severity}
-              onChange={(e) => handleChange('severity', e.target.value)}
+              {...register('severity')}
               options={severityOptions}
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
 
           <FormField label="Location">
             <Input
-              value={formData.location}
-              onChange={(e) => handleChange('location', e.target.value)}
+              {...register('location')}
               placeholder="Where did the incident occur?"
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
 
           <FormField label="Reported By">
             <Input
-              value={formData.reported_by}
-              onChange={(e) => handleChange('reported_by', e.target.value)}
+              {...register('reported_by')}
               placeholder="Name of reporter"
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
         </div>
 
-        {formData.severity && (
+        {severity && (
           <div className="mt-4">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getSeverityColor(formData.severity)}`}>
-              Severity: {formData.severity.charAt(0).toUpperCase() + formData.severity.slice(1)}
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getSeverityColor(severity)}`}>
+              Severity: {severity.charAt(0).toUpperCase() + severity.slice(1)}
             </span>
           </div>
         )}
@@ -162,13 +155,12 @@ export const IncidentReportingForm = ({
         title="Description"
         description="Provide a detailed account of what happened"
       >
-        <FormField label="Full Description" error={errors.description} required>
+        <FormField label="Full Description" error={errors.description?.message} required>
           <Textarea
-            value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
+            {...register('description')}
             placeholder="Describe the incident in detail. Include timeline, circumstances, and any relevant information..."
             rows={5}
-            disabled={isLoading}
+            disabled={formIsLoading}
           />
         </FormField>
       </FormSection>
@@ -182,7 +174,7 @@ export const IncidentReportingForm = ({
           onChange={setEvidencePhotos}
           maxFiles={10}
           maxSize={10 * 1024 * 1024}
-          disabled={isLoading}
+          disabled={formIsLoading}
         />
       </FormSection>
 
@@ -193,10 +185,9 @@ export const IncidentReportingForm = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Status">
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              {...register('status')}
               options={statusOptions}
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
         </div>
@@ -204,12 +195,12 @@ export const IncidentReportingForm = ({
 
       <FormActions>
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={formIsLoading}>
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : initialData?.id ? 'Update Incident' : 'Report Incident'}
+        <Button type="submit" disabled={formIsLoading}>
+          {formIsLoading ? 'Saving...' : initialData?.id ? 'Update Incident' : 'Report Incident'}
         </Button>
       </FormActions>
     </Form>
