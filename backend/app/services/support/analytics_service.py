@@ -1,7 +1,7 @@
 """Support Analytics Service"""
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
@@ -15,6 +15,7 @@ from app.models.support import (
     TicketPriority,
     TicketStatus,
 )
+from app.models.user import User
 
 
 class SupportAnalyticsService:
@@ -108,12 +109,39 @@ class SupportAnalyticsService:
             avg_resolution = 0.0
             median_resolution = 0.0
 
+        # Calculate first response times from tickets with first_response_at
+        first_response_query = db.query(Ticket).filter(Ticket.first_response_at.isnot(None))
+        if start_date and end_date:
+            first_response_query = first_response_query.filter(
+                and_(Ticket.created_at >= start_date, Ticket.created_at <= end_date)
+            )
+
+        first_response_times = []
+        for ticket in first_response_query.all():
+            if ticket.first_response_at and ticket.created_at:
+                delta = ticket.first_response_at - ticket.created_at
+                minutes = delta.total_seconds() / 60
+                first_response_times.append(minutes)
+
+        if first_response_times:
+            avg_first_response = sum(first_response_times) / len(first_response_times)
+            sorted_fr_times = sorted(first_response_times)
+            median_first_response = sorted_fr_times[len(sorted_fr_times) // 2]
+        else:
+            avg_first_response = 0.0
+            median_first_response = 0.0
+
         return {
-            "avg_first_response_minutes": 0.0,  # TODO: Calculate from first reply
-            "median_first_response_minutes": 0.0,
+            "avg_first_response_minutes": round(avg_first_response, 2),
+            "median_first_response_minutes": round(median_first_response, 2),
             "avg_resolution_time_hours": round(avg_resolution, 2),
             "median_resolution_time_hours": round(median_resolution, 2),
         }
+
+    def _get_user_name(self, db: Session, user_id: int) -> Optional[str]:
+        """Get user's full name by ID"""
+        user = db.query(User).filter(User.id == user_id).first()
+        return user.full_name if user else None
 
     def get_agent_performance(
         self, db: Session, *, start_date: date = None, end_date: date = None
@@ -142,14 +170,46 @@ class SupportAnalyticsService:
 
         results = []
         for agent_id, total, resolved in agent_stats:
+            # Get actual agent name from User table
+            agent_name = self._get_user_name(db, agent_id) or f"Agent {agent_id}"
+
+            # Calculate average resolution time for this agent
+            agent_tickets = (
+                query.filter(
+                    Ticket.assigned_to == agent_id,
+                    Ticket.resolved_at.isnot(None),
+                )
+                .all()
+            )
+
+            resolution_times = []
+            for ticket in agent_tickets:
+                if ticket.resolved_at and ticket.created_at:
+                    delta = ticket.resolved_at - ticket.created_at
+                    hours = delta.total_seconds() / 3600
+                    resolution_times.append(hours)
+
+            avg_resolution_time = (
+                round(sum(resolution_times) / len(resolution_times), 2)
+                if resolution_times
+                else 0.0
+            )
+
+            # Get customer satisfaction score for this agent from Feedback (responded_by)
+            avg_satisfaction = (
+                db.query(func.avg(Feedback.rating))
+                .filter(Feedback.responded_by == agent_id)
+                .scalar()
+            )
+
             results.append(
                 {
                     "agent_id": agent_id,
-                    "agent_name": f"Agent {agent_id}",  # TODO: Get actual name
+                    "agent_name": agent_name,
                     "tickets_assigned": total,
                     "tickets_resolved": resolved or 0,
-                    "avg_resolution_time_hours": 0.0,  # TODO: Calculate
-                    "customer_satisfaction_score": None,
+                    "avg_resolution_time_hours": avg_resolution_time,
+                    "customer_satisfaction_score": round(float(avg_satisfaction), 2) if avg_satisfaction else None,
                 }
             )
 
@@ -198,10 +258,32 @@ class SupportAnalyticsService:
                 .count()
             )
 
-            resolved_count = (
+            resolved_tickets = (
                 db.query(Ticket)
-                .filter(and_(Ticket.resolved_at >= current_date, Ticket.resolved_at < next_date))
-                .count()
+                .filter(
+                    and_(
+                        Ticket.resolved_at >= current_date,
+                        Ticket.resolved_at < next_date,
+                        Ticket.resolved_at.isnot(None),
+                    )
+                )
+                .all()
+            )
+
+            resolved_count = len(resolved_tickets)
+
+            # Calculate average resolution hours for tickets resolved on this day
+            resolution_times = []
+            for ticket in resolved_tickets:
+                if ticket.resolved_at and ticket.created_at:
+                    delta = ticket.resolved_at - ticket.created_at
+                    hours = delta.total_seconds() / 3600
+                    resolution_times.append(hours)
+
+            avg_resolution_hours = (
+                round(sum(resolution_times) / len(resolution_times), 2)
+                if resolution_times
+                else 0.0
             )
 
             trends.append(
@@ -209,7 +291,7 @@ class SupportAnalyticsService:
                     "date": current_date,
                     "ticket_count": ticket_count,
                     "resolved_count": resolved_count,
-                    "avg_resolution_hours": 0.0,  # TODO: Calculate
+                    "avg_resolution_hours": avg_resolution_hours,
                 }
             )
 
@@ -381,12 +463,26 @@ class SupportAnalyticsService:
                 ),
             }
 
+        # Calculate average time to breach for breached tickets
+        # Time to breach = SLA due time - ticket creation time (for breached tickets)
+        breached_tickets = query.filter(Ticket.sla_breached == True).all()
+        breach_times = []
+        for ticket in breached_tickets:
+            if ticket.sla_due_at and ticket.created_at:
+                delta = ticket.sla_due_at - ticket.created_at
+                hours = delta.total_seconds() / 3600
+                breach_times.append(hours)
+
+        avg_time_to_breach = (
+            round(sum(breach_times) / len(breach_times), 2) if breach_times else 0.0
+        )
+
         return {
             "total_with_sla": total_with_sla,
             "sla_met": sla_met,
             "sla_breached": sla_breached,
             "compliance_rate": round(compliance_rate, 2),
-            "avg_time_to_breach_hours": 0.0,  # TODO: Calculate
+            "avg_time_to_breach_hours": avg_time_to_breach,
             "at_risk_count": at_risk_count,
             "by_priority": by_priority,
         }
@@ -421,12 +517,44 @@ class SupportAnalyticsService:
 
         escalation_rate = (total_escalated / total_count * 100) if total_count > 0 else 0.0
 
+        # Calculate average time to escalate (from creation to escalation)
+        escalated_tickets = query.filter(Ticket.escalated_at.isnot(None)).all()
+        escalation_times = []
+        for ticket in escalated_tickets:
+            if ticket.escalated_at and ticket.created_at:
+                delta = ticket.escalated_at - ticket.created_at
+                hours = delta.total_seconds() / 3600
+                escalation_times.append(hours)
+
+        avg_time_to_escalate = (
+            round(sum(escalation_times) / len(escalation_times), 2)
+            if escalation_times
+            else 0.0
+        )
+
+        # Get top escalation reasons (count by reason, filter out null/empty)
+        reason_counts = (
+            query.filter(
+                Ticket.escalation_reason.isnot(None),
+                Ticket.escalation_reason != "",
+            )
+            .with_entities(Ticket.escalation_reason, func.count(Ticket.id).label("count"))
+            .group_by(Ticket.escalation_reason)
+            .order_by(func.count(Ticket.id).desc())
+            .limit(10)
+            .all()
+        )
+
+        top_reasons = [
+            {"reason": reason, "count": count} for reason, count in reason_counts
+        ]
+
         return {
             "total_escalated": total_escalated,
             "by_level": {k.value: v for k, v in by_level.items()},
-            "avg_time_to_escalate_hours": 0.0,  # TODO: Calculate
+            "avg_time_to_escalate_hours": avg_time_to_escalate,
             "escalation_rate": round(escalation_rate, 2),
-            "top_reasons": [],  # TODO: Get top escalation reasons
+            "top_reasons": top_reasons,
         }
 
 
