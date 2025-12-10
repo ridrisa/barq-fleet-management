@@ -12,19 +12,19 @@ from app.models.mixins import TenantMixin
 class LogType(str, enum.Enum):
     """Type of vehicle log entry"""
 
-    DAILY_LOG = "daily_log"
-    FUEL_REFILL = "fuel_refill"
-    TRIP = "trip"
-    DELIVERY = "delivery"
+    DAILY_LOG = "DAILY_LOG"
+    FUEL_REFILL = "FUEL_REFILL"
+    TRIP = "TRIP"
+    DELIVERY = "DELIVERY"
 
 
 class FuelProvider(str, enum.Enum):
     """Fuel station provider"""
 
-    ARAMCO = "aramco"
-    ADNOC = "adnoc"
-    PETROL = "petrol"
-    OTHER = "other"
+    ARAMCO = "ARAMCO"
+    ADNOC = "ADNOC"
+    PETROL = "PETROL"
+    OTHER = "OTHER"
 
 
 class VehicleLog(TenantMixin, BaseModel):

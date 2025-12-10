@@ -401,11 +401,11 @@ class EmailNotificationService:
         Returns:
             True if sent successfully
         """
-        subject = "Welcome to BARQ Fleet Management"
+        subject = "Welcome to SYNC Fleet Management"
         html_content = f"""
         <html>
         <body>
-            <h2>Welcome to BARQ Fleet Management!</h2>
+            <h2>Welcome to SYNC Fleet Management!</h2>
             <p>Dear {courier_name},</p>
             <p>Welcome to our team! We're excited to have you join us.</p>
             <ul>

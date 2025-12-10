@@ -18,6 +18,15 @@ class Settings:
         self.API_V1_STR: str = os.getenv("API_V1_STR", "/api/v1")
         self.ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
 
+        # Sentry Error Tracking
+        self.SENTRY_DSN: Optional[str] = os.getenv("SENTRY_DSN")
+        self.SENTRY_TRACES_SAMPLE_RATE: float = float(
+            os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0")
+        )
+        self.SENTRY_PROFILES_SAMPLE_RATE: float = float(
+            os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "1.0")
+        )
+
         # Security
         self.SECRET_KEY: str = self._require_secret("SECRET_KEY")
         self.ALGORITHM: str = os.getenv("ALGORITHM", "HS256")

@@ -1,6 +1,7 @@
 from datetime import timedelta
 from typing import Dict, List, Optional
 
+import sentry_sdk
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from google.auth.transport import requests as google_requests
@@ -30,12 +31,24 @@ def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = 
     """OAuth2 compatible token login (email/password) with organization context."""
     user = crud_user.authenticate(db, email=form_data.username, password=form_data.password)
     if not user:
+        sentry_sdk.add_breadcrumb(
+            category="auth",
+            message="Login failed - invalid credentials",
+            level="warning",
+            data={"email": form_data.username},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not crud_user.is_active(user):
+        sentry_sdk.add_breadcrumb(
+            category="auth",
+            message="Login failed - inactive user",
+            level="warning",
+            data={"user_id": user.id, "email": user.email},
+        )
         raise HTTPException(status_code=400, detail="Inactive user")
 
     # Get user's primary organization (first active membership)
@@ -62,6 +75,15 @@ def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = 
             "org_role": organization_role,
         },
         expires_delta=access_token_expires,
+    )
+
+    # Set Sentry user context and log successful login
+    sentry_sdk.set_user({"id": str(user.id), "email": user.email})
+    sentry_sdk.add_breadcrumb(
+        category="auth",
+        message="User logged in successfully",
+        level="info",
+        data={"user_id": user.id, "email": user.email, "org_id": organization_id},
     )
 
     return {
@@ -191,6 +213,15 @@ def google_auth(*, db: Session = Depends(get_db), token_data: Dict[str, str] = B
         expires_delta=access_token_expires,
     )
 
+    # Set Sentry user context and log successful Google login
+    sentry_sdk.set_user({"id": str(user.id), "email": user.email})
+    sentry_sdk.add_breadcrumb(
+        category="auth",
+        message="User logged in via Google",
+        level="info",
+        data={"user_id": user.id, "email": user.email, "org_id": organization_id},
+    )
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -272,6 +303,15 @@ def register(*, db: Session = Depends(get_db), user_data: Dict[str, str] = Body(
             "org_role": organization_role,
         },
         expires_delta=access_token_expires,
+    )
+
+    # Set Sentry user context and log successful registration
+    sentry_sdk.set_user({"id": str(user.id), "email": user.email})
+    sentry_sdk.add_breadcrumb(
+        category="auth",
+        message="User registered successfully",
+        level="info",
+        data={"user_id": user.id, "email": user.email, "org_id": organization_id},
     )
 
     return {

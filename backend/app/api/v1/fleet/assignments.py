@@ -6,10 +6,55 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_organization, get_current_user, get_db
 from app.models.tenant.organization import Organization
 from app.models.user import User
-from app.schemas.fleet import AssignmentCreate, AssignmentList, AssignmentResponse, AssignmentUpdate
+from app.schemas.fleet import AssignmentCreate, AssignmentList, AssignmentResponse, AssignmentUpdate, CurrentAssignment
 from app.services.fleet import assignment_service, courier_service, vehicle_service
 
 router = APIRouter()
+
+
+@router.get("/current", response_model=List[CurrentAssignment])
+def get_current_assignments(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    current_org: Organization = Depends(get_current_organization),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(2000, ge=1, le=5000),
+    search: Optional[str] = None,
+):
+    """Get current vehicle-courier assignments based on couriers.current_vehicle_id"""
+    # Get all couriers with vehicles assigned
+    filters = {"organization_id": current_org.id}
+    couriers = courier_service.get_multi(db, skip=skip, limit=limit, filters=filters)
+
+    result = []
+    for courier in couriers:
+        if courier.current_vehicle_id and courier.current_vehicle:
+            vehicle = courier.current_vehicle
+            # Apply search filter if provided
+            if search:
+                search_lower = search.lower()
+                if not (
+                    search_lower in (courier.full_name or "").lower()
+                    or search_lower in (courier.employee_id or "").lower()
+                    or search_lower in (vehicle.plate_number or "").lower()
+                    or search_lower in (vehicle.make or "").lower()
+                    or search_lower in (vehicle.model or "").lower()
+                ):
+                    continue
+
+            result.append(CurrentAssignment(
+                courier_id=courier.id,
+                courier_name=courier.full_name or f"Courier {courier.id}",
+                courier_employee_id=courier.employee_id,
+                courier_status=str(courier.status.value) if courier.status else "unknown",
+                vehicle_id=vehicle.id,
+                vehicle_plate_number=vehicle.plate_number,
+                vehicle_make=vehicle.make,
+                vehicle_model=vehicle.model,
+                vehicle_status=str(vehicle.status.value) if vehicle.status else "unknown",
+            ))
+
+    return result
 
 
 @router.get("/", response_model=List[AssignmentList])

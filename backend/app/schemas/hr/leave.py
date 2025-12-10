@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Optional
 
@@ -46,7 +46,7 @@ class LeaveResponse(LeaveBase):
     id: int
     status: LeaveStatus
     approved_by: Optional[int] = None
-    created_at: date
-    updated_at: Optional[date] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

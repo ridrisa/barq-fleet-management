@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -31,14 +31,14 @@ export default function CouriersList() {
   const pageSize = 10
 
   // Fetch ALL couriers - use direct useQuery instead of useDataTable
-  // This ensures we get all data for filter dropdowns
+  // This ensures we get all data for filter dropdowns and client-side pagination
   const {
     data: allCouriers = [],
     isLoading,
     error,
   } = useQuery({
     queryKey: ['couriers'],
-    queryFn: () => couriersAPI.getAll(), // Uses default limit=1000
+    queryFn: () => couriersAPI.getAll(), // Uses default limit=2000 for all couriers
   })
 
   // Apply search filter to all data
@@ -73,12 +73,14 @@ export default function CouriersList() {
     return nationalities.sort()
   }, [allCouriers])
 
-  // Apply filters to data
+  // Apply filters to data and reset page when filters change
   const finalFilteredData = useMemo(() => {
     let result = filteredData
 
     if (statusFilter) {
-      result = result.filter((c: any) => c.status === statusFilter)
+      // Case-insensitive comparison for status filter
+      const filterUpper = statusFilter.toUpperCase()
+      result = result.filter((c: any) => (c.status?.toUpperCase?.() || '') === filterUpper)
     }
     if (cityFilter) {
       result = result.filter((c: any) => c.city === cityFilter)
@@ -89,6 +91,11 @@ export default function CouriersList() {
 
     return result
   }, [filteredData, statusFilter, cityFilter, nationalityFilter])
+
+  // Reset to page 1 when search or filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, cityFilter, nationalityFilter])
 
   // Paginate final filtered data
   const finalPaginatedData = useMemo(() => {
@@ -105,6 +112,7 @@ export default function CouriersList() {
     setStatusFilter('')
     setCityFilter('')
     setNationalityFilter('')
+    setCurrentPage(1) // Reset to first page when clearing filters
   }
 
   const handleOpenCreateModal = () => {
@@ -144,19 +152,23 @@ export default function CouriersList() {
     {
       key: 'status',
       header: 'Status',
-      render: (row: any) => (
-        <Badge
-          variant={
-            row.status === 'active'
-              ? 'success'
-              : row.status === 'on_leave'
-              ? 'warning'
-              : 'danger'
-          }
-        >
-          {row.status || 'inactive'}
-        </Badge>
-      ),
+      render: (row: any) => {
+        // Normalize status to handle both uppercase (from backend) and lowercase
+        const status = row.status?.toUpperCase?.() || 'INACTIVE'
+        return (
+          <Badge
+            variant={
+              status === 'ACTIVE'
+                ? 'success'
+                : status === 'ON_LEAVE' || status === 'ONBOARDING'
+                ? 'warning'
+                : 'danger'
+            }
+          >
+            {status.replace('_', ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())}
+          </Badge>
+        )
+      },
     },
     {
       key: 'actions',
@@ -209,17 +221,21 @@ export default function CouriersList() {
   }
 
   // Calculate status counts for KPI cards (using all data, not filtered)
-  const activeCouriers = allCouriers.filter((c: any) => c.status === 'active').length
-  const onLeaveCouriers = allCouriers.filter((c: any) => c.status === 'on_leave').length
-  const terminatedCouriers = allCouriers.filter((c: any) => c.status === 'terminated').length
+  // Handle both uppercase (from backend) and lowercase status values
+  const normalizeStatus = (status: string) => status?.toUpperCase?.() || ''
+  const activeCouriers = allCouriers.filter((c: any) => normalizeStatus(c.status) === 'ACTIVE').length
+  const onLeaveCouriers = allCouriers.filter((c: any) => normalizeStatus(c.status) === 'ON_LEAVE').length
+  const terminatedCouriers = allCouriers.filter((c: any) => normalizeStatus(c.status) === 'TERMINATED').length
 
-  // Status options for filter
+  // Status options for filter (values must match backend uppercase enum)
   const statusOptions = [
     { value: '', label: 'All Statuses' },
-    { value: 'active', label: 'Active' },
-    { value: 'on_leave', label: 'On Leave' },
-    { value: 'terminated', label: 'Terminated' },
-    { value: 'inactive', label: 'Inactive' },
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'ON_LEAVE', label: 'On Leave' },
+    { value: 'TERMINATED', label: 'Terminated' },
+    { value: 'INACTIVE', label: 'Inactive' },
+    { value: 'ONBOARDING', label: 'Onboarding' },
+    { value: 'SUSPENDED', label: 'Suspended' },
   ]
 
   // City options for filter
@@ -254,7 +270,7 @@ export default function CouriersList() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('active') }}>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('ACTIVE') }}>
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">{activeCouriers}</p>
@@ -262,7 +278,7 @@ export default function CouriersList() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('on_leave') }}>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('ON_LEAVE') }}>
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-yellow-600">{onLeaveCouriers}</p>
@@ -270,7 +286,7 @@ export default function CouriersList() {
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('terminated') }}>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { clearFilters(); setStatusFilter('TERMINATED') }}>
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-2xl font-bold text-red-600">{terminatedCouriers}</p>

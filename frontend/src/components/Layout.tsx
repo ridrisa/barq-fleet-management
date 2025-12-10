@@ -314,7 +314,18 @@ export default function Layout() {
         <div className="h-full flex flex-col">
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
-            <h1 className="text-xl font-bold text-blue-600">BARQ Fleet</h1>
+            <div className="flex items-center gap-2">
+              <img
+                src="/images/logo.png"
+                alt="SYNC Fleet"
+                className="h-10 w-auto"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              <h1 className="hidden text-xl font-bold text-blue-600">SYNC Fleet</h1>
+            </div>
             {/* Mobile close button */}
             <button
               onClick={() => setIsSidebarOpen(false)}

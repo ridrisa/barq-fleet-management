@@ -7,20 +7,20 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class QueuePriority(str, Enum):
-    CRITICAL = "critical"
-    URGENT = "urgent"
-    HIGH = "high"
-    NORMAL = "normal"
-    LOW = "low"
+    CRITICAL = "CRITICAL"
+    URGENT = "URGENT"
+    HIGH = "HIGH"
+    NORMAL = "NORMAL"
+    LOW = "LOW"
 
 
 class QueueStatus(str, Enum):
-    QUEUED = "queued"
-    PROCESSING = "processing"
-    ASSIGNED = "assigned"
-    COMPLETED = "completed"
-    EXPIRED = "expired"
-    CANCELLED = "cancelled"
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    ASSIGNED = "ASSIGNED"
+    COMPLETED = "COMPLETED"
+    EXPIRED = "EXPIRED"
+    CANCELLED = "CANCELLED"
 
 
 class PriorityQueueEntryBase(BaseModel):

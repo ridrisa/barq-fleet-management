@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search, Edit, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { Plus, Search, Eye } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -10,34 +12,55 @@ import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
 import { assignmentsAPI } from '@/lib/api'
-import { useDataTable } from '@/hooks/useDataTable'
 import { useCRUD } from '@/hooks/useCRUD'
 import { AssignmentForm, AssignmentFormData } from '@/components/forms/AssignmentForm'
 
 export default function VehicleAssignments() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingAssignment, setEditingAssignment] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
+  // Fetch current assignments (from couriers.current_vehicle_id)
   const {
+    data: allAssignments = [],
     isLoading,
     error,
-    currentPage,
-    pageSize,
-    totalPages,
-    searchTerm,
-    setSearchTerm,
-    setCurrentPage,
-    paginatedData: assignments,
-    filteredData,
-  } = useDataTable({
-    queryKey: 'assignments',
-    queryFn: assignmentsAPI.getAll,
-    pageSize: 10,
+  } = useQuery({
+    queryKey: ['current-assignments'],
+    queryFn: () => assignmentsAPI.getCurrentAssignments(),
   })
 
-  const { handleCreate, handleUpdate, handleDelete, isLoading: isMutating } = useCRUD({
-    queryKey: 'assignments',
+  // Apply search filter
+  const filteredData = useMemo(() => {
+    if (!searchTerm) return allAssignments
+    const lowerSearchTerm = searchTerm.toLowerCase()
+    return allAssignments.filter((item: any) =>
+      Object.values(item).some((value) =>
+        String(value).toLowerCase().includes(lowerSearchTerm)
+      )
+    )
+  }, [allAssignments, searchTerm])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
+  // Paginate filtered data
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    const end = start + pageSize
+    return filteredData.slice(start, end)
+  }, [filteredData, currentPage, pageSize])
+
+  const totalPages = Math.ceil(filteredData.length / pageSize)
+
+  const { handleCreate, isLoading: isMutating } = useCRUD({
+    queryKey: 'current-assignments',
     entityName: 'Assignment',
     create: assignmentsAPI.create,
     update: assignmentsAPI.update,
@@ -49,49 +72,80 @@ export default function VehicleAssignments() {
     setIsModalOpen(true)
   }
 
-  const handleOpenEditModal = (assignment: any) => {
-    setEditingAssignment(assignment)
-    setIsModalOpen(true)
-  }
-
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setEditingAssignment(null)
   }
 
   const handleFormSubmit = async (data: AssignmentFormData) => {
-    if (editingAssignment) {
-      const result = await handleUpdate(editingAssignment.id, data)
-      if (result) {
-        handleCloseModal()
-      }
-    } else {
-      const result = await handleCreate(data)
-      if (result) {
-        handleCloseModal()
-      }
+    const result = await handleCreate(data)
+    if (result) {
+      handleCloseModal()
     }
   }
 
   const columns = [
-    { key: 'courier_id', header: 'Courier ID', sortable: true },
-    { key: 'vehicle_id', header: 'Vehicle ID', sortable: true },
-    { key: 'start_date', header: 'Start Date' },
-    { key: 'end_date', header: 'End Date' },
     {
-      key: 'status',
-      header: 'Status',
+      key: 'courier_name',
+      header: 'Courier',
+      sortable: true,
       render: (row: any) => (
-        <Badge
-          variant={
-            row.status === 'active'
-              ? 'success'
-              : 'default'
-          }
-        >
-          {row.status}
-        </Badge>
+        <div>
+          <span className="font-medium">{row.courier_name}</span>
+          {row.courier_employee_id && (
+            <span className="text-xs text-gray-500 ml-2">({row.courier_employee_id})</span>
+          )}
+        </div>
       ),
+    },
+    {
+      key: 'courier_status',
+      header: 'Courier Status',
+      render: (row: any) => {
+        const status = row.courier_status?.toUpperCase?.() || ''
+        return (
+          <Badge
+            variant={
+              status === 'ACTIVE' ? 'success' :
+              status === 'INACTIVE' ? 'default' :
+              status === 'ON_LEAVE' ? 'warning' : 'danger'
+            }
+          >
+            {status}
+          </Badge>
+        )
+      },
+    },
+    {
+      key: 'vehicle_plate_number',
+      header: 'Vehicle',
+      sortable: true,
+      render: (row: any) => (
+        <div>
+          <span className="font-medium">{row.vehicle_plate_number}</span>
+          <span className="text-xs text-gray-500 block">
+            {row.vehicle_make} {row.vehicle_model}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'vehicle_status',
+      header: 'Vehicle Status',
+      render: (row: any) => {
+        const status = row.vehicle_status?.toUpperCase?.() || ''
+        return (
+          <Badge
+            variant={
+              status === 'ACTIVE' ? 'success' :
+              status === 'INACTIVE' ? 'default' :
+              status === 'MAINTENANCE' || status === 'REPAIR' ? 'warning' : 'danger'
+            }
+          >
+            {status}
+          </Badge>
+        )
+      },
     },
     {
       key: 'actions',
@@ -101,16 +155,18 @@ export default function VehicleAssignments() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => handleOpenEditModal(row)}
+            onClick={() => navigate(`/fleet/couriers/${row.courier_id}`)}
+            title="View Courier"
           >
-            <Edit className="h-4 w-4" />
+            <Eye className="h-4 w-4 text-blue-600" />
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => handleDelete(row.id)}
+            onClick={() => navigate(`/fleet/vehicles/${row.vehicle_id}`)}
+            title="View Vehicle"
           >
-            <Trash2 className="h-4 w-4 text-red-600" />
+            <Eye className="h-4 w-4 text-green-600" />
           </Button>
         </div>
       ),
@@ -128,7 +184,7 @@ export default function VehicleAssignments() {
   if (error) {
     return (
       <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-800">Error loading assignments: {error.message}</p>
+        <p className="text-red-800">Error loading assignments: {(error as Error).message}</p>
       </div>
     )
   }
@@ -143,20 +199,54 @@ export default function VehicleAssignments() {
         </Button>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-gray-900">
+                {allAssignments.length}
+              </p>
+              <p className="text-sm text-gray-600">Total Assignments</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">
+                {allAssignments.filter((a: any) => a.courier_status?.toUpperCase() === 'ACTIVE').length}
+              </p>
+              <p className="text-sm text-gray-600">Active Couriers</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">
+                {allAssignments.filter((a: any) => a.vehicle_status?.toUpperCase() === 'ACTIVE').length}
+              </p>
+              <p className="text-sm text-gray-600">Active Vehicles</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>All Assignments</CardTitle>
+          <CardTitle>Current Vehicle-Courier Assignments</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
             <Input
-              placeholder="Search assignments..."
+              placeholder="Search by courier name, employee ID, or vehicle plate..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               leftIcon={<Search className="h-4 w-4 text-gray-400" />}
             />
           </div>
-          <Table data={assignments} columns={columns} />
+          <Table data={paginatedData} columns={columns} />
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -170,7 +260,7 @@ export default function VehicleAssignments() {
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={editingAssignment ? 'Edit Assignment' : 'Add New Assignment'}
+        title="Add New Assignment"
         size="lg"
       >
         <AssignmentForm
@@ -178,7 +268,7 @@ export default function VehicleAssignments() {
           onSubmit={handleFormSubmit}
           onCancel={handleCloseModal}
           isLoading={isMutating}
-          mode={editingAssignment ? 'edit' : 'create'}
+          mode="create"
         />
       </Modal>
     </div>

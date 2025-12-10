@@ -35,7 +35,7 @@ def get_vehicles(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(2000, ge=1, le=5000),
     status: Optional[VehicleStatus] = None,
     vehicle_type: Optional[VehicleType] = None,
     city: Optional[str] = None,
@@ -43,19 +43,43 @@ def get_vehicles(
 ):
     """Get list of vehicles with filtering"""
     if search:
-        return vehicle_service.search_vehicles(
+        vehicles = vehicle_service.search_vehicles(
             db, search_term=search, skip=skip, limit=limit, organization_id=current_org.id
         )
+    else:
+        filters = {"organization_id": current_org.id}
+        if status:
+            filters["status"] = status
+        if vehicle_type:
+            filters["vehicle_type"] = vehicle_type
+        if city:
+            filters["assigned_to_city"] = city
+        vehicles = vehicle_service.get_multi(db, skip=skip, limit=limit, filters=filters)
 
-    filters = {"organization_id": current_org.id}
-    if status:
-        filters["status"] = status
-    if vehicle_type:
-        filters["vehicle_type"] = vehicle_type
-    if city:
-        filters["assigned_to_city"] = city
-
-    return vehicle_service.get_multi(db, skip=skip, limit=limit, filters=filters)
+    # Map assigned courier info for each vehicle
+    result = []
+    for v in vehicles:
+        vehicle_dict = {
+            "id": v.id,
+            "plate_number": v.plate_number,
+            "vehicle_type": v.vehicle_type,
+            "make": v.make,
+            "model": v.model,
+            "year": v.year,
+            "status": v.status,
+            "current_mileage": v.current_mileage,
+            "assigned_to_city": v.assigned_to_city,
+            "created_at": v.created_at,
+            "assigned_courier_id": None,
+            "assigned_courier_name": None,
+        }
+        # Get assigned courier if exists
+        if v.assigned_couriers and len(v.assigned_couriers) > 0:
+            courier = v.assigned_couriers[0]
+            vehicle_dict["assigned_courier_id"] = courier.id
+            vehicle_dict["assigned_courier_name"] = courier.full_name
+        result.append(VehicleList(**vehicle_dict))
+    return result
 
 
 @router.get("/active", response_model=List[VehicleList])

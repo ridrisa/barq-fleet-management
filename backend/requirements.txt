@@ -59,3 +59,4 @@ faker==20.1.0
 freezegun==1.4.0
 responses==0.24.1
 locust==2.19.1
+sentry-sdk[fastapi]==1.40.0

@@ -7,12 +7,18 @@ Production-grade FastAPI application with:
 - Performance monitoring
 - Health checks
 - CORS configuration
+- Sentry error tracking
 """
 
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Callable, Coroutine
 
+import sentry_sdk
 from fastapi import FastAPI, Request
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -30,6 +36,29 @@ from app.core.logging import (
 from app.graphql import schema
 from app.middleware.performance import setup_performance_middleware
 from app.version import __version__, get_version_info
+
+# Initialize Sentry for error tracking
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        release=f"barq-fleet-backend@{__version__}",
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        profiles_sample_rate=settings.SENTRY_PROFILES_SAMPLE_RATE,
+        integrations=[
+            StarletteIntegration(transaction_style="endpoint"),
+            FastApiIntegration(transaction_style="endpoint"),
+            SqlalchemyIntegration(),
+            LoggingIntegration(
+                level=None,  # Capture all log levels as breadcrumbs
+                event_level=None,  # Don't send log messages as events
+            ),
+        ],
+        # Set to True in production for better performance insights
+        enable_tracing=True,
+        # Attach current user info to events
+        send_default_pii=False,
+    )
 
 # Initialize logging
 setup_logging()
@@ -89,6 +118,47 @@ def create_app() -> FastAPI:
     # Setup performance middleware (compression, caching, monitoring)
     setup_performance_middleware(app)
 
+    # Sentry user context middleware - set user info for error tracking
+    @app.middleware("http")
+    async def sentry_user_context(
+        request: Request, call_next: Callable[[Request], Coroutine[Any, Any, Response]]
+    ) -> Response:
+        """Set Sentry user context from JWT token for error attribution."""
+        # Try to extract user info from Authorization header
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+            try:
+                from jose import jwt
+                from app.config.settings import settings as app_settings
+
+                # Decode without full verification to get user info
+                # (verification happens in the actual endpoint)
+                payload = jwt.decode(
+                    token,
+                    app_settings.SECRET_KEY,
+                    algorithms=[app_settings.ALGORITHM],
+                    options={"verify_exp": False, "verify_aud": False, "verify_iss": False},
+                )
+                user_id = payload.get("sub")
+                org_id = payload.get("org_id")
+
+                if user_id:
+                    sentry_sdk.set_user({
+                        "id": user_id,
+                        "org_id": str(org_id) if org_id else None,
+                    })
+            except Exception:
+                # Don't fail requests due to Sentry issues
+                pass
+
+        response = await call_next(request)
+
+        # Clear user context after request
+        sentry_sdk.set_user(None)
+
+        return response
+
     # Request logging middleware
     @app.middleware("http")
     async def log_requests(
@@ -118,6 +188,9 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Handle unexpected exceptions."""
+        # Capture exception in Sentry
+        sentry_sdk.capture_exception(exc)
+
         logger.exception(
             f"Unexpected error: {str(exc)}",
             extra={

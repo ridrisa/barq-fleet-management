@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { authAPI } from '@/lib/api'
+import { setSentryUser, addSentryBreadcrumb } from '@/lib/sentry'
 
 interface User {
   id: number
@@ -39,6 +40,19 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Load user data
       const user = await authAPI.getCurrentUser()
 
+      // Set Sentry user context for error tracking
+      setSentryUser({
+        id: user.id.toString(),
+        email: user.email,
+        username: user.full_name,
+      })
+      addSentryBreadcrumb({
+        category: 'auth',
+        message: 'User logged in successfully',
+        level: 'info',
+        data: { userId: user.id, email: user.email },
+      })
+
       set({
         token: data.access_token,
         user,
@@ -46,6 +60,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoading: false,
       })
     } catch (error: any) {
+      addSentryBreadcrumb({
+        category: 'auth',
+        message: 'Login failed',
+        level: 'error',
+        data: { error: error.response?.data?.detail || 'Unknown error' },
+      })
       set({
         error: error.response?.data?.detail || 'Login failed',
         isLoading: false,
@@ -63,6 +83,19 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Load user data
       const user = await authAPI.getCurrentUser()
 
+      // Set Sentry user context for error tracking
+      setSentryUser({
+        id: user.id.toString(),
+        email: user.email,
+        username: user.full_name,
+      })
+      addSentryBreadcrumb({
+        category: 'auth',
+        message: 'User logged in via Google',
+        level: 'info',
+        data: { userId: user.id, email: user.email },
+      })
+
       set({
         token: data.access_token,
         user,
@@ -70,6 +103,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoading: false,
       })
     } catch (error: any) {
+      addSentryBreadcrumb({
+        category: 'auth',
+        message: 'Google login failed',
+        level: 'error',
+        data: { error: error.response?.data?.detail || 'Unknown error' },
+      })
       set({
         error: error.response?.data?.detail || 'Google login failed',
         isLoading: false,
@@ -79,6 +118,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: () => {
+    addSentryBreadcrumb({
+      category: 'auth',
+      message: 'User logged out',
+      level: 'info',
+    })
+    // Clear Sentry user context
+    setSentryUser(null)
     localStorage.removeItem('token')
     set({
       user: null,
@@ -98,6 +144,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true })
     try {
       const user = await authAPI.getCurrentUser()
+      // Set Sentry user context on session restore
+      setSentryUser({
+        id: user.id.toString(),
+        email: user.email,
+        username: user.full_name,
+      })
       set({
         user,
         token,
@@ -105,6 +157,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoading: false,
       })
     } catch (error) {
+      // Clear Sentry user context on session expiry
+      setSentryUser(null)
       localStorage.removeItem('token')
       set({
         user: null,

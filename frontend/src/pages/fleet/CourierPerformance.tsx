@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Search, Download, TrendingUp, TrendingDown, Calendar } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -10,28 +10,14 @@ import { Badge } from '@/components/ui/Badge'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
 import { BarChart } from '@/components/ui/BarChart'
-import { courierPerformanceAPI, couriersAPI } from '@/lib/api'
+import { courierPerformanceAPI } from '@/lib/api'
 import { useDataTable } from '@/hooks/useDataTable'
 
 export default function CourierPerformance() {
   const { t: _t } = useTranslation()
   const [period, setPeriod] = useState('month')
   const [filterCourierId, setFilterCourierId] = useState('')
-  const [couriers, setCouriers] = useState<any[]>([])
   const [isExporting, setIsExporting] = useState(false)
-
-  // Load couriers for filter
-  useEffect(() => {
-    const loadCouriers = async () => {
-      try {
-        const data = await couriersAPI.getAll()
-        setCouriers(data)
-      } catch (error) {
-        console.error('Failed to load couriers:', error)
-      }
-    }
-    loadCouriers()
-  }, [])
 
   // Calculate date range based on period
   const getDateRange = () => {
@@ -121,19 +107,17 @@ export default function CourierPerformance() {
   // Note: totalRevenue can be calculated if needed for future use
   // const totalRevenue = filteredBycourier.reduce((sum: number, item: any) => sum + (item.revenue || 0), 0)
 
-  const getCourierName = (courierId: number) => {
-    const courier = couriers.find((c) => c.id === courierId)
-    return courier?.name || `Courier ${courierId}`
-  }
-
   const columns = [
     {
-      key: 'courier_id',
+      key: 'courier_name',
       header: 'Courier',
       sortable: true,
       render: (row: any) => (
-        <div className="font-medium">
-          {getCourierName(row.courier_id)}
+        <div>
+          <span className="font-medium">{row.courier_name}</span>
+          {row.barq_id && (
+            <span className="text-xs text-gray-500 ml-2">({row.barq_id})</span>
+          )}
         </div>
       ),
     },
@@ -314,7 +298,7 @@ export default function CourierPerformance() {
                 .sort((a: any, b: any) => (b.deliveries || 0) - (a.deliveries || 0))
                 .slice(0, 10)
                 .map((item: any) => ({
-                  name: getCourierName(item.courier_id).split(' ')[0],
+                  name: (item.courier_name || '').split(' ')[0],
                   Deliveries: item.deliveries || 0,
                   'On-Time %': item.on_time_rate || 0,
                 }))}
@@ -355,9 +339,9 @@ export default function CourierPerformance() {
               onChange={(e) => setFilterCourierId(e.target.value)}
               options={[
                 { value: '', label: 'All Couriers' },
-                ...couriers.map((c) => ({
-                  value: String(c.id),
-                  label: c.name,
+                ...performanceData.map((c: any) => ({
+                  value: String(c.courier_id),
+                  label: c.courier_name,
                 })),
               ]}
             />
@@ -391,7 +375,7 @@ export default function CourierPerformance() {
                         {index + 1}
                       </div>
                       <div>
-                        <p className="font-medium">{getCourierName(courier.courier_id)}</p>
+                        <p className="font-medium">{courier.courier_name}</p>
                         <p className="text-sm text-gray-600">{courier.deliveries} deliveries</p>
                       </div>
                     </div>
@@ -420,7 +404,7 @@ export default function CourierPerformance() {
                         {index + 1}
                       </div>
                       <div>
-                        <p className="font-medium">{getCourierName(courier.courier_id)}</p>
+                        <p className="font-medium">{courier.courier_name}</p>
                         <p className="text-sm text-gray-600">{courier.deliveries} deliveries</p>
                       </div>
                     </div>

@@ -1,7 +1,7 @@
 # BARQ Fleet Management - Documentation Index
 
-**Version:** 1.0.0
-**Last Updated:** November 23, 2025
+**Version:** 1.2.0
+**Last Updated:** December 9, 2025
 
 ---
 
@@ -14,10 +14,10 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 ## Quick Start
 
 **New to BARQ?** Start here:
-1. [Developer Setup Guide](DEVELOPER_SETUP.md) - Set up your development environment
+1. [Developer Setup Guide](developer/README.md) - Set up your development environment
 2. [Architecture Documentation](ARCHITECTURE.md) - Understand the system design
-3. [API Reference](API_REFERENCE.md) - Explore available APIs
-4. [User Guide](USER_GUIDE.md) - Learn how to use the system
+3. [API Reference](api/README.md) - Explore available APIs
+4. [User Guide](user/README.md) - Learn how to use the system
 
 ---
 
@@ -27,9 +27,9 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 
 | Document | Description | Use When |
 |----------|-------------|----------|
-| [Developer Setup Guide](DEVELOPER_SETUP.md) | Complete guide for setting up local development environment | Setting up for the first time |
+| [Developer Setup Guide](developer/README.md) | Complete guide for setting up local development environment | Setting up for the first time |
 | [Architecture Documentation](ARCHITECTURE.md) | System architecture, technology stack, design patterns | Understanding system design |
-| [API Reference](API_REFERENCE.md) | Complete API documentation with all endpoints | Integrating with the API |
+| [API Reference](api/README.md) | Complete API documentation with all endpoints | Integrating with the API |
 | [Database Schema Documentation](DATABASE_SCHEMA.md) | Database tables, relationships, indexes | Working with database |
 | [Contributing Guidelines](../CONTRIBUTING.md) | How to contribute code, tests, and documentation | Contributing to the project |
 | [Troubleshooting Guide](TROUBLESHOOTING.md) | Common issues and solutions | Debugging problems |
@@ -49,7 +49,7 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 
 | Document | Description | Use When |
 |----------|-------------|----------|
-| [User Guide](USER_GUIDE.md) | Complete user manual for all roles | Learning how to use BARQ |
+| [User Guide](user/README.md) | Complete user manual for all roles | Learning how to use BARQ |
 | [FAQ](#faq) | Frequently asked questions | Quick answers |
 
 ### For Project Management
@@ -75,7 +75,7 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 
 ### API & Integration
 
-- [API Reference](API_REFERENCE.md)
+- [API Reference](api/README.md)
   - Authentication
   - Fleet management
   - HR & Finance
@@ -122,7 +122,7 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 
 ### Development
 
-- [Developer Setup Guide](DEVELOPER_SETUP.md)
+- [Developer Setup Guide](developer/README.md)
   - Prerequisites
   - Environment setup
   - Running locally
@@ -138,7 +138,7 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 
 ### Support
 
-- [User Guide](USER_GUIDE.md)
+- [User Guide](user/README.md)
   - Getting started
   - Fleet management
   - HR & Payroll
@@ -159,13 +159,13 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 
 | Metric | Value |
 |--------|-------|
-| Total Documents | 13 |
-| Total Pages | ~150 |
-| Total Words | ~50,000 |
-| Code Examples | 200+ |
-| API Endpoints Documented | 380+ |
-| Database Tables Documented | 28 |
-| Last Update | November 23, 2025 |
+| Total Documents | 40+ |
+| Total Pages | ~200 |
+| Total Words | ~75,000 |
+| Code Examples | 300+ |
+| API Endpoints Documented | 750+ |
+| Database Tables Documented | 93+ |
+| Last Update | December 9, 2025 |
 
 ---
 
@@ -174,10 +174,10 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 ### General Questions
 
 **Q: Where do I start if I'm new to BARQ?**
-A: Start with the [Developer Setup Guide](DEVELOPER_SETUP.md) to set up your environment, then read the [Architecture Documentation](ARCHITECTURE.md) to understand the system.
+A: Start with the [Developer Setup Guide](developer/README.md) to set up your environment, then read the [Architecture Documentation](ARCHITECTURE.md) to understand the system.
 
 **Q: How do I find a specific API endpoint?**
-A: Check the [API Reference](API_REFERENCE.md) or visit the Swagger UI at http://localhost:8000/api/v1/docs
+A: Check the [API Reference](api/README.md) or visit the Swagger UI at http://localhost:8000/api/v1/docs
 
 **Q: Where are the database tables documented?**
 A: See [Database Schema Documentation](DATABASE_SCHEMA.md) for complete table definitions.
@@ -197,10 +197,10 @@ A: Read [Contributing Guidelines](../CONTRIBUTING.md) for the complete process.
 A: See the "Coding Standards" section in [Contributing Guidelines](../CONTRIBUTING.md).
 
 **Q: How do I run tests?**
-A: See "Testing" section in [Developer Setup Guide](DEVELOPER_SETUP.md).
+A: See "Testing" section in [Developer Setup Guide](developer/README.md).
 
 **Q: How do I create a database migration?**
-A: See "Database Tasks" in [Developer Setup Guide](DEVELOPER_SETUP.md).
+A: See "Database Tasks" in [Developer Setup Guide](developer/README.md).
 
 ### Operations Questions
 
@@ -409,5 +409,5 @@ We're continuously improving our documentation. If you have feedback:
 ---
 
 **Document Owner:** Engineering Team
-**Last Updated:** November 23, 2025
-**Next Review:** December 23, 2025
+**Last Updated:** December 9, 2025
+**Next Review:** January 9, 2026

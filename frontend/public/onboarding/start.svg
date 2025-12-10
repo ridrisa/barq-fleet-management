@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Get Started Illustration -->
+  <circle cx="100" cy="100" r="80" fill="#FEF3C7"/>
+
+  <!-- Rocket -->
+  <ellipse cx="100" cy="100" rx="25" ry="45" fill="#F59E0B" stroke="#D97706" stroke-width="2"/>
+
+  <!-- Rocket window -->
+  <circle cx="100" cy="85" r="12" fill="#DBEAFE" stroke="#3B82F6" stroke-width="2"/>
+
+  <!-- Rocket fins -->
+  <path d="M75 120L65 140L85 130Z" fill="#D97706"/>
+  <path d="M125 120L135 140L115 130Z" fill="#D97706"/>
+
+  <!-- Rocket tip -->
+  <path d="M100 55L85 75L115 75Z" fill="#EF4444"/>
+
+  <!-- Flame -->
+  <ellipse cx="100" cy="150" rx="15" ry="10" fill="#EF4444"/>
+  <ellipse cx="100" cy="155" rx="10" ry="8" fill="#F59E0B"/>
+  <ellipse cx="100" cy="158" rx="5" ry="5" fill="#FCD34D"/>
+
+  <!-- Stars around -->
+  <circle cx="50" cy="60" r="4" fill="#F59E0B"/>
+  <circle cx="150" cy="70" r="3" fill="#F59E0B"/>
+  <circle cx="40" cy="100" r="3" fill="#F59E0B"/>
+  <circle cx="160" cy="110" r="4" fill="#F59E0B"/>
+  <circle cx="55" cy="140" r="3" fill="#F59E0B"/>
+  <circle cx="145" cy="145" r="3" fill="#F59E0B"/>
+
+  <!-- Sparkle paths -->
+  <path d="M45 80L47 85L52 85L48 89L50 94L45 90L40 94L42 89L38 85L43 85Z" fill="#FCD34D"/>
+  <path d="M155 90L157 95L162 95L158 99L160 104L155 100L150 104L152 99L148 95L153 95Z" fill="#FCD34D"/>
+</svg>

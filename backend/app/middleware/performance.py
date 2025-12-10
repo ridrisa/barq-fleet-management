@@ -1,141 +1,180 @@
 """
 Performance Monitoring Middleware
 Tracks request timing, adds performance headers, and logs slow requests
+
+Note: Uses pure ASGI middleware instead of BaseHTTPMiddleware to avoid
+Content-Length issues with GZipMiddleware compression.
 """
 
 import logging
 import time
-from typing import Callable
+from typing import Callable, Any
 
 from fastapi import FastAPI
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send, Message
 
 from app.core.performance_config import performance_config
 
 logger = logging.getLogger(__name__)
 
 
-class PerformanceMiddleware(BaseHTTPMiddleware):
+class PerformanceMiddleware:
     """
-    Middleware for request performance monitoring
+    Pure ASGI Middleware for request performance monitoring
 
     Features:
     - Request timing
     - Performance metrics collection
     - Slow request logging
-    - Response time headers
+    - Response time headers (added via custom send wrapper)
+
+    Note: Uses pure ASGI to avoid BaseHTTPMiddleware buffering issues with GZip.
     """
 
-    def __init__(self, app, enable_profiling: bool = False):
-        super().__init__(app)
+    def __init__(self, app: ASGIApp, enable_profiling: bool = False):
+        self.app = app
         self.enable_profiling = enable_profiling
         self.slow_threshold = performance_config.monitoring.slow_query_threshold
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Process request with performance tracking"""
-        # Start timing
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
         start_time = time.time()
+        request = Request(scope)
 
         # Store start time in request state
-        request.state.start_time = start_time
+        scope.setdefault("state", {})
+        scope["state"]["start_time"] = start_time
 
-        # Process request
+        status_code = 0
+        headers_sent = False
+
+        async def send_wrapper(message: Message) -> None:
+            nonlocal status_code, headers_sent
+
+            if message["type"] == "http.response.start":
+                status_code = message.get("status", 0)
+                process_time = time.time() - start_time
+
+                # Add performance headers
+                headers = list(message.get("headers", []))
+                headers.append((b"x-process-time", f"{process_time:.3f}".encode()))
+
+                request_id = scope.get("state", {}).get("request_id", "unknown")
+                headers.append((b"x-request-id", str(request_id).encode()))
+
+                message = {
+                    "type": message["type"],
+                    "status": status_code,
+                    "headers": headers,
+                }
+                headers_sent = True
+
+            await send(message)
+
         try:
-            response = await call_next(request)
+            await self.app(scope, receive, send_wrapper)
         except Exception as e:
-            # Log exception with timing
             process_time = time.time() - start_time
             logger.error(
                 f"Request failed: {request.method} {request.url.path} "
                 f"- {process_time:.3f}s - {type(e).__name__}: {str(e)}"
             )
             raise
+        finally:
+            process_time = time.time() - start_time
 
-        # Calculate processing time
-        process_time = time.time() - start_time
+            # Log slow requests
+            if process_time >= self.slow_threshold:
+                logger.warning(
+                    f"Slow request detected: {request.method} {request.url.path} "
+                    f"- {process_time:.3f}s (threshold: {self.slow_threshold}s)"
+                )
 
-        # Add performance headers
-        response.headers["X-Process-Time"] = f"{process_time:.3f}"
-        response.headers["X-Request-ID"] = getattr(request.state, "request_id", "unknown")
-
-        # Log slow requests
-        if process_time >= self.slow_threshold:
-            logger.warning(
-                f"Slow request detected: {request.method} {request.url.path} "
-                f"- {process_time:.3f}s (threshold: {self.slow_threshold}s)"
-            )
-
-        # Detailed profiling if enabled
-        if self.enable_profiling:
-            logger.debug(
-                f"Request: {request.method} {request.url.path} "
-                f"- Status: {response.status_code} "
-                f"- Time: {process_time:.3f}s"
-            )
-
-        return response
+            # Detailed profiling if enabled
+            if self.enable_profiling and headers_sent:
+                logger.debug(
+                    f"Request: {request.method} {request.url.path} "
+                    f"- Status: {status_code} "
+                    f"- Time: {process_time:.3f}s"
+                )
 
 
-class CacheHeadersMiddleware(BaseHTTPMiddleware):
+class CacheHeadersMiddleware:
     """
-    Middleware for adding cache control headers
+    Pure ASGI Middleware for adding cache control headers
 
     Features:
     - Cache-Control headers
-    - ETag support
-    - Conditional requests (304 Not Modified)
+    - Proper header injection without buffering
+
+    Note: Uses pure ASGI to avoid BaseHTTPMiddleware buffering issues with GZip.
     """
 
-    def __init__(self, app):
-        super().__init__(app)
+    def __init__(self, app: ASGIApp):
+        self.app = app
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Add cache headers to responses"""
-        response = await call_next(request)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-        # Only cache GET requests
-        if request.method == "GET":
-            # Public endpoints
-            if request.url.path.startswith("/api/v1/public"):
-                response.headers["Cache-Control"] = "public, max-age=3600"
+        request = Request(scope)
 
-            # Static data
-            elif any(keyword in request.url.path for keyword in ["/vehicles", "/organizations"]):
-                response.headers["Cache-Control"] = "private, max-age=300"
+        async def send_wrapper(message: Message) -> None:
+            if message["type"] == "http.response.start" and request.method == "GET":
+                headers = list(message.get("headers", []))
+                path = request.url.path
 
-            # User-specific data
-            elif "/users" in request.url.path or "/profile" in request.url.path:
-                response.headers["Cache-Control"] = "private, max-age=60"
+                # Determine cache policy
+                if path.startswith("/api/v1/public"):
+                    cache_control = b"public, max-age=3600"
+                elif any(keyword in path for keyword in ["/vehicles", "/organizations"]):
+                    cache_control = b"private, max-age=300"
+                elif "/users" in path or "/profile" in path:
+                    cache_control = b"private, max-age=60"
+                else:
+                    cache_control = b"no-cache, no-store, must-revalidate"
+                    headers.append((b"pragma", b"no-cache"))
+                    headers.append((b"expires", b"0"))
 
-            # Default: no cache for dynamic content
-            else:
-                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-                response.headers["Pragma"] = "no-cache"
-                response.headers["Expires"] = "0"
+                headers.append((b"cache-control", cache_control))
 
-        return response
+                message = {
+                    "type": message["type"],
+                    "status": message.get("status", 200),
+                    "headers": headers,
+                }
+
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
 
-class RequestDeduplicationMiddleware(BaseHTTPMiddleware):
+class RequestDeduplicationMiddleware:
     """
-    Middleware for request deduplication
+    Pure ASGI Middleware for request deduplication
 
-    Prevents duplicate requests from being processed within a time window
+    Prevents duplicate requests from being processed within a time window.
+
+    Note: Simplified version - caching responses in ASGI is complex due to streaming.
+    This version just tracks and logs duplicates without caching responses.
     """
 
-    def __init__(self, app, window_seconds: int = 5):
-        super().__init__(app)
+    def __init__(self, app: ASGIApp, window_seconds: int = 5):
+        self.app = app
         self.window_seconds = window_seconds
-        self._request_cache: dict[str, tuple[float, Response]] = {}
+        self._request_timestamps: dict[str, float] = {}
 
-    def _make_request_key(self, request: Request) -> str:
+    def _make_request_key(self, scope: Scope) -> str:
         """Generate unique key for request"""
         import hashlib
 
-        # Include method, path, and query params
+        request = Request(scope)
         key_parts = [
             request.method,
             request.url.path,
@@ -143,58 +182,53 @@ class RequestDeduplicationMiddleware(BaseHTTPMiddleware):
         ]
 
         # Include user ID if authenticated
-        user_id = getattr(request.state, "user_id", None)
+        user_id = scope.get("state", {}).get("user_id")
         if user_id:
             key_parts.append(str(user_id))
 
         key_string = "|".join(key_parts)
         return hashlib.md5(key_string.encode()).hexdigest()
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        """Check for duplicate requests"""
-        # Only deduplicate idempotent methods
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        request = Request(scope)
+
+        # Only track idempotent methods
         if request.method not in ["GET", "HEAD", "OPTIONS"]:
-            return await call_next(request)
+            await self.app(scope, receive, send)
+            return
 
-        # Generate request key
-        request_key = self._make_request_key(request)
-
-        # Check cache
+        request_key = self._make_request_key(scope)
         current_time = time.time()
-        if request_key in self._request_cache:
-            cached_time, cached_response = self._request_cache[request_key]
 
-            # Check if within deduplication window
-            if current_time - cached_time < self.window_seconds:
+        # Check for recent duplicate
+        if request_key in self._request_timestamps:
+            last_time = self._request_timestamps[request_key]
+            if current_time - last_time < self.window_seconds:
                 logger.debug(f"Duplicate request detected: {request.method} {request.url.path}")
 
-                # Return cached response
-                cached_response.headers["X-Deduplicated"] = "true"
-                return cached_response
+        # Update timestamp
+        self._request_timestamps[request_key] = current_time
 
-        # Process request
-        response = await call_next(request)
-
-        # Cache successful responses
-        if 200 <= response.status_code < 300:
-            self._request_cache[request_key] = (current_time, response)
-
-        # Cleanup old entries (periodically)
-        if len(self._request_cache) > 1000:
+        # Cleanup old entries periodically
+        if len(self._request_timestamps) > 1000:
             self._cleanup_cache(current_time)
 
-        return response
+        await self.app(scope, receive, send)
 
     def _cleanup_cache(self, current_time: float):
         """Remove expired cache entries"""
         expired_keys = [
             key
-            for key, (cached_time, _) in self._request_cache.items()
-            if current_time - cached_time >= self.window_seconds
+            for key, timestamp in self._request_timestamps.items()
+            if current_time - timestamp >= self.window_seconds
         ]
 
         for key in expired_keys:
-            del self._request_cache[key]
+            del self._request_timestamps[key]
 
 
 class CompressionMiddleware:

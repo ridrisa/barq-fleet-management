@@ -38,8 +38,15 @@ class DeliveryUpdate(BaseModel):
     notes: Optional[str] = None
 
 
-class DeliveryResponse(DeliveryBase):
+class DeliveryResponse(BaseModel):
     id: int
+    tracking_number: str
+    courier_id: Optional[int] = None  # Can be null if not yet assigned
+    pickup_address: str
+    delivery_address: str
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    notes: Optional[str] = None
     status: DeliveryStatus
     delivered_at: Optional[datetime] = None
     created_at: datetime

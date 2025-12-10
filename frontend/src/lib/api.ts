@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { addSentryBreadcrumb, captureException } from './sentry'
 
 // API base URL - hardcoded for development, use env in production
 const baseURL = 'http://localhost:8000/api/v1'
@@ -32,20 +33,61 @@ export const safeApiCall = async <T>(
   }
 }
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and track API calls
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  // Add breadcrumb for API requests
+  addSentryBreadcrumb({
+    category: 'api',
+    message: `${config.method?.toUpperCase()} ${config.url}`,
+    level: 'info',
+    data: {
+      method: config.method,
+      url: config.url,
+    },
+  })
   return config
 })
 
-// Response interceptor to handle 401 errors and redirect to login
+// Response interceptor to handle errors and track API failures
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const url = error.config?.url
+    const method = error.config?.method?.toUpperCase()
+
+    // Add breadcrumb for API errors
+    addSentryBreadcrumb({
+      category: 'api',
+      message: `API Error: ${method} ${url} - ${status}`,
+      level: 'error',
+      data: {
+        status,
+        url,
+        method,
+        message: error.response?.data?.detail || error.message,
+      },
+    })
+
+    // Capture 5xx errors to Sentry (server errors)
+    if (status >= 500) {
+      captureException(new Error(`API Error ${status}: ${method} ${url}`), {
+        response: {
+          status,
+          data: error.response?.data,
+        },
+        request: {
+          url,
+          method,
+        },
+      })
+    }
+
+    if (status === 401) {
       // Clear token and redirect to login
       localStorage.removeItem('token')
       // Only redirect if not already on login page
@@ -155,8 +197,8 @@ export const couriersAPI = {
   getAll: async (skip?: number, limit?: number) => {
     const params = new URLSearchParams()
     if (skip !== undefined) params.append('skip', skip.toString())
-    // Default to high limit to fetch all couriers for filter options
-    params.append('limit', (limit ?? 1000).toString())
+    // Default to max allowed limit (backend allows max 2000)
+    params.append('limit', (limit ?? 2000).toString())
     const { data } = await api.get(`/fleet/couriers?${params.toString()}`)
     return data
   },
@@ -195,6 +237,18 @@ export const vehiclesAPI = {
     const { data } = await api.get('/fleet/vehicles')
     return data
   },
+  getById: async (id: number) => {
+    const { data } = await api.get(`/fleet/vehicles/${id}`)
+    return data
+  },
+  getHistory: async (id: number) => {
+    const { data } = await api.get(`/fleet/vehicles/${id}/history`)
+    return data
+  },
+  getLogs: async (vehicleId: number) => {
+    const { data } = await api.get(`/fleet/vehicle-logs?vehicle_id=${vehicleId}`)
+    return data
+  },
   create: async (vehicleData: any) => {
     const { data } = await api.post('/fleet/vehicles', vehicleData)
     return data
@@ -212,6 +266,10 @@ export const vehiclesAPI = {
 export const assignmentsAPI = {
   getAll: async () => {
     const { data } = await api.get('/fleet/assignments')
+    return data
+  },
+  getCurrentAssignments: async () => {
+    const { data } = await api.get('/fleet/assignments/current')
     return data
   },
   create: async (assignmentData: any) => {

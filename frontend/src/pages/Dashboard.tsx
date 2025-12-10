@@ -236,7 +236,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Welcome to BARQ Fleet Management</p>
+          <p className="text-gray-500 mt-1">Welcome to SYNC Fleet Management</p>
         </div>
         <div className="flex items-center space-x-3">
           {alerts?.summary?.critical > 0 && (
@@ -286,7 +286,7 @@ export default function Dashboard() {
       )}
 
       {/* KPI Cards - Row 1 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-tour="dashboard-kpis">
         <KPICard
           title="Total Couriers"
           value={stats?.total_couriers || 0}
@@ -371,7 +371,7 @@ export default function Dashboard() {
 
       {/* Alerts Section */}
       {alerts?.alerts && alerts.alerts.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border p-6">
+        <div className="bg-white rounded-xl shadow-sm border p-6" data-tour="dashboard-alerts">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900">Alerts & Notifications</h3>
             <div className="flex items-center gap-3 text-sm">
@@ -396,7 +396,7 @@ export default function Dashboard() {
       )}
 
       {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" data-tour="dashboard-charts">
         {/* Delivery Trends Chart */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Weekly Activity Trends</h3>
@@ -540,7 +540,7 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" data-tour="dashboard-activity">
         {/* Top Couriers */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">

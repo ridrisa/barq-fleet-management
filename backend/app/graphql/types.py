@@ -40,35 +40,39 @@ class LeaveStatus(Enum):
 
 @strawberry.enum
 class VehicleStatus(Enum):
-    ACTIVE = "active"
-    MAINTENANCE = "maintenance"
-    INACTIVE = "inactive"
-    RETIRED = "retired"
-    REPAIR = "repair"
+    # Values match PostgreSQL enum (uppercase)
+    ACTIVE = "ACTIVE"
+    MAINTENANCE = "MAINTENANCE"
+    INACTIVE = "INACTIVE"
+    RETIRED = "RETIRED"
+    REPAIR = "REPAIR"
 
 
 @strawberry.enum
 class VehicleType(Enum):
-    MOTORCYCLE = "motorcycle"
-    CAR = "car"
-    VAN = "van"
-    TRUCK = "truck"
-    BICYCLE = "bicycle"
+    # Values match PostgreSQL enum (uppercase)
+    MOTORCYCLE = "MOTORCYCLE"
+    CAR = "CAR"
+    VAN = "VAN"
+    TRUCK = "TRUCK"
+    BICYCLE = "BICYCLE"
 
 
 @strawberry.enum
 class FuelType(Enum):
-    GASOLINE = "gasoline"
-    DIESEL = "diesel"
-    ELECTRIC = "electric"
-    HYBRID = "hybrid"
+    # Values match PostgreSQL enum (uppercase)
+    GASOLINE = "GASOLINE"
+    DIESEL = "DIESEL"
+    ELECTRIC = "ELECTRIC"
+    HYBRID = "HYBRID"
 
 
 @strawberry.enum
 class OwnershipType(Enum):
-    OWNED = "owned"
-    LEASED = "leased"
-    RENTED = "rented"
+    # Values match PostgreSQL enum (uppercase)
+    OWNED = "OWNED"
+    LEASED = "LEASED"
+    RENTED = "RENTED"
 
 
 @strawberry.enum
@@ -87,12 +91,13 @@ class AssignmentStatus(Enum):
 
 @strawberry.enum
 class CourierStatus(Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    ON_LEAVE = "on_leave"
-    TERMINATED = "terminated"
-    ONBOARDING = "onboarding"
-    SUSPENDED = "suspended"
+    # Values match PostgreSQL enum (uppercase)
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    ON_LEAVE = "ON_LEAVE"
+    TERMINATED = "TERMINATED"
+    ONBOARDING = "ONBOARDING"
+    SUSPENDED = "SUSPENDED"
 
 
 @strawberry.enum
@@ -338,3 +343,234 @@ class CourierDashboard:
     pending_leaves: List[LeaveTypeGQL]
     recent_salaries: List[SalaryType]
     accommodation: Optional[RoomType]
+
+
+# ============================================
+# AUTHENTICATION TYPES (for driver-app)
+# ============================================
+
+
+@strawberry.type
+class CityType:
+    """City information"""
+    name: str
+    id: Optional[int] = None
+
+
+@strawberry.type
+class CourierAuthType:
+    """Courier profile for authentication response - matches driver-app expectations"""
+    id: str
+    barq_id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    name: Optional[str] = None
+    mobile_number: str
+    email: Optional[str] = None
+    status: str
+    project: Optional[str] = None
+    city: Optional[CityType] = None
+    rating: Optional[float] = None
+    total_deliveries: Optional[int] = None
+    completed_orders: Optional[int] = None
+
+
+@strawberry.type
+class AuthResponse:
+    """Authentication response matching driver-app expectations"""
+    success: bool
+    token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    courier: Optional[CourierAuthType] = None
+    error: Optional[str] = None
+
+
+# ============================================
+# DELIVERY TYPES (for driver-app)
+# ============================================
+
+
+@strawberry.enum
+class DeliveryStatusGQL(Enum):
+    PENDING = "PENDING"
+    ASSIGNED = "ASSIGNED"
+    ACCEPTED = "ACCEPTED"
+    PICKUP_STARTED = "PICKUP_STARTED"
+    PICKED_UP = "PICKED_UP"
+    IN_TRANSIT = "IN_TRANSIT"
+    ARRIVED = "ARRIVED"
+    DELIVERED = "DELIVERED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    RETURNED = "RETURNED"
+
+
+@strawberry.enum
+class ServiceLevel(Enum):
+    BARQ = "BARQ"  # Standard delivery
+    BULLET = "BULLET"  # Express delivery
+
+
+@strawberry.type
+class LocationType:
+    """GPS location"""
+    lat: float
+    lng: float
+    address: Optional[str] = None
+
+
+@strawberry.type
+class RecipientType:
+    """Delivery recipient information"""
+    name: str
+    phone: str
+    address: str
+    location: Optional[LocationType] = None
+
+
+@strawberry.type
+class DeliveryTypeGQL:
+    """Delivery/Order information for driver app"""
+    id: str
+    tracking_number: str
+    status: DeliveryStatusGQL
+    service_level: ServiceLevel
+    recipient: RecipientType
+    pickup_location: Optional[LocationType] = None
+    dropoff_location: Optional[LocationType] = None
+    courier_id: Optional[int] = None
+    cod_amount: Optional[float] = None
+    is_cod: bool
+    notes: Optional[str] = None
+    estimated_delivery: Optional[datetime] = None
+    pickup_time: Optional[datetime] = None
+    delivery_time: Optional[datetime] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+@strawberry.type
+class DeliveryListResponse:
+    """Paginated list of deliveries"""
+    items: List[DeliveryTypeGQL]
+    total: int
+    has_more: bool
+
+
+# ============================================
+# PERFORMANCE & POINTS TYPES (for driver-app)
+# ============================================
+
+
+@strawberry.type
+class PointsSummary:
+    """Driver points summary"""
+    total_points: int
+    weekly_points: int
+    monthly_points: int
+    daily_points: int
+    weekly_target: int
+    monthly_target: int
+    daily_target: int
+    streak: int
+    level: int
+    level_name: str
+    next_level_points: int
+    rank: int
+    total_drivers: int
+
+
+@strawberry.type
+class PerformanceMetrics:
+    """Driver performance metrics"""
+    deliveries_completed: int
+    deliveries_failed: int
+    deliveries_cancelled: int
+    on_time_rate: float
+    average_rating: float
+    total_distance: float
+    period: str  # daily, weekly, monthly
+
+
+@strawberry.type
+class LeaderboardEntry:
+    """Leaderboard entry"""
+    rank: int
+    driver_id: str
+    name: str
+    points: int
+    avatar: Optional[str] = None
+
+
+@strawberry.type
+class LeaderboardResponse:
+    """Leaderboard response"""
+    entries: List[LeaderboardEntry]
+    driver_rank: int
+    period: str  # weekly, monthly, all_time
+
+
+# ============================================
+# LOCATION TRACKING TYPES
+# ============================================
+
+
+@strawberry.input
+class LocationInput:
+    """Location update input"""
+    lat: float
+    lng: float
+    accuracy: Optional[float] = None
+    speed: Optional[float] = None
+    heading: Optional[float] = None
+    timestamp: Optional[datetime] = None
+
+
+@strawberry.type
+class LocationUpdateResponse:
+    """Response for location update"""
+    success: bool
+    message: str
+
+
+# ============================================
+# AUTHENTICATION INPUT TYPES
+# ============================================
+
+
+@strawberry.input
+class CourierSigninInput:
+    """Input for courier signin - supports phone-based auth"""
+    phone: str
+    password: str
+    device_id: Optional[str] = None
+    push_token: Optional[str] = None
+
+
+@strawberry.input
+class RefreshTokenInput:
+    """Input for token refresh"""
+    refresh_token: str
+
+
+# ============================================
+# DELIVERY MUTATION INPUT TYPES
+# ============================================
+
+
+@strawberry.input
+class UpdateDeliveryStatusInput:
+    """Input for updating delivery status"""
+    status: DeliveryStatusGQL
+    location: Optional[LocationInput] = None
+    notes: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+
+@strawberry.type
+class DeliveryUpdateResponse:
+    """Response for delivery status update"""
+    success: bool
+    message: str
+    delivery_id: Optional[str] = None
+    status: Optional[DeliveryStatusGQL] = None

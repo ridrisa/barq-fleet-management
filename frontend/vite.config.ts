@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { visualizer } from 'rollup-plugin-visualizer'
 import viteCompression from 'vite-plugin-compression'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -35,6 +36,13 @@ export default defineConfig(({ mode }) => {
         gzipSize: true,
         brotliSize: true,
       }),
+      // Sentry source maps upload (production only)
+      isProduction && env.SENTRY_AUTH_TOKEN && sentryVitePlugin({
+        org: 'barqapp-o3',
+        project: 'barq-fleet-frontend',
+        authToken: env.SENTRY_AUTH_TOKEN,
+        telemetry: false,
+      }),
     ].filter(Boolean),
 
     resolve: {
@@ -44,7 +52,7 @@ export default defineConfig(({ mode }) => {
     },
 
     server: {
-      port: 3000,
+      port: 3002,
       proxy: {
         '/api': {
           target: env.VITE_API_URL || 'http://localhost:8000',
@@ -57,8 +65,8 @@ export default defineConfig(({ mode }) => {
       // Target modern browsers for better optimization
       target: 'es2015',
 
-      // Source maps for production debugging (optional)
-      sourcemap: isProduction ? false : true,
+      // Source maps for production (required for Sentry error tracking)
+      sourcemap: true,
 
       // Minification
       minify: 'terser',

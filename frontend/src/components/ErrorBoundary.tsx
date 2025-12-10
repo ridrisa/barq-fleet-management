@@ -1,6 +1,7 @@
 import { Component, ReactNode } from 'react'
 import { Card, CardContent } from './ui/Card'
 import { Button } from './ui/Button'
+import { captureException } from '../lib/sentry'
 
 interface Props {
   children: ReactNode
@@ -9,6 +10,7 @@ interface Props {
 interface State {
   hasError: boolean
   error?: Error
+  eventId?: string
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -23,6 +25,10 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error caught by boundary:', error, errorInfo)
+    // Capture the error in Sentry with component stack trace
+    captureException(error, {
+      componentStack: errorInfo.componentStack,
+    })
   }
 
   render() {

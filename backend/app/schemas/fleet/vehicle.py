@@ -164,6 +164,8 @@ class VehicleList(BaseModel):
     status: VehicleStatus
     current_mileage: Decimal
     assigned_to_city: Optional[str] = None
+    assigned_courier_id: Optional[int] = None
+    assigned_courier_name: Optional[str] = None
     created_at: datetime
 
     class Config:

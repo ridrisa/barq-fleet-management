@@ -1,7 +1,7 @@
 # BARQ Fleet Management - System Architecture
 
-**Version:** 1.0.0
-**Last Updated:** November 23, 2025
+**Version:** 1.2.0
+**Last Updated:** December 9, 2025
 
 ---
 
@@ -208,7 +208,7 @@ BARQ Fleet Management is a comprehensive enterprise solution for managing fleet 
 - Background job workers (Cloud Run Jobs)
 
 **Features:**
-- RESTful API endpoints (380+)
+- RESTful API endpoints (750+)
 - WebSocket connections (real-time)
 - Background job processing
 - Auto-scaling (0-100 instances)
@@ -543,41 +543,108 @@ const { theme, toggleTheme } = useTheme();
 
 ### Schema Overview
 
+**Total Tables: 93+** (See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for complete documentation)
+
 ```
-Fleet Module:
-├── couriers              (28 columns)
-├── vehicles              (22 columns)
-├── courier_vehicles      (Assignment junction)
-└── vehicle_logs          (Maintenance logs)
+Core Module (8 tables):
+├── users                 (System users with Argon2 hashing)
+├── roles                 (User roles with hierarchy)
+├── permissions           (Fine-grained access control)
+├── audit_logs            (Complete system audit trail)
+├── password_reset_tokens (Secure password reset)
+├── organizations         (Multi-tenant organizations)
+├── organization_users    (Org membership with roles)
+└── system_settings       (Global configuration)
 
-HR Module:
-├── attendance            (Daily attendance)
-├── payroll               (Monthly payroll)
-├── loans                 (Loan management)
-├── leave_requests        (Leave tracking)
-└── assets                (Asset assignment)
+Fleet Module (11 tables):
+├── couriers              (60+ columns with full profiles)
+├── vehicles              (40+ columns with tracking)
+├── courier_vehicles      (Assignment history)
+├── vehicle_logs          (Daily operations logs)
+├── fuel_logs             (Fuel consumption tracking)
+├── maintenance_records   (Service history)
+├── inspections           (Digital checklists)
+├── documents             (Document management)
+├── accident_logs         (Incident records)
+├── vehicle_assignments   (Active assignments)
+└── courier_documents     (Driver documents)
 
-Operations Module:
-├── deliveries            (Delivery tasks)
-├── incidents             (Incident reports)
-└── delivery_history      (Audit trail)
+HR & Finance Module (7 tables):
+├── salaries              (Payroll with deductions)
+├── loans                 (Loan management & tracking)
+├── leave_requests        (Leave workflow)
+├── attendance            (Clock in/out, shifts)
+├── assets                (Asset allocation)
+├── bonuses               (Performance incentives)
+└── gosi_records          (Saudi insurance)
 
-Accommodation Module:
+Operations Module (15 tables):
+├── deliveries            (Full delivery lifecycle)
+├── routes                (Route planning, 30+ columns)
+├── zones                 (Delivery zones)
+├── dispatch_assignments  (Real-time dispatch)
+├── priority_queue_entries (SLA-based queuing)
+├── sla_definitions       (SLA rules)
+├── sla_tracking          (SLA monitoring)
+├── cod_collections       (Cash on delivery)
+├── incidents             (Incident management)
+├── feedback              (Customer feedback)
+├── handovers             (Shift handovers)
+├── quality_checks        (Quality assurance)
+├── operation_settings    (Configuration)
+├── scheduled_deliveries  (Scheduling)
+└── operation_documents   (Procedures/policies)
+
+Workflow Module (20+ tables):
+├── workflow_templates    (Reusable templates)
+├── workflow_instances    (Active executions)
+├── workflow_steps        (Step definitions)
+├── approval_chains       (Multi-level approvals)
+├── approval_requests     (Approval tracking)
+├── workflow_automation   (Rule-based automation)
+├── workflow_triggers     (Event triggers)
+├── workflow_sla          (SLA management)
+├── workflow_notifications (Multi-channel alerts)
+├── workflow_history      (Complete audit trail)
+└── workflow_analytics    (Performance metrics)
+
+Accommodation Module (4 tables):
 ├── buildings             (Properties)
 ├── rooms                 (Room inventory)
-└── room_assignments      (Occupancy)
+├── beds                  (Bed-level tracking)
+└── allocations           (Occupancy management)
 
-Workflow Module:
-├── workflow_definitions  (Workflow templates)
-├── workflow_instances    (Active workflows)
-└── workflow_approvals    (Approval steps)
+Support Module (12 tables):
+├── tickets               (Multi-channel support)
+├── ticket_replies        (Conversation threads)
+├── ticket_attachments    (File attachments)
+├── ticket_templates      (Response templates)
+├── canned_responses      (Quick replies)
+├── faq                   (FAQ management)
+├── kb_categories         (Knowledge base categories)
+├── kb_articles           (Help articles)
+├── chat_sessions         (Live chat)
+├── chat_messages         (Chat history)
+├── feedback              (Support feedback)
+└── contact_forms         (Customer inquiries)
 
-Core Module:
-├── users                 (System users)
-├── roles                 (User roles)
-├── permissions           (Access control)
-├── audit_logs            (System audit)
-└── tenants               (Multi-tenancy)
+Analytics Module (6 tables):
+├── dashboards            (Custom dashboards)
+├── kpi_definitions       (KPI configuration)
+├── metric_snapshots      (Historical metrics)
+├── performance_data      (Performance tracking)
+├── reports               (Report definitions)
+└── scheduled_reports     (Report scheduling)
+
+Admin Module (4 tables):
+├── api_keys              (API key management)
+├── backups               (Backup records)
+├── integrations          (Third-party integrations)
+└── system_monitoring     (Health metrics)
+
+Integrations Module (2 tables):
+├── syarah_fuel_transactions (Fuel card integration)
+└── platform_orders       (External platform orders)
 ```
 
 ### Key Relationships
@@ -951,5 +1018,5 @@ Permissions:
 
 **Document Owner:** Engineering Team
 **Review Cycle:** Quarterly
-**Last Reviewed:** November 23, 2025
-**Next Review:** February 23, 2026
+**Last Reviewed:** December 9, 2025
+**Next Review:** March 9, 2026

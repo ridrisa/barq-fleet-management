@@ -13,6 +13,7 @@ from app.schemas.fleet.assignment import (
     AssignmentList,
     AssignmentResponse,
     AssignmentUpdate,
+    CurrentAssignment,
 )
 from app.schemas.fleet.courier import (
     CourierBase,
@@ -85,6 +86,7 @@ __all__ = [
     "AssignmentUpdate",
     "AssignmentResponse",
     "AssignmentList",
+    "CurrentAssignment",
     # Vehicle Log
     "VehicleLogBase",
     "VehicleLogCreate",

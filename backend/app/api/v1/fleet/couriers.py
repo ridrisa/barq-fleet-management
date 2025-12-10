@@ -34,7 +34,7 @@ def get_couriers(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=2000),
     status: Optional[CourierStatus] = None,
     city: Optional[str] = None,
     search: Optional[str] = None,
@@ -60,7 +60,7 @@ def get_active_couriers(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=2000),
     city: Optional[str] = None,
 ):
     """Get active couriers"""
@@ -75,7 +75,7 @@ def get_couriers_without_vehicle(
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=2000),
 ):
     """Get couriers without assigned vehicle"""
     return courier_service.get_without_vehicle(

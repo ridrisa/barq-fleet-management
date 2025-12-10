@@ -59,10 +59,29 @@ class AssignmentList(BaseModel):
     id: int
     courier_id: int
     vehicle_id: int
+    courier_name: Optional[str] = None
+    vehicle_plate_number: Optional[str] = None
     status: AssignmentStatus
     start_date: date
     end_date: Optional[date] = None
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CurrentAssignment(BaseModel):
+    """Schema for current vehicle-courier assignments derived from couriers.current_vehicle_id"""
+
+    courier_id: int
+    courier_name: str
+    courier_employee_id: Optional[str] = None
+    courier_status: str
+    vehicle_id: int
+    vehicle_plate_number: str
+    vehicle_make: str
+    vehicle_model: str
+    vehicle_status: str
 
     class Config:
         from_attributes = True

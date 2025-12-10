@@ -6,6 +6,10 @@ import App from './App'
 import './index.css'
 import { initPerformanceMonitoring, mark } from './utils/performanceMonitoring'
 import { registerServiceWorker } from './utils/registerServiceWorker'
+import { initSentry } from './lib/sentry'
+
+// Initialize Sentry early for error tracking
+initSentry()
 
 // Mark app start for performance tracking
 mark('app-init-start')

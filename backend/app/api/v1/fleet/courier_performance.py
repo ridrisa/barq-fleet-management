@@ -18,17 +18,17 @@ router = APIRouter()
 
 
 class CourierPerformanceMetrics(BaseModel):
-    """Courier performance metrics"""
+    """Courier performance metrics - matches frontend expectations"""
 
     courier_id: int
+    courier_name: str
     barq_id: str
-    full_name: str
-    total_deliveries: int
-    performance_score: Decimal
-    avg_rating: Decimal = Decimal("0.0")
-    completed_deliveries: int = 0
-    failed_deliveries: int = 0
-    success_rate: Decimal = Decimal("0.0")
+    deliveries: int = 0
+    on_time_rate: Decimal = Decimal("0.0")
+    rating: Decimal = Decimal("0.0")
+    cod_collected: Decimal = Decimal("0.0")
+    revenue: Decimal = Decimal("0.0")
+    performance_score: Decimal = Decimal("0.0")
 
     class Config:
         from_attributes = True
@@ -56,24 +56,23 @@ def get_courier_performance(
 
     results = []
     for courier in couriers:
-        # Calculate success rate
-        success_rate = Decimal("0.0")
-        if courier.total_deliveries > 0:
-            success_rate = (
-                Decimal(str(courier.total_deliveries - 0)) / Decimal(str(courier.total_deliveries))
-            ) * Decimal("100")
+        # Calculate on-time rate based on performance score
+        on_time_rate = courier.performance_score or Decimal("0.0")
+
+        # Get real data from courier model
+        deliveries = courier.total_deliveries or 0
 
         results.append(
             CourierPerformanceMetrics(
                 courier_id=courier.id,
-                barq_id=courier.barq_id,
-                full_name=courier.full_name,
-                total_deliveries=courier.total_deliveries or 0,
+                courier_name=courier.full_name or f"Courier {courier.id}",
+                barq_id=courier.barq_id or "",
+                deliveries=deliveries,
+                on_time_rate=on_time_rate,
+                rating=Decimal("0.0"),  # Rating not implemented in courier model yet
+                cod_collected=Decimal("0.0"),  # Would need delivery data to calculate
+                revenue=Decimal("0.0"),  # Would need delivery data to calculate
                 performance_score=courier.performance_score or Decimal("0.0"),
-                avg_rating=Decimal("0.0"),  # This would come from delivery ratings
-                completed_deliveries=courier.total_deliveries or 0,
-                failed_deliveries=0,
-                success_rate=success_rate,
             )
         )
 

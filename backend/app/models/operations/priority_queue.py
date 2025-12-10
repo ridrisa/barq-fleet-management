@@ -12,22 +12,22 @@ from app.models.mixins import TenantMixin
 class QueuePriority(str, enum.Enum):
     """Priority level in queue"""
 
-    CRITICAL = "critical"  # Same-hour delivery
-    URGENT = "urgent"  # 2-hour delivery
-    HIGH = "high"  # 4-hour delivery
-    NORMAL = "normal"  # Same-day delivery
-    LOW = "low"  # Next-day delivery
+    CRITICAL = "CRITICAL"  # Same-hour delivery
+    URGENT = "URGENT"  # 2-hour delivery
+    HIGH = "HIGH"  # 4-hour delivery
+    NORMAL = "NORMAL"  # Same-day delivery
+    LOW = "LOW"  # Next-day delivery
 
 
 class QueueStatus(str, enum.Enum):
     """Queue entry status"""
 
-    QUEUED = "queued"
-    PROCESSING = "processing"
-    ASSIGNED = "assigned"
-    COMPLETED = "completed"
-    EXPIRED = "expired"
-    CANCELLED = "cancelled"
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    ASSIGNED = "ASSIGNED"
+    COMPLETED = "COMPLETED"
+    EXPIRED = "EXPIRED"
+    CANCELLED = "CANCELLED"
 
 
 class PriorityQueueEntry(TenantMixin, BaseModel):

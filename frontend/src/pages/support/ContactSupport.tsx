@@ -246,7 +246,7 @@ export default function ContactSupport() {
             </div>
             <div className="border-l-2 border-purple-500 pl-3">
               <h4 className="font-medium mb-1">Email Us</h4>
-              <p className="text-gray-600">support@barq-fleet.com</p>
+              <p className="text-gray-600">support@sync-fleet.com</p>
             </div>
           </div>
         </CardContent>

@@ -10,9 +10,10 @@ const Login = lazyWithRetry(() => import('@/pages/Login'))
 // Fleet Module
 const CouriersList = lazyWithRetry(() => import('@/pages/fleet/CouriersList'))
 const CourierProfile = lazyWithRetry(() => import('@/pages/fleet/CourierProfile'))
+const CourierProfileLayoutPreview = lazyWithRetry(() => import('@/pages/fleet/CourierProfileLayoutPreview'))
 const Vehicles = lazyWithRetry(() => import('@/pages/fleet/Vehicles'))
+const VehicleDetail = lazyWithRetry(() => import('@/pages/fleet/VehicleDetail'))
 const VehicleAssignments = lazyWithRetry(() => import('@/pages/fleet/VehicleAssignments'))
-const FuelTracking = lazyWithRetry(() => import('@/pages/fleet/FuelTracking'))
 const MaintenanceSchedule = lazyWithRetry(() => import('@/pages/fleet/MaintenanceSchedule'))
 const CourierPerformance = lazyWithRetry(() => import('@/pages/fleet/CourierPerformance'))
 const CourierDocuments = lazyWithRetry(() => import('@/pages/fleet/CourierDocuments'))
@@ -146,9 +147,10 @@ export const routes: RouteObject[] = [
       // Fleet routes
       { path: 'fleet/couriers', element: <CouriersList /> },
       { path: 'fleet/couriers/:id', element: <CourierProfile /> },
+      { path: 'fleet/courier-layout-preview', element: <CourierProfileLayoutPreview /> },
       { path: 'fleet/vehicles', element: <Vehicles /> },
+      { path: 'fleet/vehicles/:id', element: <VehicleDetail /> },
       { path: 'fleet/assignments', element: <VehicleAssignments /> },
-      { path: 'fleet/fuel', element: <FuelTracking /> },
       { path: 'fleet/maintenance', element: <MaintenanceSchedule /> },
       { path: 'fleet/performance', element: <CourierPerformance /> },
       { path: 'fleet/documents', element: <CourierDocuments /> },

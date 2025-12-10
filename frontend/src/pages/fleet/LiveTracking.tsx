@@ -18,7 +18,7 @@ import {
   Clock,
   Gauge,
 } from 'lucide-react'
-import axios from 'axios'
+import { fmsAPI, fmsSyncAPI } from '../../lib/api'
 
 // Types
 interface Position {
@@ -162,12 +162,9 @@ export default function LiveTracking() {
   // Fetch locations
   const fetchLocations = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await axios.get('/api/v1/fms/sync/live-locations', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const response = await fmsSyncAPI.getLiveLocations()
 
-      const fetchedLocations = response.data.locations || []
+      const fetchedLocations = response.locations || []
       setLocations(fetchedLocations)
       setLastUpdate(new Date())
 
@@ -191,11 +188,8 @@ export default function LiveTracking() {
   // Fetch fleet summary
   const fetchSummary = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await axios.get('/api/v1/fms/tracking/summary', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setSummary(response.data)
+      const data = await fmsAPI.getFleetSummary()
+      setSummary(data)
     } catch (error) {
       console.error('Error fetching summary:', error)
     }
@@ -204,11 +198,8 @@ export default function LiveTracking() {
   // Fetch sync stats
   const fetchSyncStats = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await axios.get('/api/v1/fms/sync/stats', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      setSyncStats(response.data)
+      const data = await fmsSyncAPI.getStats()
+      setSyncStats(data)
     } catch (error) {
       console.error('Error fetching sync stats:', error)
     }
@@ -218,10 +209,7 @@ export default function LiveTracking() {
   const runSync = async () => {
     setSyncing(true)
     try {
-      const token = localStorage.getItem('token')
-      await axios.post('/api/v1/fms/sync/run', {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      await fmsSyncAPI.runSync()
       // Refresh data after sync
       await Promise.all([fetchLocations(), fetchSyncStats()])
     } catch (error) {
