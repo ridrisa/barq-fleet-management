@@ -1,3 +1,5 @@
+import logging
+from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -5,8 +7,15 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
+from app.models.fleet.courier import Courier
+from app.models.operations.delivery import Delivery
+from app.models.operations.incident import Incident
+from app.models.operations.route import Route
+from app.models.operations.zone import Zone
 from app.models.tenant.organization import Organization
 from app.services.operations import sla_definition_service, sla_tracking_service
+from app.services.sms_notification_service import sms_notification_service
+from app.services.workflow.workflow_engine_service import workflow_engine_service
 from app.schemas.operations.sla import (
     SLABreachReport,
     SLAComplianceReport,
@@ -20,6 +29,7 @@ from app.schemas.operations.sla import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # SLA Definitions Endpoints
@@ -95,7 +105,17 @@ def create_sla_definition(
             detail=f"SLA definition with code '{definition_in.sla_code}' already exists",
         )
 
-    # TODO: Validate zone exists if specified
+    # Validate zone exists if specified
+    if definition_in.applies_to_zone_id:
+        zone = db.query(Zone).filter(
+            Zone.id == definition_in.applies_to_zone_id,
+            Zone.organization_id == current_org.id
+        ).first()
+        if not zone:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Zone with ID {definition_in.applies_to_zone_id} not found",
+            )
 
     definition = sla_definition_service.create(db, obj_in=definition_in, organization_id=current_org.id)
     return definition
@@ -253,8 +273,58 @@ def create_sla_tracking(
     - Monitors compliance in real-time
     - Status set to ACTIVE
     """
-    # TODO: Validate SLA definition exists
-    # TODO: Validate subject (delivery/route/courier/incident) exists
+    # Validate SLA definition exists
+    sla_definition = sla_definition_service.get(db, id=tracking_in.sla_definition_id)
+    if not sla_definition or sla_definition.organization_id != current_org.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"SLA definition with ID {tracking_in.sla_definition_id} not found",
+        )
+
+    # Validate subject (delivery/route/courier/incident) exists
+    if tracking_in.delivery_id:
+        delivery = db.query(Delivery).filter(
+            Delivery.id == tracking_in.delivery_id,
+            Delivery.organization_id == current_org.id
+        ).first()
+        if not delivery:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Delivery with ID {tracking_in.delivery_id} not found",
+            )
+
+    if tracking_in.route_id:
+        route = db.query(Route).filter(
+            Route.id == tracking_in.route_id,
+            Route.organization_id == current_org.id
+        ).first()
+        if not route:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Route with ID {tracking_in.route_id} not found",
+            )
+
+    if tracking_in.courier_id:
+        courier = db.query(Courier).filter(
+            Courier.id == tracking_in.courier_id,
+            Courier.organization_id == current_org.id
+        ).first()
+        if not courier:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Courier with ID {tracking_in.courier_id} not found",
+            )
+
+    if tracking_in.incident_id:
+        incident = db.query(Incident).filter(
+            Incident.id == tracking_in.incident_id,
+            Incident.organization_id == current_org.id
+        ).first()
+        if not incident:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Incident with ID {tracking_in.incident_id} not found",
+            )
 
     tracking = sla_tracking_service.create_with_number(
         db, obj_in=tracking_in, organization_id=current_org.id
@@ -320,9 +390,79 @@ def report_sla_breach(
             db, tracking_id=tracking_id, escalated_to_id=breach.escalated_to_id
         )
 
-    # TODO: Apply penalty
-    # TODO: Send notifications
-    # TODO: Trigger escalation workflow
+    # Get SLA definition for penalty info
+    sla_definition = sla_definition_service.get(db, id=tracking.sla_definition_id)
+
+    # Apply penalty based on SLA definition
+    if sla_definition and sla_definition.penalty_per_breach:
+        # Calculate penalty based on severity multiplier
+        severity_multiplier = {"minor": 1.0, "major": 1.5, "critical": 2.0}.get(
+            breach.breach_severity, 1.0
+        )
+        penalty_amount = float(sla_definition.penalty_per_breach) * severity_multiplier
+        tracking.penalty_applied = penalty_amount
+        db.add(tracking)
+        db.commit()
+        db.refresh(tracking)
+        logger.info(
+            f"Penalty of {penalty_amount} applied for SLA breach {tracking.tracking_number}"
+        )
+
+    # Send notifications to relevant parties
+    try:
+        # If courier is associated with this SLA tracking, notify them
+        if tracking.courier_id:
+            courier = db.query(Courier).filter(Courier.id == tracking.courier_id).first()
+            if courier and courier.mobile_number:
+                message = (
+                    f"تنبيه: تم تسجيل مخالفة SLA\n"
+                    f"رقم التتبع: {tracking.tracking_number}\n"
+                    f"السبب: {breach.breach_reason}\n"
+                    f"الخطورة: {breach.breach_severity}\n"
+                    f"BARQ Fleet Management"
+                )
+                sms_notification_service.send_sms(courier.mobile_number, message)
+                tracking.customer_notified = True
+                tracking.notification_sent_at = datetime.utcnow()
+                db.add(tracking)
+                db.commit()
+                db.refresh(tracking)
+                logger.info(f"SLA breach notification sent to courier {courier.barq_id}")
+    except Exception as e:
+        logger.error(f"Failed to send SLA breach notification: {str(e)}")
+
+    # Trigger escalation workflow if required by SLA definition
+    if sla_definition and sla_definition.escalation_required:
+        try:
+            # Look for an SLA escalation workflow template
+            from app.models.workflow.template import WorkflowTemplate
+            escalation_template = db.query(WorkflowTemplate).filter(
+                WorkflowTemplate.name.ilike("%sla%escalation%"),
+                WorkflowTemplate.organization_id == current_org.id,
+                WorkflowTemplate.is_active == True
+            ).first()
+
+            if escalation_template:
+                workflow_instance = workflow_engine_service.start_workflow(
+                    db=db,
+                    template_id=escalation_template.id,
+                    initiated_by=current_user.id,
+                    initial_data={
+                        "sla_tracking_id": tracking_id,
+                        "tracking_number": tracking.tracking_number,
+                        "breach_reason": breach.breach_reason,
+                        "breach_severity": breach.breach_severity,
+                        "courier_id": tracking.courier_id,
+                        "delivery_id": tracking.delivery_id,
+                        "escalated_at": datetime.utcnow().isoformat(),
+                    }
+                )
+                logger.info(
+                    f"Escalation workflow started for SLA breach {tracking.tracking_number}: "
+                    f"workflow instance {workflow_instance.id}"
+                )
+        except Exception as e:
+            logger.error(f"Failed to trigger escalation workflow: {str(e)}")
 
     return tracking
 
