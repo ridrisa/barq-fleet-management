@@ -2,7 +2,7 @@ import { DynamicForm } from './DynamicForm'
 import {
   budgetFormConfig,
   budgetInitialData,
-  budgetValidation,
+  budgetFormSchema,
   type BudgetFormData
 } from './formConfigs'
 
@@ -28,7 +28,7 @@ export const BudgetForm = ({
     <DynamicForm
       formConfig={budgetFormConfig}
       initialData={defaultValues}
-      validationSchema={budgetValidation}
+      zodSchema={budgetFormSchema}
       onSubmit={onSubmit}
       onCancel={onCancel}
       isLoading={isLoading}

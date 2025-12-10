@@ -5,7 +5,7 @@ import { FormSection } from './Form'
 import {
   courierDocumentFormConfig,
   courierDocumentInitialData,
-  courierDocumentValidation,
+  courierDocumentFormSchema,
   getCourierOptions,
   type CourierDocumentFormData
 } from './formConfigs'
@@ -58,7 +58,7 @@ export const CourierDocumentForm = ({
       <DynamicForm
         formConfig={config}
         initialData={defaultValues}
-        validationSchema={courierDocumentValidation}
+        zodSchema={courierDocumentFormSchema}
         onSubmit={handleSubmit}
         onCancel={onCancel}
         isLoading={isLoading}

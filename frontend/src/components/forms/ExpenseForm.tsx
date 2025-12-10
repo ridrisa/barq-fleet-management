@@ -2,7 +2,7 @@ import { DynamicForm } from './DynamicForm'
 import {
   expenseFormConfig,
   expenseInitialData,
-  expenseValidation,
+  expenseFormSchema,
   type ExpenseFormData
 } from './formConfigs'
 
@@ -28,7 +28,7 @@ export const ExpenseForm = ({
     <DynamicForm
       formConfig={expenseFormConfig}
       initialData={defaultValues}
-      validationSchema={expenseValidation}
+      zodSchema={expenseFormSchema}
       onSubmit={onSubmit}
       onCancel={onCancel}
       isLoading={isLoading}

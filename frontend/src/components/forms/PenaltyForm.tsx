@@ -2,7 +2,7 @@ import { DynamicForm } from './DynamicForm'
 import {
   penaltyFormConfig,
   penaltyInitialData,
-  penaltyValidation,
+  penaltyFormSchema,
   getCourierOptions,
   type PenaltyFormData
 } from './formConfigs'
@@ -48,7 +48,7 @@ export const PenaltyForm = ({
     <DynamicForm
       formConfig={config}
       initialData={defaultValues}
-      validationSchema={penaltyValidation}
+      zodSchema={penaltyFormSchema}
       onSubmit={onSubmit}
       onCancel={onCancel}
       isLoading={isLoading}
