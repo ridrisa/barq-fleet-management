@@ -249,6 +249,12 @@ class QueryResolvers:
         courier = db.query(Courier).filter(Courier.barq_id == barq_id).first()
         return convert_courier(courier) if courier else None
 
+    @staticmethod
+    def get_courier_by_jahez_id(db: Session, jahez_id: str) -> Optional[CourierType]:
+        """Look up courier by Jahez driver ID (used for SANED login)"""
+        courier = db.query(Courier).filter(Courier.jahez_driver_id == jahez_id).first()
+        return convert_courier(courier) if courier else None
+
     # HR Queries
     @staticmethod
     def get_courier_loans(db: Session, courier_id: int) -> List[LoanType]:

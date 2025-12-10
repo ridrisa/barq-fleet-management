@@ -83,6 +83,12 @@ class Query:
         return QueryResolvers.get_courier_by_barq_id(db, barq_id)
 
     @strawberry.field
+    def courier_by_jahez_id(self, info: Info, jahez_id: str) -> Optional[CourierType]:
+        """Get courier by Jahez driver ID (used for SANED login)"""
+        db = get_db_session(info)
+        return QueryResolvers.get_courier_by_jahez_id(db, jahez_id)
+
+    @strawberry.field
     def courier_dashboard(self, info: Info, courier_id: int) -> Optional[CourierDashboard]:
         """Get aggregated courier dashboard data"""
         db = get_db_session(info)
