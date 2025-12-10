@@ -1,23 +1,13 @@
-import { useState, FormEvent } from 'react'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Form, FormField, FormSection, FormActions } from './Form'
+import { codSchema, type CODFormData } from '@/schemas/fleet.schema'
 
-export interface CODFormData {
-  delivery_id: string
-  courier_id: string
-  amount: number
-  currency: 'SAR' | 'USD' | 'EUR'
-  collected: boolean
-  collection_date?: string
-  reconciled: boolean
-  reconciliation_date?: string
-  payment_method: 'cash' | 'card' | 'online'
-  reference_number?: string
-  status: 'pending' | 'collected' | 'reconciled' | 'disputed'
-  notes?: string
-}
+export type { CODFormData }
 
 export interface CODFormProps {
   initialData?: Partial<CODFormData>
@@ -36,110 +26,81 @@ export const CODForm = ({
   mode = 'create',
   couriers = [],
 }: CODFormProps) => {
-  const [formData, setFormData] = useState<CODFormData>({
-    delivery_id: initialData?.delivery_id || '',
-    courier_id: initialData?.courier_id || '',
-    amount: initialData?.amount || 0,
-    currency: initialData?.currency || 'SAR',
-    collected: initialData?.collected || false,
-    collection_date: initialData?.collection_date || '',
-    reconciled: initialData?.reconciled || false,
-    reconciliation_date: initialData?.reconciliation_date || '',
-    payment_method: initialData?.payment_method || 'cash',
-    reference_number: initialData?.reference_number || '',
-    status: initialData?.status || 'pending',
-    notes: initialData?.notes || '',
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    control,
+    formState: { errors },
+  } = useForm<CODFormData>({
+    resolver: zodResolver(codSchema),
+    defaultValues: {
+      delivery_id: initialData?.delivery_id || '',
+      courier_id: initialData?.courier_id || '',
+      amount: initialData?.amount || 0,
+      currency: initialData?.currency || 'SAR',
+      collected: initialData?.collected || false,
+      collection_date: initialData?.collection_date || '',
+      reconciled: initialData?.reconciled || false,
+      reconciliation_date: initialData?.reconciliation_date || '',
+      payment_method: initialData?.payment_method || 'cash',
+      reference_number: initialData?.reference_number || '',
+      status: initialData?.status || 'pending',
+      notes: initialData?.notes || '',
+    },
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof CODFormData, string>>>({})
+  const collected = watch('collected')
+  const reconciled = watch('reconciled')
+  const collectionDate = watch('collection_date')
+  const reconciliationDate = watch('reconciliation_date')
 
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof CODFormData, string>> = {}
-
-    if (!formData.delivery_id.trim()) {
-      newErrors.delivery_id = 'Delivery ID is required'
+  // Auto-update status based on collected and reconciled flags
+  useEffect(() => {
+    if (reconciled) {
+      setValue('status', 'reconciled')
+    } else if (collected) {
+      setValue('status', 'collected')
     }
+  }, [collected, reconciled, setValue])
 
-    if (!formData.courier_id) {
-      newErrors.courier_id = 'Courier is required'
+  // Set collection date when marking as collected
+  useEffect(() => {
+    if (collected && !collectionDate) {
+      setValue('collection_date', new Date().toISOString().split('T')[0])
     }
+  }, [collected, collectionDate, setValue])
 
-    if (formData.amount <= 0) {
-      newErrors.amount = 'Amount must be greater than zero'
+  // Set reconciliation date when marking as reconciled
+  useEffect(() => {
+    if (reconciled && !reconciliationDate) {
+      setValue('reconciliation_date', new Date().toISOString().split('T')[0])
     }
+  }, [reconciled, reconciliationDate, setValue])
 
-    if (formData.collected && !formData.collection_date) {
-      newErrors.collection_date = 'Collection date is required when marked as collected'
-    }
-
-    if (formData.reconciled && !formData.reconciliation_date) {
-      newErrors.reconciliation_date = 'Reconciliation date is required when marked as reconciled'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    if (!validate()) {
-      return
-    }
-
-    await onSubmit(formData)
-  }
-
-  const handleChange = (field: keyof CODFormData, value: string | number | boolean) => {
-    const updatedData = { ...formData, [field]: value }
-
-    // Auto-update status based on collected and reconciled flags
-    if (field === 'collected' || field === 'reconciled') {
-      if (updatedData.reconciled) {
-        updatedData.status = 'reconciled'
-      } else if (updatedData.collected) {
-        updatedData.status = 'collected'
-      } else {
-        updatedData.status = 'pending'
-      }
-    }
-
-    // Set collection date when marking as collected
-    if (field === 'collected' && value === true && !formData.collection_date) {
-      updatedData.collection_date = new Date().toISOString().split('T')[0]
-    }
-
-    // Set reconciliation date when marking as reconciled
-    if (field === 'reconciled' && value === true && !formData.reconciliation_date) {
-      updatedData.reconciliation_date = new Date().toISOString().split('T')[0]
-    }
-
-    setFormData(updatedData)
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
+  const onFormSubmit = async (data: CODFormData) => {
+    await onSubmit(data)
   }
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="COD Transaction"
         description="Cash on Delivery transaction details"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Delivery ID" required error={errors.delivery_id}>
+          <FormField label="Delivery ID" required error={errors.delivery_id?.message}>
             <Input
-              value={formData.delivery_id}
-              onChange={(e) => handleChange('delivery_id', e.target.value)}
+              {...register('delivery_id')}
               placeholder="DEL-123456"
               disabled={mode === 'edit'}
             />
           </FormField>
 
-          <FormField label="Courier" required error={errors.courier_id}>
+          <FormField label="Courier" required error={errors.courier_id?.message}>
             <Select
-              value={formData.courier_id}
-              onChange={(e) => handleChange('courier_id', e.target.value)}
+              {...register('courier_id')}
               options={[
                 { value: '', label: 'Select a courier...' },
                 ...couriers.map((c) => ({ value: c.id, label: c.name })),
@@ -147,20 +108,18 @@ export const CODForm = ({
             />
           </FormField>
 
-          <FormField label="Amount" required error={errors.amount}>
+          <FormField label="Amount" required error={errors.amount?.message}>
             <Input
               type="number"
               step="0.01"
-              value={formData.amount}
-              onChange={(e) => handleChange('amount', parseFloat(e.target.value))}
+              {...register('amount', { valueAsNumber: true })}
               placeholder="100.00"
             />
           </FormField>
 
-          <FormField label="Currency" required>
+          <FormField label="Currency" required error={errors.currency?.message}>
             <Select
-              value={formData.currency}
-              onChange={(e) => handleChange('currency', e.target.value)}
+              {...register('currency')}
               options={[
                 { value: 'SAR', label: 'SAR (Saudi Riyal)' },
                 { value: 'USD', label: 'USD (US Dollar)' },
@@ -169,10 +128,9 @@ export const CODForm = ({
             />
           </FormField>
 
-          <FormField label="Payment Method" required>
+          <FormField label="Payment Method" required error={errors.payment_method?.message}>
             <Select
-              value={formData.payment_method}
-              onChange={(e) => handleChange('payment_method', e.target.value)}
+              {...register('payment_method')}
               options={[
                 { value: 'cash', label: 'Cash' },
                 { value: 'card', label: 'Card' },
@@ -181,10 +139,9 @@ export const CODForm = ({
             />
           </FormField>
 
-          <FormField label="Reference Number">
+          <FormField label="Reference Number" error={errors.reference_number?.message}>
             <Input
-              value={formData.reference_number}
-              onChange={(e) => handleChange('reference_number', e.target.value)}
+              {...register('reference_number')}
               placeholder="REF-123456"
             />
           </FormField>
@@ -197,51 +154,60 @@ export const CODForm = ({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Collected">
-            <Select
-              value={formData.collected ? 'true' : 'false'}
-              onChange={(e) => handleChange('collected', e.target.value === 'true')}
-              options={[
-                { value: 'false', label: 'Not Collected' },
-                { value: 'true', label: 'Collected' },
-              ]}
+            <Controller
+              name="collected"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value ? 'true' : 'false'}
+                  onChange={(e) => field.onChange(e.target.value === 'true')}
+                  options={[
+                    { value: 'false', label: 'Not Collected' },
+                    { value: 'true', label: 'Collected' },
+                  ]}
+                />
+              )}
             />
           </FormField>
 
-          {formData.collected && (
-            <FormField label="Collection Date" error={errors.collection_date}>
+          {collected && (
+            <FormField label="Collection Date" error={errors.collection_date?.message}>
               <Input
                 type="date"
-                value={formData.collection_date}
-                onChange={(e) => handleChange('collection_date', e.target.value)}
+                {...register('collection_date')}
               />
             </FormField>
           )}
 
           <FormField label="Reconciled">
-            <Select
-              value={formData.reconciled ? 'true' : 'false'}
-              onChange={(e) => handleChange('reconciled', e.target.value === 'true')}
-              options={[
-                { value: 'false', label: 'Not Reconciled' },
-                { value: 'true', label: 'Reconciled' },
-              ]}
+            <Controller
+              name="reconciled"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  value={field.value ? 'true' : 'false'}
+                  onChange={(e) => field.onChange(e.target.value === 'true')}
+                  options={[
+                    { value: 'false', label: 'Not Reconciled' },
+                    { value: 'true', label: 'Reconciled' },
+                  ]}
+                />
+              )}
             />
           </FormField>
 
-          {formData.reconciled && (
-            <FormField label="Reconciliation Date" error={errors.reconciliation_date}>
+          {reconciled && (
+            <FormField label="Reconciliation Date" error={errors.reconciliation_date?.message}>
               <Input
                 type="date"
-                value={formData.reconciliation_date}
-                onChange={(e) => handleChange('reconciliation_date', e.target.value)}
+                {...register('reconciliation_date')}
               />
             </FormField>
           )}
 
-          <FormField label="Status" required>
+          <FormField label="Status" required error={errors.status?.message}>
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              {...register('status')}
               options={[
                 { value: 'pending', label: 'Pending' },
                 { value: 'collected', label: 'Collected' },
@@ -257,10 +223,9 @@ export const CODForm = ({
         title="Additional Information"
         description="Notes and comments"
       >
-        <FormField label="Notes">
+        <FormField label="Notes" error={errors.notes?.message}>
           <Input
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
+            {...register('notes')}
             placeholder="Any additional notes about this COD transaction..."
           />
         </FormField>
