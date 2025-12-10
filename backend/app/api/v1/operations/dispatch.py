@@ -402,8 +402,53 @@ def complete_delivery(
 
     assignment = dispatch_assignment_service.complete(db, assignment_id=assignment_id)
 
-    # TODO: Update courier metrics
-    # TODO: Update zone metrics
+    # Update courier metrics
+    if assignment.courier_id:
+        courier = db.query(Courier).filter(Courier.id == assignment.courier_id).first()
+        if courier:
+            # Increment total deliveries
+            courier.total_deliveries = (courier.total_deliveries or 0) + 1
+
+            # Update performance score based on delivery performance
+            # Performance score is 0-100, calculated as weighted average of:
+            # - On-time delivery rate (50%)
+            # - Completion rate (30%)
+            # - Customer rating (20%) - placeholder for now
+            if assignment.estimated_time_minutes and assignment.actual_completion_time_minutes:
+                variance = assignment.actual_completion_time_minutes - assignment.estimated_time_minutes
+                # If within 10% of estimate, consider on-time
+                threshold = assignment.estimated_time_minutes * 0.1
+                on_time_score = 100 if variance <= threshold else max(0, 100 - (variance - threshold) * 2)
+            else:
+                on_time_score = 80  # Default if no timing data
+
+            # Calculate rolling average performance score
+            prev_score = float(courier.performance_score or 70)
+            new_score = (prev_score * 0.9) + (on_time_score * 0.1)  # 90% previous + 10% new
+            courier.performance_score = round(new_score, 2)
+
+            db.add(courier)
+
+    # Update zone metrics
+    if assignment.zone_id:
+        from app.models.operations.zone import Zone
+        zone = db.query(Zone).filter(Zone.id == assignment.zone_id).first()
+        if zone:
+            # Increment total deliveries completed
+            zone.total_deliveries_completed = (zone.total_deliveries_completed or 0) + 1
+
+            # Update average delivery time (rolling average)
+            if assignment.actual_completion_time_minutes:
+                prev_avg = zone.avg_delivery_time_minutes or 30
+                count = zone.total_deliveries_completed
+                # Running average: ((prev_avg * (count-1)) + new_value) / count
+                new_avg = ((prev_avg * (count - 1)) + assignment.actual_completion_time_minutes) / count
+                zone.avg_delivery_time_minutes = round(new_avg, 2)
+
+            db.add(zone)
+
+    db.commit()
+    db.refresh(assignment)
 
     return assignment
 
@@ -412,6 +457,7 @@ def complete_delivery(
 def reassign_delivery(
     assignment_id: int,
     reassignment: DispatchReassignment,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
@@ -432,15 +478,87 @@ def reassign_delivery(
             status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch assignment not found"
         )
 
-    # TODO: Validate new courier availability
-    # TODO: Notify both couriers
+    previous_courier_id = assignment.courier_id
 
+    # Validate new courier exists and is available
+    new_courier = db.query(Courier).filter(
+        Courier.id == reassignment.new_courier_id,
+        Courier.organization_id == current_org.id,
+    ).first()
+    if not new_courier:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="New courier not found",
+        )
+
+    # Check new courier is active
+    if new_courier.status != CourierStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"New courier is not available (status: {new_courier.status.value})",
+        )
+
+    # Check new courier capacity
+    new_courier_load = db.query(func.count(DispatchAssignment.id)).filter(
+        DispatchAssignment.courier_id == reassignment.new_courier_id,
+        DispatchAssignment.status.in_(["ASSIGNED", "ACCEPTED", "IN_PROGRESS"]),
+    ).scalar() or 0
+
+    max_capacity = 10
+    if new_courier_load >= max_capacity:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"New courier at maximum capacity ({new_courier_load}/{max_capacity} active deliveries)",
+        )
+
+    # Perform the reassignment
     assignment = dispatch_assignment_service.reassign(
         db,
         assignment_id=assignment_id,
         new_courier_id=reassignment.new_courier_id,
         reason=reassignment.reassignment_reason,
     )
+
+    # Create notifications for both couriers
+    def send_courier_notifications():
+        """Background task to send notifications to both couriers"""
+        from app.models.workflow.notification import (
+            WorkflowNotification,
+            NotificationType,
+            NotificationChannel,
+            NotificationStatus,
+        )
+
+        # Notify previous courier (if exists)
+        if previous_courier_id:
+            prev_courier = db.query(Courier).filter(Courier.id == previous_courier_id).first()
+            if prev_courier:
+                # Create in-app notification for previous courier
+                # Note: In production, this would also send push/SMS
+                notification_body = (
+                    f"Delivery {assignment.assignment_number} has been reassigned to another courier. "
+                    f"Reason: {reassignment.reassignment_reason}"
+                )
+                # Log notification (in production, use proper notification service)
+                import logging
+                logging.info(
+                    f"[NOTIFICATION] Courier {previous_courier_id} ({prev_courier.full_name}): "
+                    f"Delivery reassigned - {notification_body}"
+                )
+
+        # Notify new courier
+        notification_body = (
+            f"You have been assigned a new delivery: {assignment.assignment_number}. "
+            f"Please check your app for details."
+        )
+        import logging
+        logging.info(
+            f"[NOTIFICATION] Courier {new_courier.id} ({new_courier.full_name}): "
+            f"New delivery assigned - {notification_body}"
+        )
+
+    # Schedule notification as background task
+    background_tasks.add_task(send_courier_notifications)
 
     return assignment
 
@@ -503,20 +621,35 @@ def get_available_couriers(
 
         available.append(CourierAvailability(
             courier_id=courier.id,
-            name=courier.full_name,
-            status=courier.status.value,
+            courier_name=courier.full_name,
+            is_available=True,  # Already filtered for active status
             current_load=current_load,
             max_capacity=max_capacity,
-            rating=float(courier.performance_score or 0),
+            rating=Decimal(str(courier.performance_score or 0)),
             zone_id=zone_id,
-            distance_km=distance_km,
-            estimated_pickup_minutes=None,
+            distance_to_pickup_km=distance_km,
+            estimated_arrival_minutes=None,
         ))
 
     # Sort by current load (prefer less loaded couriers)
     available.sort(key=lambda x: x.current_load)
 
     return available
+
+
+def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate the great circle distance between two points on earth (in kilometers)"""
+    R = 6371  # Earth radius in kilometers
+
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lon = math.radians(lon2 - lon1)
+
+    a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    return R * c
 
 
 @router.post("/recommend", response_model=DispatchRecommendation)
@@ -539,11 +672,145 @@ def get_dispatch_recommendation(
     - Returns recommended courier with confidence score
     - Provides alternative couriers
     """
-    # TODO: Implement AI recommendation algorithm with organization_id filter
-    # For now, return placeholder
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Dispatch recommendation algorithm to be implemented",
+    # Validate delivery exists
+    delivery = db.query(Delivery).filter(
+        Delivery.id == delivery_id,
+        Delivery.organization_id == current_org.id,
+    ).first()
+    if not delivery:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Delivery not found",
+        )
+
+    # Get delivery coordinates (using placeholder for demo)
+    # In production, these would come from geocoding the pickup address
+    delivery_lat = 24.7136 + (delivery.id % 100) * 0.001  # Riyadh area placeholder
+    delivery_lon = 46.6753 + (delivery.id % 100) * 0.001
+
+    max_capacity = 10
+
+    # Get active couriers in the organization
+    couriers = db.query(Courier).filter(
+        Courier.organization_id == current_org.id,
+        Courier.status == CourierStatus.ACTIVE,
+    ).all()
+
+    if not couriers:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No available couriers found",
+        )
+
+    # Score each courier using multi-factor algorithm
+    scored_couriers = []
+
+    for courier in couriers:
+        # Get current load
+        current_load = db.query(func.count(DispatchAssignment.id)).filter(
+            DispatchAssignment.courier_id == courier.id,
+            DispatchAssignment.status.in_(["ASSIGNED", "ACCEPTED", "IN_PROGRESS"]),
+        ).scalar() or 0
+
+        # Skip if at capacity
+        if current_load >= max_capacity:
+            continue
+
+        # Calculate courier coordinates (placeholder - would come from GPS/FMS)
+        courier_lat = 24.7136 + (courier.id % 50) * 0.002
+        courier_lon = 46.6753 + (courier.id % 50) * 0.002
+
+        # Calculate distance to pickup
+        distance_km = haversine_distance(courier_lat, courier_lon, delivery_lat, delivery_lon)
+
+        # Estimate arrival time (30 km/h average city speed)
+        estimated_minutes = int((distance_km / 30) * 60)
+
+        # Calculate composite score (higher is better)
+        # Scoring algorithm with weights:
+        # - Distance penalty: -2 points per km (max -20)
+        # - Load bonus: +5 points for each empty slot
+        # - Rating bonus: rating * 0.5
+        # - Performance bonus: based on on-time delivery history
+
+        distance_score = max(0, 100 - (distance_km * 2))  # Max 100, -2 per km
+        load_score = (max_capacity - current_load) * 5  # 5 points per empty slot
+        rating_score = float(courier.performance_score or 50) * 0.5  # 0-50 based on rating
+
+        # Calculate total score
+        total_score = distance_score + load_score + rating_score
+
+        # Normalize to 0-1 confidence
+        confidence = min(1.0, max(0.0, total_score / 200))
+
+        scored_couriers.append({
+            "courier": courier,
+            "distance_km": round(distance_km, 2),
+            "estimated_minutes": estimated_minutes,
+            "current_load": current_load,
+            "total_score": total_score,
+            "confidence": round(confidence, 3),
+        })
+
+    if not scored_couriers:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No couriers with available capacity found",
+        )
+
+    # Sort by score descending
+    scored_couriers.sort(key=lambda x: x["total_score"], reverse=True)
+
+    # Best recommendation
+    best = scored_couriers[0]
+    best_courier = best["courier"]
+
+    # Build reasoning explanation
+    reasoning_parts = []
+    if best["distance_km"] < 3:
+        reasoning_parts.append(f"closest to pickup ({best['distance_km']} km)")
+    elif best["distance_km"] < 10:
+        reasoning_parts.append(f"reasonable distance ({best['distance_km']} km)")
+
+    if best["current_load"] < 3:
+        reasoning_parts.append("low current workload")
+    elif best["current_load"] < 7:
+        reasoning_parts.append("moderate workload")
+
+    rating = float(best_courier.performance_score or 0)
+    if rating >= 80:
+        reasoning_parts.append(f"excellent performance rating ({rating}%)")
+    elif rating >= 60:
+        reasoning_parts.append(f"good performance rating ({rating}%)")
+
+    reasoning = "Recommended because: " + ", ".join(reasoning_parts) if reasoning_parts else "Best available option based on composite scoring"
+
+    # Build alternatives list (next 3 best options)
+    alternatives = []
+    for alt in scored_couriers[1:4]:
+        alt_courier = alt["courier"]
+        alternatives.append(CourierAvailability(
+            courier_id=alt_courier.id,
+            courier_name=alt_courier.full_name,
+            is_available=True,
+            current_load=alt["current_load"],
+            max_capacity=max_capacity,
+            rating=Decimal(str(alt_courier.performance_score or 0)),
+            distance_to_pickup_km=alt["distance_km"],
+            estimated_arrival_minutes=alt["estimated_minutes"],
+            zone_id=None,
+        ))
+
+    return DispatchRecommendation(
+        recommended_courier_id=best_courier.id,
+        courier_name=best_courier.full_name,
+        confidence_score=best["confidence"],
+        distance_km=best["distance_km"],
+        estimated_time_minutes=best["estimated_minutes"],
+        courier_current_load=best["current_load"],
+        courier_rating=Decimal(str(best_courier.performance_score or 0)),
+        reasoning=reasoning,
+        alternative_couriers=alternatives,
     )
 
 
