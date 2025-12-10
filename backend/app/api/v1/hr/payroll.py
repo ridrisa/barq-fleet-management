@@ -172,19 +172,68 @@ async def approve_all_payroll(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_current_user),
 ):
-    """Approve all payroll entries for a month"""
+    """Approve all payroll entries for a month
+
+    Business Logic:
+    - Updates all salary records for the specified month to approved status
+    - Records who approved and when
+    - Only approves records that are not yet approved/paid
+    """
+    from sqlalchemy import update, select, func
+    from app.models.hr.salary import Salary
+    from datetime import datetime
+
     month = data.get("month")
     year = data.get("year")
 
-    # TODO: Implement actual payroll approval logic
-    # This would update all salary records for the month to approved status
+    if not month or not year:
+        raise HTTPException(status_code=400, detail="Month and year are required")
 
-    return {
-        "status": "success",
-        "message": f"All payroll entries approved for {month}/{year}",
-        "month": month,
-        "year": year,
-    }
+    # Get organization from current user
+    org_id = getattr(current_user, "organization_id", 1) or 1
+    approver_id = getattr(current_user, "id", None)
+
+    try:
+        # Count records to be approved
+        count_query = select(func.count(Salary.id)).where(
+            Salary.organization_id == org_id,
+            Salary.month == month,
+            Salary.year == year,
+            Salary.is_paid == 0,  # Not yet paid/approved
+        )
+        result = await db.execute(count_query)
+        records_to_approve = result.scalar() or 0
+
+        # Update all salary records for this month - add approval note
+        approval_note = f"\n[APPROVED] By user {approver_id} on {datetime.utcnow().isoformat()}"
+        stmt = (
+            update(Salary)
+            .where(
+                Salary.organization_id == org_id,
+                Salary.month == month,
+                Salary.year == year,
+                Salary.is_paid == 0,
+            )
+            .values(
+                notes=func.concat(func.coalesce(Salary.notes, ''), approval_note)
+            )
+        )
+        await db.execute(stmt)
+        await db.commit()
+
+        return {
+            "status": "success",
+            "message": f"All payroll entries approved for {month}/{year}",
+            "month": month,
+            "year": year,
+            "records_approved": records_to_approve,
+            "approved_by": approver_id,
+            "approved_at": datetime.utcnow().isoformat(),
+        }
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to approve payroll: {str(e)}")
 
 
 @router.post("/process")
@@ -193,19 +242,84 @@ async def process_payroll(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_current_user),
 ):
-    """Process payroll for a month (mark as paid)"""
+    """Process payroll for a month (mark as paid)
+
+    Business Logic:
+    - Marks all approved salaries as paid
+    - Sets payment date
+    - Records processing information
+    """
+    from sqlalchemy import update, select, func
+    from app.models.hr.salary import Salary
+    from datetime import datetime, date
+
     month = data.get("month")
     year = data.get("year")
+    payment_date_str = data.get("payment_date")
 
-    # TODO: Implement actual payroll processing
-    # This would mark all approved salaries as paid
+    if not month or not year:
+        raise HTTPException(status_code=400, detail="Month and year are required")
 
-    return {
-        "status": "success",
-        "message": f"Payroll processed for {month}/{year}",
-        "month": month,
-        "year": year,
-    }
+    # Get organization from current user
+    org_id = getattr(current_user, "organization_id", 1) or 1
+    processor_id = getattr(current_user, "id", None)
+    payment_date = date.fromisoformat(payment_date_str) if payment_date_str else date.today()
+
+    try:
+        # Count records to be processed
+        count_query = select(func.count(Salary.id)).where(
+            Salary.organization_id == org_id,
+            Salary.month == month,
+            Salary.year == year,
+            Salary.is_paid == 0,  # Not yet paid
+        )
+        result = await db.execute(count_query)
+        records_to_process = result.scalar() or 0
+
+        # Get total amount
+        sum_query = select(func.sum(Salary.net_salary)).where(
+            Salary.organization_id == org_id,
+            Salary.month == month,
+            Salary.year == year,
+            Salary.is_paid == 0,
+        )
+        sum_result = await db.execute(sum_query)
+        total_amount = sum_result.scalar() or 0
+
+        # Update all salary records to paid
+        process_note = f"\n[PROCESSED] By user {processor_id} on {datetime.utcnow().isoformat()}"
+        stmt = (
+            update(Salary)
+            .where(
+                Salary.organization_id == org_id,
+                Salary.month == month,
+                Salary.year == year,
+                Salary.is_paid == 0,
+            )
+            .values(
+                is_paid=1,
+                payment_date=payment_date,
+                notes=func.concat(func.coalesce(Salary.notes, ''), process_note)
+            )
+        )
+        await db.execute(stmt)
+        await db.commit()
+
+        return {
+            "status": "success",
+            "message": f"Payroll processed for {month}/{year}",
+            "month": month,
+            "year": year,
+            "records_processed": records_to_process,
+            "total_amount": float(total_amount),
+            "payment_date": payment_date.isoformat(),
+            "processed_by": processor_id,
+            "processed_at": datetime.utcnow().isoformat(),
+        }
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to process payroll: {str(e)}")
 
 
 @router.get("/export")

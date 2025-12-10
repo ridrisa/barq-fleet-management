@@ -404,19 +404,86 @@ def get_compliance_report(
     - Trend analysis
     - Performance by zone/courier
     """
-    # TODO: Implement comprehensive compliance reporting with organization_id filter
-    # For now, return placeholder
+    from datetime import datetime, timedelta
     from decimal import Decimal
+    from sqlalchemy import func
+    from app.models.operations.sla import SLATracking
+
+    # Calculate date range
+    now = datetime.utcnow()
+    if period == "week":
+        start_date = now - timedelta(days=7)
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+    elif period == "quarter":
+        start_date = now - timedelta(days=90)
+    else:  # year
+        start_date = now - timedelta(days=365)
+
+    # Base query
+    base_query = db.query(SLATracking).filter(
+        SLATracking.organization_id == current_org.id,
+        SLATracking.start_time >= start_date,
+    )
+
+    if sla_type:
+        base_query = base_query.filter(SLATracking.sla_type == sla_type.value)
+
+    # Calculate metrics
+    total_tracked = base_query.count()
+    total_met = base_query.filter(SLATracking.status == "met").count()
+    total_breached = base_query.filter(SLATracking.is_breached == True).count()
+    total_at_risk = base_query.filter(SLATracking.status == "at_risk").count()
+
+    # Compliance rate
+    compliance_rate = (total_met / total_tracked * 100) if total_tracked > 0 else 0.0
+
+    # Average variance (for met SLAs)
+    met_records = base_query.filter(
+        SLATracking.status == "met",
+        SLATracking.actual_value.isnot(None),
+        SLATracking.target_value.isnot(None),
+    ).all()
+
+    avg_variance = 0.0
+    if met_records:
+        variances = []
+        for r in met_records:
+            if r.target_value and r.actual_value:
+                variance = ((float(r.actual_value) - float(r.target_value)) / float(r.target_value)) * 100
+                variances.append(variance)
+        if variances:
+            avg_variance = sum(variances) / len(variances)
+
+    # Total penalties
+    total_penalties = db.query(func.sum(SLATracking.penalty_amount)).filter(
+        SLATracking.organization_id == current_org.id,
+        SLATracking.start_time >= start_date,
+        SLATracking.penalty_amount.isnot(None),
+    ).scalar() or Decimal("0.0")
+
+    # Top breach reasons
+    breach_reasons = db.query(
+        SLATracking.breach_reason,
+        func.count(SLATracking.id).label("count")
+    ).filter(
+        SLATracking.organization_id == current_org.id,
+        SLATracking.start_time >= start_date,
+        SLATracking.is_breached == True,
+        SLATracking.breach_reason.isnot(None),
+    ).group_by(SLATracking.breach_reason).order_by(func.count(SLATracking.id).desc()).limit(5).all()
+
+    top_breach_reasons = [{"reason": r[0], "count": r[1]} for r in breach_reasons]
 
     return SLAComplianceReport(
         period=period,
         sla_type=sla_type or SLAType.DELIVERY_TIME,
-        total_tracked=0,
-        total_met=0,
-        total_breached=0,
-        total_at_risk=0,
-        compliance_rate=0.0,
-        avg_variance_percentage=0.0,
-        total_penalties=Decimal("0.0"),
-        top_breach_reasons=[],
+        total_tracked=total_tracked,
+        total_met=total_met,
+        total_breached=total_breached,
+        total_at_risk=total_at_risk,
+        compliance_rate=compliance_rate,
+        avg_variance_percentage=avg_variance,
+        total_penalties=Decimal(str(total_penalties)),
+        top_breach_reasons=top_breach_reasons,
     )
