@@ -1,10 +1,8 @@
 from sqlalchemy import Column, Date, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
-from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
 from app.models.mixins import TenantMixin
-from app.models.hr.payroll_category import PayrollCategory
 
 
 class Salary(TenantMixin, BaseModel):
@@ -24,12 +22,8 @@ class Salary(TenantMixin, BaseModel):
     month = Column(Integer, nullable=False)
     year = Column(Integer, nullable=False)
 
-    # Category-based payroll fields
-    category = Column(
-        SQLEnum(PayrollCategory, values_callable=lambda e: [m.value for m in e]),
-        nullable=True,
-        comment="Payroll category used for calculation"
-    )
+    # Category-based payroll fields (stored as string to match DB VARCHAR)
+    category = Column(String(50), nullable=True, comment="Payroll category used for calculation")
 
     # Period dates (25th to 24th calculation period)
     period_start = Column(Date, nullable=True, comment="Calculation period start date")

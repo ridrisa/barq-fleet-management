@@ -113,8 +113,8 @@ def convert_salary(salary: Salary) -> SalaryType:
         courier_id=salary.courier_id,
         month=salary.month,
         year=salary.year,
-        # Category-based payroll fields
-        category=salary.category.value if salary.category else None,
+        # Category-based payroll fields (stored as string in DB)
+        category=salary.category,
         period_start=salary.period_start,
         period_end=salary.period_end,
         # Performance metrics (from BigQuery)
