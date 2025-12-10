@@ -1,8 +1,8 @@
 import axios from 'axios'
 import { addSentryBreadcrumb, captureException } from './sentry'
 
-// API base URL - hardcoded for development, use env in production
-const baseURL = 'http://localhost:8000/api/v1'
+// API base URL - use env variable, fallback to localhost for development
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
 
 // Debug: log the baseURL in development
 if (import.meta.env.DEV) {
