@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Truck, Settings, Fuel, TrendingUp, Download } from 'lucide-react'
 import { KPICard, LineChart, BarChart, PieChart, AreaChart, Select, DateRangePicker, Button, Card, CardContent, Table, Spinner } from '@/components/ui'
 import { vehiclesAPI, maintenanceAPI, fuelTrackingAPI } from '@/lib/api'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 export default function FleetAnalytics() {
   const [dateRange, setDateRange] = useState({
@@ -95,7 +96,31 @@ export default function FleetAnalytics() {
   const utilizationRate = totalVehicles > 0 ? ((activeVehicles / totalVehicles) * 100).toFixed(1) : '0.0'
 
   const handleExport = () => {
-    // TODO: Implement export functionality
+    const exportData = {
+      summary: {
+        totalVehicles,
+        activeVehicles,
+        underMaintenance,
+        utilizationRate: `${utilizationRate}%`,
+        reportDate: new Date().toISOString(),
+        dateRange: `${dateRange.start} to ${dateRange.end}`,
+      },
+      topVehiclesByUtilization,
+      maintenanceSchedule,
+      fuelEfficiency,
+      vehicleUsageData,
+      maintenanceCostData,
+    }
+
+    // Export to Excel with multiple sheets
+    exportToExcelMultiSheet([
+      { name: 'Summary', data: [exportData.summary] },
+      { name: 'Top Vehicles', data: topVehiclesByUtilization },
+      { name: 'Maintenance Schedule', data: maintenanceSchedule },
+      { name: 'Fuel Efficiency', data: fuelEfficiency },
+      { name: 'Usage Trend', data: vehicleUsageData },
+      { name: 'Maintenance Costs', data: maintenanceCostData },
+    ], `fleet-analytics-${dateRange.start}-${dateRange.end}`)
   }
 
   if (vehiclesLoading) {

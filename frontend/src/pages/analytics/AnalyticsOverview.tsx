@@ -3,11 +3,13 @@ import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Spinner } from '@/components/ui/Spinner'
 import { DateRangePicker } from '@/components/ui/DateRangePicker'
+import { Button } from '@/components/ui/Button'
 import { LineChart } from '@/components/ui/LineChart'
 import { BarChart } from '@/components/ui/BarChart'
 import { AreaChart } from '@/components/ui/AreaChart'
 import { analyticsAPI } from '@/lib/api'
-import { TrendingUp, TrendingDown, Truck, Users, Package, DollarSign } from 'lucide-react'
+import { TrendingUp, TrendingDown, Truck, Users, Package, DollarSign, Download } from 'lucide-react'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 export default function AnalyticsOverview() {
   const [dateRange, setDateRange] = useState({
@@ -45,15 +47,49 @@ export default function AnalyticsOverview() {
     top_performers = []
   } = dashboardData || {}
 
+  const handleExport = () => {
+    const summaryData = [{
+      'Total Deliveries': kpis.total_deliveries || 0,
+      'Deliveries Change': `${kpis.deliveries_change || 0}%`,
+      'Active Couriers': kpis.active_couriers || 0,
+      'Fleet Size': kpis.fleet_size || 0,
+      'Total Revenue': `${kpis.total_revenue || 0} SAR`,
+      'Period': `${dateRange.start} to ${dateRange.end}`,
+    }]
+
+    const sheets = [{ name: 'Summary', data: summaryData }]
+
+    if (delivery_trend.length > 0) {
+      sheets.push({ name: 'Delivery Trend', data: delivery_trend })
+    }
+    if (revenue_trend.length > 0) {
+      sheets.push({ name: 'Revenue Trend', data: revenue_trend })
+    }
+    if (fleet_utilization.length > 0) {
+      sheets.push({ name: 'Fleet Utilization', data: fleet_utilization })
+    }
+    if (top_performers.length > 0) {
+      sheets.push({ name: 'Top Performers', data: top_performers })
+    }
+
+    exportToExcelMultiSheet(sheets, `analytics-overview-${dateRange.start}-${dateRange.end}`)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Analytics Overview</h1>
-        <DateRangePicker
-          startDate={dateRange.start}
-          endDate={dateRange.end}
-          onRangeChange={(start, end) => setDateRange({ start, end })}
-        />
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <DateRangePicker
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            onRangeChange={(start, end) => setDateRange({ start, end })}
+          />
+        </div>
       </div>
 
       {/* Summary KPI Cards */}

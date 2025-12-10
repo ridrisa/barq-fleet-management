@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Users, UserCheck, Calendar, TrendingDown, Download } from 'lucide-react'
 import { KPICard, LineChart, BarChart, Button, DateRangePicker, Card, CardContent, Table, Spinner, Badge } from '@/components/ui'
 import { couriersAPI, leavesAPI, attendanceAPI } from '@/lib/api'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 export default function HRAnalytics() {
   const [dateRange, setDateRange] = useState({
@@ -29,8 +30,23 @@ export default function HRAnalytics() {
   })
 
   const handleExportExcel = () => {
-    console.log('Exporting to Excel...')
-    // TODO: Implement Excel export functionality
+    exportToExcelMultiSheet([
+      { name: 'Summary', data: [{
+        totalEmployees,
+        activeEmployees,
+        onLeave,
+        turnoverRate: `${turnoverRate}%`,
+        reportDate: new Date().toISOString(),
+        dateRange: `${dateRange.start} to ${dateRange.end}`,
+      }]},
+      { name: 'Headcount Trend', data: headcountTrendData },
+      { name: 'Leave Balance', data: leaveBalanceData },
+      { name: 'Salary Distribution', data: salaryDistributionData },
+      { name: 'Attendance Trend', data: attendanceTrendData },
+      { name: 'Leave Requests', data: leaveRequestsThisMonth },
+      { name: 'Salary Summary', data: salarySummary },
+      { name: 'Attendance Issues', data: attendanceIssues },
+    ], `hr-analytics-${dateRange.start}-${dateRange.end}`)
   }
 
   // Mock data for charts

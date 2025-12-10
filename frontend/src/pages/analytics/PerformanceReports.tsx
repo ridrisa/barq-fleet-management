@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Card, CardContent, Button, Select, DateRangePicker, LineChart, BarChart } from '@/components/ui'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 export default function PerformanceReports() {
   const [dateRange, setDateRange] = useState({
@@ -35,11 +36,27 @@ export default function PerformanceReports() {
   }
 
   const handleExportExcel = () => {
-    console.log('Exporting to Excel...')
+    if (reportData.length === 0) {
+      alert('Please generate a report first')
+      return
+    }
+
+    const summaryData = [{
+      'Metrics': selectedMetrics.join(', '),
+      'Group By': groupBy,
+      'Period': `${dateRange.start} to ${dateRange.end}`,
+      'Records': reportData.length,
+    }]
+
+    exportToExcelMultiSheet([
+      { name: 'Summary', data: summaryData },
+      { name: 'Report Data', data: reportData },
+    ], `performance-report-${dateRange.start}-${dateRange.end}`)
   }
 
   const handleExportPDF = () => {
-    console.log('Exporting to PDF...')
+    // PDF export would require a separate library like jsPDF
+    alert('PDF export coming soon. Use Excel export for now.')
   }
 
   return (

@@ -17,7 +17,9 @@ import {
   UserCheck,
   Briefcase,
   Target,
+  Download,
 } from 'lucide-react'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 export default function KPIDashboard() {
   const [timePeriod, setTimePeriod] = useState('month')
@@ -101,8 +103,27 @@ export default function KPIDashboard() {
   }
 
   const exportDashboard = () => {
-    // Mock PDF export
-    alert('Exporting dashboard as PDF...\n\nThis would generate a PDF report with all visible KPIs and their current values.')
+    const exportData = visibleKPIs.map(kpi => {
+      const data = kpiData[kpi.id as keyof typeof kpiData]
+      return {
+        'KPI': kpi.title,
+        'Category': kpi.category,
+        'Value': data.value,
+        'Change': `${data.change}%`,
+        'Trend': data.trend,
+      }
+    })
+
+    const summaryData = [{
+      'Time Period': timePeriod,
+      'Total KPIs Displayed': visibleKPIs.length,
+      'Export Date': new Date().toISOString(),
+    }]
+
+    exportToExcelMultiSheet([
+      { name: 'Summary', data: summaryData },
+      { name: 'KPI Data', data: exportData },
+    ], `kpi-dashboard-${timePeriod}-${new Date().toISOString().split('T')[0]}`)
   }
 
   const resetLayout = () => {
@@ -147,8 +168,8 @@ export default function KPIDashboard() {
             onClick={exportDashboard}
             className="flex items-center gap-2"
           >
-            <FileText className="w-4 h-4" />
-            Export PDF
+            <Download className="w-4 h-4" />
+            Export Excel
           </Button>
         </div>
       </div>

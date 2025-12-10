@@ -1,0 +1,29 @@
+# Production Terraform Variables Example
+# Copy this file to terraform.tfvars and fill in the values
+# DO NOT commit terraform.tfvars to version control
+
+project_id          = "barq-fleet"
+region              = "me-central1"
+artifact_registry   = "me-central1-docker.pkg.dev"
+repository_name     = "barq-artifacts"
+vpc_network_id      = "projects/barq-fleet/global/networks/default"
+
+# Database
+db_user     = "barq_app"
+db_password = "CHANGE_ME_SECURE_PASSWORD"
+database_url = "postgresql://barq_app:PASSWORD@PRIVATE_IP:5432/barq_production"
+
+# Security
+secret_key = "CHANGE_ME_GENERATE_SECURE_KEY"
+
+# Google OAuth
+google_client_id     = "your-client-id.apps.googleusercontent.com"
+google_client_secret = "your-client-secret"
+
+# Monitoring
+sentry_dsn  = "https://your-dsn@sentry.io/your-project"
+alert_email = "ops@barq.com"
+slack_webhook_url = "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+
+# Scaling
+enable_read_replica = false

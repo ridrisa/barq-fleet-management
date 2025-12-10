@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { DollarSign, TrendingUp, TrendingDown, PieChart as PieIcon, Download } from 'lucide-react'
 import { KPICard, LineChart, PieChart, AreaChart, BarChart, Select, DateRangePicker, Button, Card, CardContent, Table, Spinner } from '@/components/ui'
 import { dashboardAPI, expensesAPI } from '@/lib/api'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 export default function FinancialAnalytics() {
   const [dateRange, setDateRange] = useState({
@@ -23,7 +24,27 @@ export default function FinancialAnalytics() {
   })
 
   const handleExport = () => {
-    // TODO: Implement export functionality
+    const summaryData = [{
+      'Revenue': `${currentMonth.revenue.toLocaleString()} SAR`,
+      'Expenses': `${currentMonth.expenses.toLocaleString()} SAR`,
+      'Profit': `${currentMonth.profit.toLocaleString()} SAR`,
+      'ROI': `${(currentMonth.profit / currentMonth.expenses * 100).toFixed(1)}%`,
+      'Revenue Change': `${revenueChange}%`,
+      'Expenses Change': `${expensesChange}%`,
+      'Profit Change': `${profitChange}%`,
+      'Period': `${dateRange.start} to ${dateRange.end}`,
+    }]
+
+    exportToExcelMultiSheet([
+      { name: 'Summary', data: summaryData },
+      { name: 'Revenue vs Expenses', data: revenueExpensesData },
+      { name: 'Cost Categories', data: costCategoriesData },
+      { name: 'Profit Margin Trend', data: profitMarginData },
+      { name: 'Cash Flow', data: cashFlowData },
+      { name: 'Top Expense Categories', data: topExpenseCategories },
+      { name: 'Profitability by Service', data: profitabilityByService },
+      { name: 'Budget Status', data: budgetStatus },
+    ], `financial-analytics-${dateRange.start}-${dateRange.end}`)
   }
 
   // Mock data

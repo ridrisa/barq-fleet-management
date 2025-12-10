@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { KPICard, BarChart, PieChart, AreaChart, DateRangePicker } from '@/components/ui'
+import { KPICard, BarChart, PieChart, AreaChart, DateRangePicker, Button } from '@/components/ui'
+import { Download } from 'lucide-react'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 export default function DeliveryAnalytics() {
   const [dateRange, setDateRange] = useState({
@@ -42,15 +44,39 @@ export default function DeliveryAnalytics() {
     { zone: 'Central', deliveries: 521, avgTime: 22 },
   ]
 
+  const handleExport = () => {
+    const summaryData = [{
+      'Success Rate': '95.4%',
+      'Failed Deliveries': 128,
+      'Avg Delivery Time': '26 min',
+      'Total Deliveries': 2856,
+      'Period': `${dateRange.start} to ${dateRange.end}`,
+    }]
+
+    exportToExcelMultiSheet([
+      { name: 'Summary', data: summaryData },
+      { name: 'Deliveries by Hour', data: deliveriesByHourData },
+      { name: 'Success Rate Trend', data: successRateTrendData },
+      { name: 'Failure Reasons', data: failureReasonsData },
+      { name: 'Delivery Zones', data: deliveryZonesData },
+    ], `delivery-analytics-${dateRange.start}-${dateRange.end}`)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Delivery Analytics</h1>
-        <DateRangePicker
-          startDate={dateRange.start}
-          endDate={dateRange.end}
-          onRangeChange={(start, end) => setDateRange({ start, end })}
-        />
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <DateRangePicker
+            startDate={dateRange.start}
+            endDate={dateRange.end}
+            onRangeChange={(start, end) => setDateRange({ start, end })}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

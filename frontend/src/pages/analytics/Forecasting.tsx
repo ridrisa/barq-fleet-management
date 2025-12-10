@@ -18,6 +18,7 @@ import {
   DollarSign,
   Users,
 } from 'lucide-react'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 type ForecastAlgorithm = 'linear' | 'exponential' | 'seasonal' | 'arima'
 type ForecastPeriod = 7 | 14 | 30 | 60 | 90
@@ -135,15 +136,27 @@ export default function Forecasting() {
   }
 
   const handleExportForecast = () => {
-    alert(
-      'Exporting Forecast Data...\n\n' +
-      'This would generate a file with:\n' +
-      '- Forecast parameters and settings\n' +
-      '- Delivery volume predictions with confidence intervals\n' +
-      '- Revenue forecasts\n' +
-      '- Resource requirement projections\n' +
-      '- Historical accuracy metrics'
-    )
+    const parametersData = [{
+      'Forecast Period': `${forecastPeriod} days`,
+      'Algorithm': algorithm,
+      'Confidence Level': `${confidenceLevel}%`,
+      'Generated At': new Date().toISOString(),
+    }]
+
+    const accuracyData = [{
+      'MAPE': `${accuracyMetrics.mape}%`,
+      'RMSE': accuracyMetrics.rmse,
+      'R²': accuracyMetrics.r2,
+      'Last Month Accuracy': `${accuracyMetrics.lastMonthAccuracy}%`,
+    }]
+
+    exportToExcelMultiSheet([
+      { name: 'Parameters', data: parametersData },
+      { name: 'Delivery Forecast', data: forecastData },
+      { name: 'Revenue Forecast', data: revenueForecastData },
+      { name: 'Resource Requirements', data: resourceForecastData },
+      { name: 'Historical Accuracy', data: accuracyData },
+    ], `forecast-${forecastPeriod}days-${new Date().toISOString().split('T')[0]}`)
   }
 
   const resetForecast = () => {

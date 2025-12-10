@@ -13,6 +13,7 @@ import {
   Table,
 } from '@/components/ui'
 import { Download, TrendingUp, Package, CheckCircle, Clock, DollarSign } from 'lucide-react'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 export default function OperationsAnalytics() {
   const [dateRange, setDateRange] = useState({
@@ -100,15 +101,21 @@ export default function OperationsAnalytics() {
 
   // Export to Excel functionality
   const exportToExcel = () => {
-    alert(
-      'Exporting Operations Analytics to Excel...\n\n' +
-      'This would generate an Excel file with:\n' +
-      '- Summary statistics\n' +
-      '- Daily delivery data\n' +
-      '- Zone-wise breakdown\n' +
-      '- Status distribution\n' +
-      '- COD collection trends'
-    )
+    const summaryExport = [{
+      'Total Deliveries': summaryData.totalDeliveries.value,
+      'Success Rate': summaryData.successRate.value,
+      'Avg Delivery Time': summaryData.avgTime.value,
+      'COD Collected': summaryData.codCollected.value,
+      'Period': `${dateRange.start} to ${dateRange.end}`,
+    }]
+
+    exportToExcelMultiSheet([
+      { name: 'Summary', data: summaryExport },
+      { name: 'Delivery Trends', data: deliveryTrendData },
+      { name: 'Deliveries by Zone', data: deliveriesByZoneData },
+      { name: 'Delivery Status', data: deliveryStatusData },
+      { name: 'COD Trends', data: codTrendData },
+    ], `operations-analytics-${dateRange.start}-${dateRange.end}`)
   }
 
   // Calculate additional metrics

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Card, CardContent, Button, Select, Input, Badge } from '@/components/ui'
+import { Download } from 'lucide-react'
+import { exportToExcelMultiSheet } from '@/utils/export'
 
 interface ReportTemplate {
   id: string
@@ -84,6 +86,30 @@ export default function CustomReports() {
 
   const handleDeleteTemplate = (id: string) => {
     setSavedTemplates(savedTemplates.filter(t => t.id !== id))
+  }
+
+  const handleExportTemplate = (template: ReportTemplate) => {
+    // Mock data generation based on template configuration
+    const mockReportData = Array.from({ length: 10 }, (_, i) => {
+      const row: Record<string, any> = { id: i + 1 }
+      template.dimensions.forEach(dim => {
+        row[dim] = `${dim}_value_${i + 1}`
+      })
+      template.metrics.forEach(metric => {
+        row[metric] = Math.floor(Math.random() * 1000)
+      })
+      return row
+    })
+
+    exportToExcelMultiSheet([
+      { name: 'Report Config', data: [{
+        name: template.name,
+        dimensions: template.dimensions.join(', '),
+        metrics: template.metrics.join(', '),
+        schedule: template.schedule || 'None'
+      }]},
+      { name: 'Report Data', data: mockReportData },
+    ], `custom-report-${template.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}`)
   }
 
   return (
@@ -229,8 +255,12 @@ export default function CustomReports() {
                         </div>
                       )}
                     </div>
-                    <div className="mt-2">
+                    <div className="mt-2 flex gap-2">
                       <Button size="sm" variant="outline">Run Report</Button>
+                      <Button size="sm" variant="outline" onClick={() => handleExportTemplate(template)}>
+                        <Download className="w-3 h-3 mr-1" />
+                        Export
+                      </Button>
                     </div>
                   </div>
                 ))}
