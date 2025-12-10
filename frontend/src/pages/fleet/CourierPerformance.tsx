@@ -136,7 +136,7 @@ export default function CourierPerformance() {
       header: 'On-Time Rate',
       sortable: true,
       render: (row: any) => {
-        const rate = row.on_time_rate || 0
+        const rate = Number(row.on_time_rate) || 0
         const isGood = rate >= 95
         return (
           <div className="flex items-center gap-2">
@@ -157,7 +157,7 @@ export default function CourierPerformance() {
       header: 'Rating',
       sortable: true,
       render: (row: any) => {
-        const rating = row.rating || 0
+        const rating = Number(row.rating) || 0
         return (
           <div className="flex items-center gap-1">
             <span className="text-yellow-500">★</span>
@@ -189,8 +189,8 @@ export default function CourierPerformance() {
       key: 'status',
       header: 'Status',
       render: (row: any) => {
-        const onTimeRate = row.on_time_rate || 0
-        const rating = row.rating || 0
+        const onTimeRate = Number(row.on_time_rate) || 0
+        const rating = Number(row.rating) || 0
         const isExcellent = onTimeRate >= 95 && rating >= 4.5
         const isGood = onTimeRate >= 90 && rating >= 4.0
 
@@ -380,7 +380,7 @@ export default function CourierPerformance() {
                       </div>
                     </div>
                     <Badge variant="success">
-                      {courier.on_time_rate?.toFixed(1)}% on-time
+                      {Number(courier.on_time_rate || 0).toFixed(1)}% on-time
                     </Badge>
                   </div>
                 ))}
@@ -410,7 +410,7 @@ export default function CourierPerformance() {
                     </div>
                     <div className="flex items-center gap-1">
                       <span className="text-yellow-500">★</span>
-                      <span className="font-bold">{courier.rating?.toFixed(1)}</span>
+                      <span className="font-bold">{Number(courier.rating || 0).toFixed(1)}</span>
                     </div>
                   </div>
                 ))}

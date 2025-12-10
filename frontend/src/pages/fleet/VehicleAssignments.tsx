@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
 import { Pagination } from '@/components/ui/Pagination'
 import { Spinner } from '@/components/ui/Spinner'
-import { assignmentsAPI } from '@/lib/api'
+import { assignmentsAPI, couriersAPI, vehiclesAPI } from '@/lib/api'
 import { useCRUD } from '@/hooks/useCRUD'
 import { AssignmentForm, AssignmentFormData } from '@/components/forms/AssignmentForm'
 
@@ -32,6 +32,18 @@ export default function VehicleAssignments() {
   } = useQuery({
     queryKey: ['current-assignments'],
     queryFn: () => assignmentsAPI.getCurrentAssignments(),
+  })
+
+  // Fetch couriers for the assignment form dropdown
+  const { data: couriersData = [] } = useQuery({
+    queryKey: ['couriers-for-assignment'],
+    queryFn: () => couriersAPI.getAll(0, 1000),
+  })
+
+  // Fetch vehicles for the assignment form dropdown
+  const { data: vehiclesData = [] } = useQuery({
+    queryKey: ['vehicles-for-assignment'],
+    queryFn: () => vehiclesAPI.getAll(),
   })
 
   // Apply search filter
@@ -269,6 +281,8 @@ export default function VehicleAssignments() {
           onCancel={handleCloseModal}
           isLoading={isMutating}
           mode="create"
+          couriers={Array.isArray(couriersData) ? couriersData.map((c: any) => ({ id: String(c.id), name: c.full_name || c.name || 'Unknown' })) : []}
+          vehicles={Array.isArray(vehiclesData) ? vehiclesData.map((v: any) => ({ id: String(v.id), plate_number: v.plate_number || 'No plate' })) : []}
         />
       </Modal>
     </div>

@@ -92,7 +92,6 @@ export default function Layout() {
         { label: 'Vehicles', path: '/fleet/vehicles', icon: null },
         { label: 'Live Tracking', path: '/fleet/live-tracking', icon: null },
         { label: 'Assignments', path: '/fleet/assignments', icon: null },
-        { label: 'Fuel Tracking', path: '/fleet/fuel', icon: null },
         { label: 'Maintenance', path: '/fleet/maintenance', icon: null },
         { label: 'Performance', path: '/fleet/performance', icon: null },
         { label: 'Documents', path: '/fleet/documents', icon: null },
