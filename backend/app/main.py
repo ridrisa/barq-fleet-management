@@ -106,9 +106,22 @@ def create_app() -> FastAPI:
     )
 
     # CORS middleware - must be added FIRST (runs last in the stack, wrapping everything)
+    # Use environment-specific origins from settings, fallback to all for dev
+    cors_origins = settings.BACKEND_CORS_ORIGINS if settings.BACKEND_CORS_ORIGINS else ["*"]
+
+    # In staging/production, always include the Cloud Run URLs
+    if settings.ENVIRONMENT.lower() in ["staging", "production"]:
+        staging_origins = [
+            "https://barq-web-staging-frydalfroq-ww.a.run.app",
+            "https://barq-web-staging-869422381378.me-central1.run.app",
+            "http://localhost:3000",
+            "http://localhost:5173",
+        ]
+        cors_origins = list(set(cors_origins + staging_origins))
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Allow all origins in development
+        allow_origins=cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
