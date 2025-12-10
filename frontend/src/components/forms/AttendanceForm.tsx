@@ -1,20 +1,65 @@
-import { useState, FormEvent } from 'react'
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Form, FormField, FormSection, FormActions } from './Form'
 
-export interface AttendanceFormData {
-  courier_id: string
-  date: string
-  check_in?: string
-  check_out?: string
-  status: 'present' | 'absent' | 'half_day' | 'late' | 'on_leave'
-  hours_worked?: number
-  overtime_hours?: number
-  location?: string
-  notes?: string
-}
+/**
+ * Attendance status enum
+ */
+const attendanceStatusSchema = z.enum([
+  'present',
+  'absent',
+  'half_day',
+  'late',
+  'on_leave',
+])
+
+/**
+ * Attendance form validation schema
+ */
+export const attendanceFormSchema = z.object({
+  courier_id: z.string().min(1, 'Courier is required'),
+  date: z.string().min(1, 'Date is required'),
+  check_in: z.string(),
+  check_out: z.string(),
+  status: attendanceStatusSchema,
+  hours_worked: z.number().nonnegative(),
+  overtime_hours: z.number().nonnegative(),
+  location: z.string().max(200),
+  notes: z.string().max(500),
+}).refine(
+  (data) => {
+    // Validate check-in is required for present/late status
+    if ((data.status === 'present' || data.status === 'late') && !data.check_in) {
+      return false
+    }
+    return true
+  },
+  {
+    message: 'Check-in time is required for present status',
+    path: ['check_in'],
+  }
+).refine(
+  (data) => {
+    // Validate check-out is after check-in
+    if (data.check_in && data.check_out) {
+      const checkIn = new Date(`2000-01-01T${data.check_in}`)
+      const checkOut = new Date(`2000-01-01T${data.check_out}`)
+      return checkOut > checkIn
+    }
+    return true
+  },
+  {
+    message: 'Check-out must be after check-in',
+    path: ['check_out'],
+  }
+)
+
+export type AttendanceFormData = z.infer<typeof attendanceFormSchema>
 
 export interface AttendanceFormProps {
   initialData?: Partial<AttendanceFormData>
@@ -25,6 +70,15 @@ export interface AttendanceFormProps {
   couriers?: Array<{ id: string; name: string }>
 }
 
+const calculateHours = (checkIn: string, checkOut: string): number => {
+  if (!checkIn || !checkOut) return 0
+  const start = new Date(`2000-01-01T${checkIn}`)
+  const end = new Date(`2000-01-01T${checkOut}`)
+  const diffMs = end.getTime() - start.getTime()
+  const hours = diffMs / (1000 * 60 * 60)
+  return Math.max(0, Math.round(hours * 100) / 100)
+}
+
 export const AttendanceForm = ({
   initialData,
   onSubmit,
@@ -33,100 +87,58 @@ export const AttendanceForm = ({
   mode = 'create',
   couriers = [],
 }: AttendanceFormProps) => {
-  const [formData, setFormData] = useState<AttendanceFormData>({
-    courier_id: initialData?.courier_id || '',
-    date: initialData?.date || new Date().toISOString().split('T')[0],
-    check_in: initialData?.check_in || '',
-    check_out: initialData?.check_out || '',
-    status: initialData?.status || 'present',
-    hours_worked: initialData?.hours_worked || 0,
-    overtime_hours: initialData?.overtime_hours || 0,
-    location: initialData?.location || '',
-    notes: initialData?.notes || '',
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<AttendanceFormData>({
+    resolver: zodResolver(attendanceFormSchema),
+    defaultValues: {
+      courier_id: initialData?.courier_id || '',
+      date: initialData?.date || new Date().toISOString().split('T')[0],
+      check_in: initialData?.check_in || '',
+      check_out: initialData?.check_out || '',
+      status: initialData?.status || 'present',
+      hours_worked: initialData?.hours_worked || 0,
+      overtime_hours: initialData?.overtime_hours || 0,
+      location: initialData?.location || '',
+      notes: initialData?.notes || '',
+    },
+    mode: 'onBlur',
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof AttendanceFormData, string>>>({})
+  const checkIn = watch('check_in')
+  const checkOut = watch('check_out')
+  const status = watch('status')
 
-  const calculateHours = (checkIn: string, checkOut: string): number => {
-    if (!checkIn || !checkOut) return 0
-    const start = new Date(`2000-01-01T${checkIn}`)
-    const end = new Date(`2000-01-01T${checkOut}`)
-    const diffMs = end.getTime() - start.getTime()
-    const hours = diffMs / (1000 * 60 * 60)
-    return Math.max(0, Math.round(hours * 100) / 100)
+  // Auto-calculate hours when check-in/check-out change
+  useEffect(() => {
+    if (checkIn && checkOut) {
+      const hours = calculateHours(checkIn, checkOut)
+      setValue('hours_worked', hours)
+      setValue('overtime_hours', Math.max(0, hours - 8))
+    }
+  }, [checkIn, checkOut, setValue])
+
+  const onFormSubmit = async (data: AttendanceFormData) => {
+    await onSubmit(data)
   }
 
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof AttendanceFormData, string>> = {}
-
-    if (!formData.courier_id) {
-      newErrors.courier_id = 'Courier is required'
-    }
-
-    if (!formData.date) {
-      newErrors.date = 'Date is required'
-    }
-
-    if (formData.status === 'present' || formData.status === 'late') {
-      if (!formData.check_in) {
-        newErrors.check_in = 'Check-in time is required for present status'
-      }
-    }
-
-    if (formData.check_in && formData.check_out) {
-      const checkIn = new Date(`2000-01-01T${formData.check_in}`)
-      const checkOut = new Date(`2000-01-01T${formData.check_out}`)
-      if (checkOut <= checkIn) {
-        newErrors.check_out = 'Check-out must be after check-in'
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    if (!validate()) {
-      return
-    }
-
-    await onSubmit(formData)
-  }
-
-  const handleChange = (field: keyof AttendanceFormData, value: string | number) => {
-    const updatedData = { ...formData, [field]: value }
-
-    // Auto-calculate hours worked when check-in/out times change
-    if (field === 'check_in' || field === 'check_out') {
-      const hours = calculateHours(
-        field === 'check_in' ? value as string : formData.check_in || '',
-        field === 'check_out' ? value as string : formData.check_out || ''
-      )
-      updatedData.hours_worked = hours
-
-      // Calculate overtime (over 8 hours)
-      updatedData.overtime_hours = Math.max(0, hours - 8)
-    }
-
-    setFormData(updatedData)
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
-  }
+  const loading = isLoading || isSubmitting
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="Attendance Record"
         description="Record courier attendance for the day"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Courier" required error={errors.courier_id}>
+          <FormField label="Courier" required error={errors.courier_id?.message}>
             <Select
-              value={formData.courier_id}
-              onChange={(e) => handleChange('courier_id', e.target.value)}
+              value={watch('courier_id')}
+              onChange={(e) => setValue('courier_id', e.target.value, { shouldValidate: true })}
               options={[
                 { value: '', label: 'Select a courier...' },
                 ...couriers.map((c) => ({ value: c.id, label: c.name })),
@@ -135,18 +147,17 @@ export const AttendanceForm = ({
             />
           </FormField>
 
-          <FormField label="Date" required error={errors.date}>
+          <FormField label="Date" required error={errors.date?.message}>
             <Input
               type="date"
-              value={formData.date}
-              onChange={(e) => handleChange('date', e.target.value)}
+              {...register('date')}
             />
           </FormField>
 
-          <FormField label="Status" required>
+          <FormField label="Status" required error={errors.status?.message}>
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              value={status}
+              onChange={(e) => setValue('status', e.target.value as AttendanceFormData['status'], { shouldValidate: true })}
               options={[
                 { value: 'present', label: 'Present' },
                 { value: 'absent', label: 'Absent' },
@@ -157,10 +168,9 @@ export const AttendanceForm = ({
             />
           </FormField>
 
-          <FormField label="Location">
+          <FormField label="Location" error={errors.location?.message}>
             <Input
-              value={formData.location}
-              onChange={(e) => handleChange('location', e.target.value)}
+              {...register('location')}
               placeholder="Work location or branch"
             />
           </FormField>
@@ -172,19 +182,17 @@ export const AttendanceForm = ({
         description="Check-in and check-out times"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Check-in Time" error={errors.check_in}>
+          <FormField label="Check-in Time" error={errors.check_in?.message}>
             <Input
               type="time"
-              value={formData.check_in}
-              onChange={(e) => handleChange('check_in', e.target.value)}
+              {...register('check_in')}
             />
           </FormField>
 
-          <FormField label="Check-out Time" error={errors.check_out}>
+          <FormField label="Check-out Time" error={errors.check_out?.message}>
             <Input
               type="time"
-              value={formData.check_out}
-              onChange={(e) => handleChange('check_out', e.target.value)}
+              {...register('check_out')}
             />
           </FormField>
 
@@ -192,8 +200,7 @@ export const AttendanceForm = ({
             <Input
               type="number"
               step="0.01"
-              value={formData.hours_worked}
-              onChange={(e) => handleChange('hours_worked', parseFloat(e.target.value))}
+              {...register('hours_worked', { valueAsNumber: true })}
               disabled
             />
           </FormField>
@@ -202,8 +209,7 @@ export const AttendanceForm = ({
             <Input
               type="number"
               step="0.01"
-              value={formData.overtime_hours}
-              onChange={(e) => handleChange('overtime_hours', parseFloat(e.target.value))}
+              {...register('overtime_hours', { valueAsNumber: true })}
               disabled
             />
           </FormField>
@@ -214,23 +220,24 @@ export const AttendanceForm = ({
         title="Additional Information"
         description="Notes and comments"
       >
-        <FormField label="Notes">
+        <FormField label="Notes" error={errors.notes?.message}>
           <Input
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
+            {...register('notes')}
             placeholder="Any special notes or observations..."
           />
         </FormField>
       </FormSection>
 
       <FormActions>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : mode === 'create' ? 'Record Attendance' : 'Update Attendance'}
+        <Button type="submit" disabled={loading}>
+          {loading ? 'Saving...' : mode === 'create' ? 'Record Attendance' : 'Update Attendance'}
         </Button>
       </FormActions>
     </Form>
   )
 }
+
+export default AttendanceForm
