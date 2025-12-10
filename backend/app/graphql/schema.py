@@ -35,11 +35,13 @@ from app.graphql.types import (
     AuthResponse,
     CityType,
     CourierAuthType,
+    CourierCreateInput,
     CourierSigninInput,
     DeliveryListResponse,
     DeliveryStatusGQL,
     DeliveryTypeGQL,
     DeliveryUpdateResponse,
+    EnsureCourierResponse,
     LeaderboardEntry,
     LeaderboardResponse,
     LocationInput,
@@ -874,6 +876,61 @@ class Mutation:
         """Mark delivery as failed"""
         input_data = UpdateDeliveryStatusInput(status=DeliveryStatusGQL.FAILED, notes=reason)
         return self.update_delivery_status(info, delivery_id, input_data)
+
+    # ============================================
+    # COURIER MUTATIONS (for driver-app auto-registration)
+    # ============================================
+
+    @strawberry.mutation
+    def ensure_courier(self, info: Info, input: CourierCreateInput) -> EnsureCourierResponse:
+        """
+        Ensure a courier exists in the system.
+        If the courier with the given barq_id exists, return their ID.
+        If not, create a new courier profile with the provided data.
+        Used by driver-app when a BARQ Fleet user logs in but doesn't exist in our DB.
+        """
+        db = get_db_session(info)
+        try:
+            from app.models.fleet.courier import Courier, CourierStatus
+
+            # First, try to find existing courier by barq_id
+            existing = db.query(Courier).filter(Courier.barq_id == input.barq_id).first()
+            if existing:
+                return EnsureCourierResponse(
+                    success=True,
+                    message="Courier already exists",
+                    courier_id=existing.id,
+                    created=False
+                )
+
+            # Create new courier with minimal data
+            new_courier = Courier(
+                barq_id=input.barq_id,
+                full_name=input.full_name,
+                mobile_number=input.mobile_number,
+                email=input.email,
+                city=input.city,
+                status=CourierStatus.ACTIVE,  # Auto-created couriers are active
+                organization_id=1,  # Default organization
+            )
+            db.add(new_courier)
+            db.commit()
+            db.refresh(new_courier)
+
+            return EnsureCourierResponse(
+                success=True,
+                message="Courier created successfully",
+                courier_id=new_courier.id,
+                created=True
+            )
+        except Exception as e:
+            db.rollback()
+            return EnsureCourierResponse(
+                success=False,
+                message=f"Failed to ensure courier: {str(e)}",
+                courier_id=None,
+                created=False
+            )
 
     # ============================================
     # LOCATION TRACKING MUTATIONS (for driver-app)

@@ -574,3 +574,27 @@ class DeliveryUpdateResponse:
     message: str
     delivery_id: Optional[str] = None
     status: Optional[DeliveryStatusGQL] = None
+
+
+# ============================================
+# COURIER MUTATION INPUT TYPES
+# ============================================
+
+
+@strawberry.input
+class CourierCreateInput:
+    """Input for creating/ensuring a courier exists from driver app login"""
+    barq_id: str  # The BARQ ID from login
+    full_name: str
+    mobile_number: str
+    email: Optional[str] = None
+    city: Optional[str] = None
+
+
+@strawberry.type
+class EnsureCourierResponse:
+    """Response for ensure courier mutation"""
+    success: bool
+    message: str
+    courier_id: Optional[int] = None
+    created: bool = False  # True if courier was created, False if already existed
