@@ -47,6 +47,15 @@ class Settings:
         # Redis (optional - for token blacklist, rate limiting, caching)
         self.REDIS_URL: Optional[str] = os.getenv("REDIS_URL")
 
+        # Google BigQuery (for performance analytics)
+        self.BIGQUERY_PROJECT_ID: str = os.getenv(
+            "BIGQUERY_PROJECT_ID", "looker-barqdata-2030"
+        )
+        self.BIGQUERY_DATASET: str = os.getenv("BIGQUERY_DATASET", "master_saned")
+        self.BIGQUERY_CREDENTIALS_PATH: Optional[str] = os.getenv(
+            "GOOGLE_APPLICATION_CREDENTIALS"
+        )
+
         # CORS
         self.BACKEND_CORS_ORIGINS: List[str] = self._load_cors_origins()
 

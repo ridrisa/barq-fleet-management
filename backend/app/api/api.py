@@ -29,6 +29,9 @@ from app.api.v1.fms import router as fms_router
 # Platform integration router
 from app.api.v1.platforms import router as platforms_router
 
+# External integrations (BigQuery, etc.)
+from app.api.v1.integrations import router as integrations_router
+
 api_router = APIRouter()
 
 # Authentication & Core
@@ -58,3 +61,6 @@ api_router.include_router(fms_router, prefix="/fms", tags=["fms"])
 
 # Platform integration routes
 api_router.include_router(platforms_router, tags=["platforms"])
+
+# External integrations (BigQuery, etc.)
+api_router.include_router(integrations_router, prefix="/integrations", tags=["integrations"])
