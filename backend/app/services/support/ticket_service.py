@@ -1,14 +1,47 @@
-"""Ticket Service"""
+"""Consolidated Ticket Service
 
+This module consolidates ticket-related services:
+- Ticket management (CRUD, SLA, escalation, merge, bulk operations)
+- Ticket reply management
+- Canned response management
+- Ticket template management
+- Contact form submission (auto-creates tickets)
+"""
+
+import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, extract, func, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
-from app.models.support import EscalationLevel, Ticket, TicketCategory, TicketPriority, TicketStatus
-from app.schemas.support import TicketCreate, TicketUpdate
+from app.models.support import (
+    CannedResponse,
+    EscalationLevel,
+    Ticket,
+    TicketCategory,
+    TicketPriority,
+    TicketReply,
+    TicketStatus,
+    TicketTemplate,
+)
+from app.schemas.support import (
+    CannedResponseCreate,
+    CannedResponseUpdate,
+    TicketCreate,
+    TicketReplyCreate,
+    TicketReplyUpdate,
+    TicketTemplateCreate,
+    TicketTemplateUpdate,
+    TicketUpdate,
+)
 from app.services.base import CRUDBase
+
+
+# =============================================================================
+# Ticket Service
+# =============================================================================
 
 
 class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
@@ -174,13 +207,18 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
             .all()
         )
 
-    def assign_ticket(self, db: Session, *, ticket_id: int, assigned_to: int) -> Optional[Ticket]:
+    def assign_ticket(self, db: Session, *, ticket_id: int, user_id: int = None, assigned_to: int = None) -> Optional[Ticket]:
         """Assign a ticket to a user"""
+        # Support both user_id and assigned_to parameters for backward compatibility
+        assignee = user_id or assigned_to
+        if not assignee:
+            return None
+
         ticket = db.query(self.model).filter(self.model.id == ticket_id).first()
         if not ticket:
             return None
 
-        ticket.assigned_to = assigned_to
+        ticket.assigned_to = assignee
 
         # If ticket is open, move it to in_progress
         if ticket.status == TicketStatus.OPEN:
@@ -646,4 +684,525 @@ class TicketService(CRUDBase[Ticket, TicketCreate, TicketUpdate]):
         return self.create(db, obj_in=obj_in, created_by=user_id)
 
 
+# =============================================================================
+# Ticket Reply Service
+# =============================================================================
+
+
+class TicketReplyService(CRUDBase[TicketReply, TicketReplyCreate, TicketReplyUpdate]):
+    """Service for ticket reply operations"""
+
+    def get_by_ticket(
+        self,
+        db: Session,
+        *,
+        ticket_id: int,
+        skip: int = 0,
+        limit: int = 100,
+        include_internal: bool = True,
+    ) -> List[TicketReply]:
+        """
+        Get all replies for a specific ticket
+
+        Args:
+            db: Database session
+            ticket_id: Ticket ID
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+            include_internal: Whether to include internal notes
+
+        Returns:
+            List of ticket replies
+        """
+        query = db.query(self.model).filter(self.model.ticket_id == ticket_id)
+
+        if not include_internal:
+            query = query.filter(self.model.is_internal == 0)
+
+        return query.order_by(self.model.created_at.asc()).offset(skip).limit(limit).all()
+
+    def get_by_user(
+        self, db: Session, *, user_id: int, skip: int = 0, limit: int = 100
+    ) -> List[TicketReply]:
+        """
+        Get all replies by a specific user
+
+        Args:
+            db: Database session
+            user_id: User ID
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+
+        Returns:
+            List of ticket replies
+        """
+        return (
+            db.query(self.model)
+            .filter(self.model.user_id == user_id)
+            .order_by(self.model.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def count_by_ticket(self, db: Session, *, ticket_id: int) -> int:
+        """Count replies for a ticket"""
+        return db.query(self.model).filter(self.model.ticket_id == ticket_id).count()
+
+
+# =============================================================================
+# Canned Response Service
+# =============================================================================
+
+
+class CannedResponseService(CRUDBase[CannedResponse, CannedResponseCreate, CannedResponseUpdate]):
+    """Service for canned response management"""
+
+    def create_response(
+        self, db: Session, *, obj_in: CannedResponseCreate, created_by: int
+    ) -> CannedResponse:
+        """Create a new canned response"""
+        obj_in_data = obj_in.model_dump()
+        obj_in_data["created_by"] = created_by
+
+        db_obj = self.model(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def get_by_shortcut(self, db: Session, *, shortcut: str) -> Optional[CannedResponse]:
+        """Get canned response by shortcut"""
+        return db.query(self.model).filter(self.model.shortcut == shortcut).first()
+
+    def get_by_title(self, db: Session, *, title: str) -> Optional[CannedResponse]:
+        """Get canned response by title"""
+        return db.query(self.model).filter(self.model.title == title).first()
+
+    def get_active_responses(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CannedResponse]:
+        """Get all active canned responses"""
+        return (
+            db.query(self.model)
+            .filter(self.model.is_active == True)
+            .order_by(self.model.category, self.model.title)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_public_responses(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[CannedResponse]:
+        """Get all public and active canned responses"""
+        return (
+            db.query(self.model)
+            .filter(self.model.is_active == True, self.model.is_public == True)
+            .order_by(self.model.category, self.model.title)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_category(
+        self, db: Session, *, category: str, skip: int = 0, limit: int = 100
+    ) -> List[CannedResponse]:
+        """Get canned responses by category"""
+        return (
+            db.query(self.model)
+            .filter(self.model.is_active == True, self.model.category == category)
+            .order_by(self.model.title)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_categories(self, db: Session) -> Dict[str, int]:
+        """Get list of categories with counts"""
+        result = (
+            db.query(self.model.category, func.count(self.model.id).label("count"))
+            .filter(self.model.is_active == True)
+            .group_by(self.model.category)
+            .all()
+        )
+        return {category: count for category, count in result}
+
+    def search_responses(
+        self, db: Session, *, query: str, skip: int = 0, limit: int = 100
+    ) -> List[CannedResponse]:
+        """Search canned responses by title or content"""
+        return (
+            db.query(self.model)
+            .filter(
+                self.model.is_active == True,
+                (
+                    self.model.title.ilike(f"%{query}%")
+                    | self.model.content.ilike(f"%{query}%")
+                    | self.model.shortcut.ilike(f"%{query}%")
+                ),
+            )
+            .order_by(self.model.usage_count.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def increment_usage(self, db: Session, *, response_id: int) -> Optional[CannedResponse]:
+        """Increment usage count for a canned response"""
+        response = self.get(db, id=response_id)
+        if not response:
+            return None
+
+        response.usage_count += 1
+        db.commit()
+        db.refresh(response)
+        return response
+
+    def get_rendered_content(
+        self, db: Session, *, response_id: int, variables: Dict[str, str]
+    ) -> Optional[str]:
+        """Get canned response content with variables replaced"""
+        response = self.get(db, id=response_id)
+        if not response:
+            return None
+
+        content = response.content
+        for key, value in variables.items():
+            content = content.replace(f"{{{key}}}", value)
+
+        # Increment usage
+        response.usage_count += 1
+        db.commit()
+
+        return content
+
+    def get_top_used(self, db: Session, *, limit: int = 10) -> List[CannedResponse]:
+        """Get most used canned responses"""
+        return (
+            db.query(self.model)
+            .filter(self.model.is_active == True)
+            .order_by(self.model.usage_count.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def activate_response(self, db: Session, *, response_id: int) -> Optional[CannedResponse]:
+        """Activate a canned response"""
+        response = self.get(db, id=response_id)
+        if not response:
+            return None
+
+        response.is_active = True
+        db.commit()
+        db.refresh(response)
+        return response
+
+    def deactivate_response(self, db: Session, *, response_id: int) -> Optional[CannedResponse]:
+        """Deactivate a canned response"""
+        response = self.get(db, id=response_id)
+        if not response:
+            return None
+
+        response.is_active = False
+        db.commit()
+        db.refresh(response)
+        return response
+
+
+# =============================================================================
+# Ticket Template Service
+# =============================================================================
+
+
+class TicketTemplateService(CRUDBase[TicketTemplate, TicketTemplateCreate, TicketTemplateUpdate]):
+    """Service for ticket template management"""
+
+    def create_template(
+        self, db: Session, *, obj_in: TicketTemplateCreate, created_by: int
+    ) -> TicketTemplate:
+        """Create a new ticket template"""
+        obj_in_data = obj_in.model_dump()
+        obj_in_data["created_by"] = created_by
+
+        db_obj = self.model(**obj_in_data)
+        db.add(db_obj)
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def get_by_name(self, db: Session, *, name: str) -> Optional[TicketTemplate]:
+        """Get template by name"""
+        return db.query(self.model).filter(self.model.name == name).first()
+
+    def get_active_templates(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[TicketTemplate]:
+        """Get all active templates"""
+        return (
+            db.query(self.model)
+            .filter(self.model.is_active == True)
+            .order_by(self.model.name)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_public_templates(
+        self, db: Session, *, skip: int = 0, limit: int = 100
+    ) -> List[TicketTemplate]:
+        """Get all public and active templates"""
+        return (
+            db.query(self.model)
+            .filter(self.model.is_active == True, self.model.is_public == True)
+            .order_by(self.model.name)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_category(
+        self, db: Session, *, category: TicketCategory, skip: int = 0, limit: int = 100
+    ) -> List[TicketTemplate]:
+        """Get templates by default category"""
+        return (
+            db.query(self.model)
+            .filter(self.model.is_active == True, self.model.default_category == category)
+            .order_by(self.model.name)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def create_ticket_from_template(
+        self, db: Session, *, template_id: int, created_by: int, overrides: Optional[dict] = None
+    ) -> Optional[Ticket]:
+        """Create a ticket using a template"""
+        template = self.get(db, id=template_id)
+        if not template:
+            return None
+
+        # Build ticket data from template
+        ticket_data = {
+            "subject": template.default_subject or "New Ticket",
+            "description": template.default_description or "No description provided",
+            "category": template.default_category or TicketCategory.OTHER,
+            "priority": template.default_priority or TicketPriority.MEDIUM,
+            "department": template.default_department,
+            "tags": template.default_tags,
+            "custom_fields": template.default_custom_fields,
+            "template_id": template_id,
+            "created_by": created_by,
+        }
+
+        # Apply overrides
+        if overrides:
+            for key, value in overrides.items():
+                if value is not None and key in ticket_data:
+                    ticket_data[key] = value
+
+        # Generate ticket ID
+        today = datetime.now()
+        date_prefix = today.strftime("%Y%m%d")
+        today_count = (
+            db.query(func.count(Ticket.id))
+            .filter(func.date(Ticket.created_at) == today.date())
+            .scalar()
+            or 0
+        )
+        ticket_data["ticket_id"] = f"TKT-{date_prefix}-{(today_count + 1):03d}"
+
+        # Create ticket
+        ticket = Ticket(**ticket_data)
+        db.add(ticket)
+
+        # Set SLA if configured in template
+        if template.sla_hours:
+            ticket.sla_due_at = datetime.now(timezone.utc) + timedelta(hours=template.sla_hours)
+
+        db.commit()
+        db.refresh(ticket)
+        return ticket
+
+    def activate_template(self, db: Session, *, template_id: int) -> Optional[TicketTemplate]:
+        """Activate a template"""
+        template = self.get(db, id=template_id)
+        if not template:
+            return None
+
+        template.is_active = True
+        db.commit()
+        db.refresh(template)
+        return template
+
+    def deactivate_template(self, db: Session, *, template_id: int) -> Optional[TicketTemplate]:
+        """Deactivate a template"""
+        template = self.get(db, id=template_id)
+        if not template:
+            return None
+
+        template.is_active = False
+        db.commit()
+        db.refresh(template)
+        return template
+
+
+# =============================================================================
+# Contact Support Service
+# =============================================================================
+
+
+class ContactSupportService:
+    """Service for handling contact form submissions"""
+
+    def submit_contact_form(
+        self,
+        db: Session,
+        *,
+        name: str,
+        email: str,
+        subject: str,
+        message: str,
+        phone: Optional[str] = None,
+        department: Optional[str] = None,
+        urgency: str = "normal",
+    ) -> Dict:
+        """
+        Handle contact form submission and optionally create a ticket
+
+        Args:
+            db: Database session
+            name: Contact name
+            email: Contact email
+            subject: Message subject
+            message: Message content
+            phone: Optional phone number
+            department: Optional department to route to
+            urgency: Urgency level (normal, high, critical)
+
+        Returns:
+            Dictionary with submission result
+        """
+        # Generate reference number
+        reference_number = f"REF-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
+
+        # Determine priority based on urgency
+        priority_map = {
+            "normal": TicketPriority.MEDIUM,
+            "high": TicketPriority.HIGH,
+            "critical": TicketPriority.URGENT,
+        }
+        priority = priority_map.get(urgency, TicketPriority.MEDIUM)
+
+        # Auto-create ticket
+        today = datetime.now()
+        date_prefix = today.strftime("%Y%m%d")
+        today_count = (
+            db.query(func.count(Ticket.id))
+            .filter(func.date(Ticket.created_at) == today.date())
+            .scalar()
+            or 0
+        )
+
+        ticket_id = f"TKT-{date_prefix}-{(today_count + 1):03d}"
+
+        # Map department to category if possible
+        category = TicketCategory.OTHER
+        if department:
+            department_category_map = {
+                "technical": TicketCategory.TECHNICAL,
+                "billing": TicketCategory.BILLING,
+                "delivery": TicketCategory.DELIVERY,
+                "complaint": TicketCategory.COMPLAINT,
+                "hr": TicketCategory.HR,
+                "finance": TicketCategory.FINANCE,
+                "operations": TicketCategory.OPERATIONS,
+                "it": TicketCategory.IT,
+            }
+            category = department_category_map.get(department.lower(), TicketCategory.OTHER)
+
+        # Create ticket
+        ticket = Ticket(
+            ticket_id=ticket_id,
+            subject=subject,
+            description=f"Contact Form Submission\n\nFrom: {name}\nEmail: {email}\nPhone: {phone or 'N/A'}\n\n{message}",
+            category=category,
+            priority=priority,
+            status=TicketStatus.OPEN,
+            contact_email=email,
+            contact_phone=phone,
+            department=department,
+            tags="contact-form",
+        )
+
+        db.add(ticket)
+        db.commit()
+        db.refresh(ticket)
+
+        # Determine estimated response time based on urgency
+        response_times = {"normal": "24-48 hours", "high": "12-24 hours", "critical": "2-4 hours"}
+        estimated_response_time = response_times.get(urgency, "24-48 hours")
+
+        return {
+            "success": True,
+            "message": "Your message has been received. We will get back to you shortly.",
+            "ticket_id": ticket.ticket_id,
+            "reference_number": reference_number,
+            "estimated_response_time": estimated_response_time,
+        }
+
+    def get_departments(self) -> list:
+        """Get list of available departments for contact routing"""
+        return [
+            {
+                "name": "Technical Support",
+                "email": "technical@barq.sa",
+                "phone": "+966-XXX-XXX-XXXX",
+                "hours": "Sunday - Thursday, 8 AM - 6 PM",
+                "description": "For technical issues and system problems",
+                "average_response_time": "4-8 hours",
+            },
+            {
+                "name": "Billing & Finance",
+                "email": "billing@barq.sa",
+                "phone": "+966-XXX-XXX-XXXX",
+                "hours": "Sunday - Thursday, 9 AM - 5 PM",
+                "description": "For billing inquiries and payment issues",
+                "average_response_time": "12-24 hours",
+            },
+            {
+                "name": "Delivery Operations",
+                "email": "operations@barq.sa",
+                "phone": "+966-XXX-XXX-XXXX",
+                "hours": "24/7",
+                "description": "For delivery-related inquiries",
+                "average_response_time": "2-4 hours",
+            },
+            {
+                "name": "Human Resources",
+                "email": "hr@barq.sa",
+                "phone": "+966-XXX-XXX-XXXX",
+                "hours": "Sunday - Thursday, 9 AM - 5 PM",
+                "description": "For HR and employment inquiries",
+                "average_response_time": "24-48 hours",
+            },
+            {
+                "name": "General Inquiries",
+                "email": "info@barq.sa",
+                "phone": "+966-XXX-XXX-XXXX",
+                "hours": "Sunday - Thursday, 9 AM - 5 PM",
+                "description": "For general questions and information",
+                "average_response_time": "24-48 hours",
+            },
+        ]
+
+
+# =============================================================================
+# Service Instances
+# =============================================================================
+
 ticket_service = TicketService(Ticket)
+ticket_reply_service = TicketReplyService(TicketReply)
+canned_response_service = CannedResponseService(CannedResponse)
+ticket_template_service = TicketTemplateService(TicketTemplate)
+contact_support_service = ContactSupportService()
