@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_organization, get_current_user, get_db
-from app.crud.operations.document import operations_document
+from app.services.operations import operations_document_service_service
 from app.models.operations.document import DocumentCategory
 from app.models.tenant.organization import Organization
 from app.models.user import User
@@ -48,7 +48,7 @@ def get_documents(
 
     # Search or filter
     if search:
-        return operations_document.search(
+        return operations_document_service.search(
             db,
             query=search,
             category=doc_category,
@@ -58,11 +58,11 @@ def get_documents(
         )
 
     if doc_category:
-        return operations_document.get_by_category(
+        return operations_document_service.get_by_category(
             db, category=doc_category, skip=skip, limit=limit, organization_id=current_org.id
         )
 
-    return operations_document.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
+    return operations_document_service.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
 
 
 @router.post("/", response_model=OperationsDocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -81,7 +81,7 @@ def create_document(
         doc_data["uploaded_by_id"] = current_user.id
 
     doc_create = OperationsDocumentCreate(**doc_data)
-    return operations_document.create(db, obj_in=doc_create, organization_id=current_org.id)
+    return operations_document_service.create(db, obj_in=doc_create, organization_id=current_org.id)
 
 
 @router.get("/{document_id}", response_model=OperationsDocumentResponse)
@@ -92,7 +92,7 @@ def get_document(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get document by ID"""
-    doc = operations_document.get(db, id=document_id)
+    doc = operations_document_service.get(db, id=document_id)
     if not doc or doc.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Document not found")
     return doc
@@ -107,11 +107,11 @@ def update_document(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update document"""
-    doc = operations_document.get(db, id=document_id)
+    doc = operations_document_service.get(db, id=document_id)
     if not doc or doc.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    return operations_document.update(db, db_obj=doc, obj_in=document_in)
+    return operations_document_service.update(db, db_obj=doc, obj_in=document_in)
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -122,11 +122,11 @@ def delete_document(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete document"""
-    doc = operations_document.get(db, id=document_id)
+    doc = operations_document_service.get(db, id=document_id)
     if not doc or doc.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    operations_document.remove(db, id=document_id)
+    operations_document_service.remove(db, id=document_id)
     return None
 
 
@@ -139,11 +139,11 @@ def record_view(
 ):
     """Record document view and return document"""
     # Verify document belongs to organization
-    existing = operations_document.get(db, id=document_id)
+    existing = operations_document_service.get(db, id=document_id)
     if not existing or existing.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    doc = operations_document.increment_view_count(db, doc_id=document_id)
+    doc = operations_document_service.increment_view_count(db, doc_id=document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return doc
@@ -158,11 +158,11 @@ def record_download(
 ):
     """Record document download and return document with file URL"""
     # Verify document belongs to organization
-    existing = operations_document.get(db, id=document_id)
+    existing = operations_document_service.get(db, id=document_id)
     if not existing or existing.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    doc = operations_document.increment_download_count(db, doc_id=document_id)
+    doc = operations_document_service.increment_download_count(db, doc_id=document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return doc

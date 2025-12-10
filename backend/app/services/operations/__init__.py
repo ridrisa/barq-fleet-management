@@ -9,6 +9,7 @@ from app.services.operations.feedback_service import (
 )
 from app.services.operations.handover_service import handover_service
 from app.services.operations.incident_service import incident_service
+from app.services.operations.operations_document_service import operations_document_service
 from app.services.operations.quality_service import (
     quality_inspection_service,
     quality_metric_service,
@@ -51,4 +52,6 @@ __all__ = [
     "sla_threshold_service",
     "notification_setting_service",
     "zone_default_service",
+    # Documents
+    "operations_document_service",
 ]

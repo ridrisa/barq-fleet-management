@@ -1,5 +1,5 @@
 """
-Operations Document CRUD
+Operations Document Service
 """
 
 from typing import List, Optional
@@ -7,15 +7,15 @@ from typing import List, Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.crud.base import CRUDBase
+from app.services.base import CRUDBase
 from app.models.operations.document import DocumentCategory, OperationsDocument
 from app.schemas.operations.document import OperationsDocumentCreate, OperationsDocumentUpdate
 
 
-class CRUDOperationsDocument(
+class OperationsDocumentService(
     CRUDBase[OperationsDocument, OperationsDocumentCreate, OperationsDocumentUpdate]
 ):
-    """CRUD operations for operations documents"""
+    """Service for operations documents"""
 
     def create(
         self, db: Session, *, obj_in: OperationsDocumentCreate, organization_id: int = None
@@ -95,4 +95,4 @@ class CRUDOperationsDocument(
         return q.order_by(self.model.created_at.desc()).offset(skip).limit(limit).all()
 
 
-operations_document = CRUDOperationsDocument(OperationsDocument)
+operations_document_service = OperationsDocumentService(OperationsDocument)
