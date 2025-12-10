@@ -119,17 +119,17 @@ export const salaryRecordSchema = z.object({
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2020).max(2100),
   basic_salary: z.number().nonnegative(),
-  housing_allowance: z.number().nonnegative().optional().default(0),
-  transportation_allowance: z.number().nonnegative().optional().default(0),
-  food_allowance: z.number().nonnegative().optional().default(0),
-  overtime_hours: z.number().nonnegative().optional().default(0),
-  overtime_rate: z.number().nonnegative().optional().default(1.5),
-  bonus: z.number().nonnegative().optional().default(0),
-  commission: z.number().nonnegative().optional().default(0),
-  deductions: z.number().nonnegative().optional().default(0),
-  loan_deduction: z.number().nonnegative().optional().default(0),
-  gosi_deduction: z.number().nonnegative().optional().default(0),
-  notes: z.string().max(500).optional(),
+  housing_allowance: z.number().nonnegative(),
+  transportation_allowance: z.number().nonnegative(),
+  food_allowance: z.number().nonnegative(),
+  overtime_hours: z.number().nonnegative(),
+  overtime_rate: z.number().nonnegative(),
+  bonus: z.number().nonnegative(),
+  commission: z.number().nonnegative(),
+  deductions: z.number().nonnegative(),
+  loan_deduction: z.number().nonnegative(),
+  gosi_deduction: z.number().nonnegative(),
+  notes: z.string().max(500),
 })
 
 export type SalaryRecordFormData = z.infer<typeof salaryRecordSchema>
@@ -215,10 +215,10 @@ export const eosCalculationSchema = z.object({
     'death',
   ]),
   final_basic_salary: z.number().positive('Basic salary is required'),
-  unpaid_leave_days: z.number().int().nonnegative().optional().default(0),
-  pending_loan_amount: z.number().nonnegative().optional().default(0),
-  other_deductions: z.number().nonnegative().optional().default(0),
-  notes: z.string().max(1000).optional(),
+  unpaid_leave_days: z.number().int().nonnegative(),
+  pending_loan_amount: z.number().nonnegative(),
+  other_deductions: z.number().nonnegative(),
+  notes: z.string().max(1000),
 })
 
 export type EOSCalculationFormData = z.infer<typeof eosCalculationSchema>

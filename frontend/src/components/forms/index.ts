@@ -36,3 +36,11 @@ export * from './HandoverForm'
 export * from './QualityControlForm'
 export * from './DocumentUploadForm'
 export * from './IncidentReportingForm'
+
+// HR & Finance Forms (Zod Validated)
+export * from './LeaveForm'
+export * from './SalaryForm'
+export * from './EOSForm'
+export * from './PayrollForm'
+export * from './GOSIForm'
+export * from './FinancialReportForm'
