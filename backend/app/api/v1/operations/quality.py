@@ -2,12 +2,17 @@ from datetime import date
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
+from app.models.operations.quality import QualityInspection
 from app.models.tenant.organization import Organization
-from app.services.operations import quality_inspection_service, quality_metric_service
+from app.models.user import User
+from app.services.fleet.courier import courier_service
+from app.services.fleet.vehicle import vehicle_service
+from app.services.operations import delivery_service, quality_inspection_service, quality_metric_service
 from app.schemas.operations.quality import (
     QualityInspectionComplete,
     QualityInspectionCreate,
@@ -250,8 +255,41 @@ def create_inspection(
     - Assigns inspector if provided
     - Sets scheduled date
     """
-    # TODO: Validate courier/vehicle/delivery exists
-    # TODO: Validate inspector exists
+    # Validate courier exists if provided
+    if inspection_in.courier_id:
+        courier = courier_service.get(db, id=inspection_in.courier_id)
+        if not courier:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Courier with ID {inspection_in.courier_id} not found",
+            )
+
+    # Validate vehicle exists if provided
+    if inspection_in.vehicle_id:
+        vehicle = vehicle_service.get(db, id=inspection_in.vehicle_id)
+        if not vehicle:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Vehicle with ID {inspection_in.vehicle_id} not found",
+            )
+
+    # Validate delivery exists if provided
+    if inspection_in.delivery_id:
+        delivery = delivery_service.get(db, id=inspection_in.delivery_id)
+        if not delivery:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Delivery with ID {inspection_in.delivery_id} not found",
+            )
+
+    # Validate inspector exists if provided
+    if inspection_in.inspector_id:
+        inspector = db.query(User).filter(User.id == inspection_in.inspector_id).first()
+        if not inspector:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Inspector (User) with ID {inspection_in.inspector_id} not found",
+            )
 
     inspection = quality_inspection_service.create_with_number(
         db, obj_in=inspection_in, organization_id=current_org.id
@@ -364,16 +402,105 @@ def get_quality_report(
     - Top violation types
     - Trend analysis
     """
-    # TODO: Implement comprehensive reporting with organization_id filter
-    # For now, return placeholder
+    # Build base query with organization filter
+    query = db.query(QualityInspection).filter(
+        QualityInspection.organization_id == current_org.id
+    )
+
+    # Apply date filters if provided
+    if start_date and end_date:
+        query = query.filter(
+            and_(
+                QualityInspection.scheduled_date >= start_date,
+                QualityInspection.scheduled_date <= end_date,
+            )
+        )
+
+    # Get all inspections for calculations
+    all_inspections = query.all()
+
+    # Total inspections conducted (completed ones)
+    completed_inspections = [
+        i for i in all_inspections if i.passed is not None
+    ]
+    total_inspections = len(completed_inspections)
+
+    # Passed and failed counts
+    passed_inspections = sum(1 for i in completed_inspections if i.passed is True)
+    failed_inspections = sum(1 for i in completed_inspections if i.passed is False)
+
+    # Pass rate
+    pass_rate = (
+        round((passed_inspections / total_inspections) * 100, 2)
+        if total_inspections > 0
+        else 0.0
+    )
+
+    # Average overall score
+    scores = [
+        float(i.overall_score)
+        for i in completed_inspections
+        if i.overall_score is not None
+    ]
+    avg_overall_score = round(sum(scores) / len(scores), 2) if scores else 0.0
+
+    # Critical violations (sum of violations from failed inspections)
+    critical_violations = sum(
+        i.violations_count or 0
+        for i in completed_inspections
+        if i.passed is False
+    )
+
+    # Pending follow-ups
+    pending_followups = sum(
+        1 for i in all_inspections
+        if i.requires_followup is True and i.followup_completed is False
+    )
+
+    # Top violations - parse findings JSON and aggregate
+    # Since findings is stored as Text (JSON string), we need to parse it
+    violation_counts = {}
+    import json
+    for inspection in completed_inspections:
+        if inspection.findings:
+            try:
+                # Try to parse findings as JSON array
+                findings_list = json.loads(inspection.findings)
+                if isinstance(findings_list, list):
+                    for finding in findings_list:
+                        if isinstance(finding, dict):
+                            violation_type = finding.get("type", "Unknown")
+                        else:
+                            violation_type = str(finding)
+                        violation_counts[violation_type] = violation_counts.get(violation_type, 0) + 1
+                elif isinstance(findings_list, str):
+                    # Single finding as string
+                    violation_counts[findings_list] = violation_counts.get(findings_list, 0) + 1
+            except (json.JSONDecodeError, TypeError):
+                # If not valid JSON, treat findings as a single violation description
+                if inspection.findings.strip():
+                    violation_counts[inspection.findings[:100]] = (
+                        violation_counts.get(inspection.findings[:100], 0) + 1
+                    )
+
+    # Sort violations by count and take top 10
+    top_violations = sorted(
+        [{"type": k, "count": v} for k, v in violation_counts.items()],
+        key=lambda x: x["count"],
+        reverse=True,
+    )[:10]
+
+    # Determine period string
+    period = f"{start_date} to {end_date}" if start_date and end_date else "All time"
+
     return QualityReport(
-        period=f"{start_date} to {end_date}" if start_date and end_date else "All time",
-        total_inspections=0,
-        passed_inspections=0,
-        failed_inspections=0,
-        pass_rate=0.0,
-        avg_overall_score=0.0,
-        critical_violations=0,
-        pending_followups=0,
-        top_violations=[],
+        period=period,
+        total_inspections=total_inspections,
+        passed_inspections=passed_inspections,
+        failed_inspections=failed_inspections,
+        pass_rate=pass_rate,
+        avg_overall_score=avg_overall_score,
+        critical_violations=critical_violations,
+        pending_followups=pending_followups,
+        top_violations=top_violations,
     )
