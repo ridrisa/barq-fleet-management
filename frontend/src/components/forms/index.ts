@@ -25,6 +25,13 @@ export * from './BuildingForm'
 export * from './RoomForm'
 export * from './WorkflowTemplateForm'
 
+// Fleet Forms
+export * from './MaintenanceForm'
+export * from './FuelLogForm'
+export * from './ZoneForm'
+export * from './PriorityQueueForm'
+export * from './TrackingForm'
+
 // New Forms (Generated)
 export * from './PenaltyForm'
 export * from './BonusForm'
