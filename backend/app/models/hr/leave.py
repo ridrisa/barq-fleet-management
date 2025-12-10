@@ -43,3 +43,8 @@ class Leave(TenantMixin, BaseModel):
     # Relationships
     courier = relationship("Courier", back_populates="leaves")
     approver = relationship("User", foreign_keys=[approved_by])
+
+    @property
+    def courier_name(self) -> str | None:
+        """Get courier full name for frontend display"""
+        return self.courier.full_name if self.courier else None

@@ -48,5 +48,6 @@ class LeaveResponse(LeaveBase):
     approved_by: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
+    courier_name: Optional[str] = None  # Added for frontend display
 
     model_config = ConfigDict(from_attributes=True)

@@ -23,6 +23,20 @@ from app.schemas.hr.leave import (
 )
 from app.schemas.hr.loan import LoanBase, LoanCreate, LoanResponse, LoanStatus, LoanUpdate
 from app.schemas.hr.salary import SalaryBase, SalaryCreate, SalaryResponse, SalaryUpdate
+from app.schemas.hr.payroll import (
+    PayrollCategoryEnum,
+    CourierPayrollInput,
+    PeriodInput,
+    PayrollCalculationResult,
+    BatchPayrollRequest,
+    BatchPayrollResponse,
+    CourierTargetCreate,
+    CourierTargetResponse,
+    PayrollParametersCreate,
+    PayrollParametersResponse,
+    SalaryExtendedResponse,
+    PayrollSummary,
+)
 
 __all__ = [
     "LeaveType",
@@ -51,4 +65,17 @@ __all__ = [
     "AssetCreate",
     "AssetUpdate",
     "AssetResponse",
+    # Payroll
+    "PayrollCategoryEnum",
+    "CourierPayrollInput",
+    "PeriodInput",
+    "PayrollCalculationResult",
+    "BatchPayrollRequest",
+    "BatchPayrollResponse",
+    "CourierTargetCreate",
+    "CourierTargetResponse",
+    "PayrollParametersCreate",
+    "PayrollParametersResponse",
+    "SalaryExtendedResponse",
+    "PayrollSummary",
 ]

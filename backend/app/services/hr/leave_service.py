@@ -4,7 +4,7 @@ from datetime import date
 from typing import Dict, List, Optional
 
 from sqlalchemy import and_, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.hr.leave import Leave, LeaveStatus
 from app.schemas.hr.leave import LeaveCreate, LeaveUpdate
@@ -14,13 +14,28 @@ from app.services.base import CRUDBase
 class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
     """Service for leave management operations"""
 
+    def get_multi(
+        self, db: Session, *, skip: int = 0, limit: int = 100, organization_id: int | None = None
+    ) -> List[Leave]:
+        """Get multiple leave requests with courier data"""
+        query = db.query(self.model).options(joinedload(self.model.courier))
+        if organization_id:
+            query = query.filter(self.model.organization_id == organization_id)
+        return query.order_by(self.model.start_date.desc()).offset(skip).limit(limit).all()
+
     def get_by_courier(
-        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100
+        self, db: Session, *, courier_id: int, skip: int = 0, limit: int = 100, organization_id: int | None = None
     ) -> List[Leave]:
         """Get all leave requests for a courier"""
-        return (
+        query = (
             db.query(self.model)
+            .options(joinedload(self.model.courier))
             .filter(self.model.courier_id == courier_id)
+        )
+        if organization_id:
+            query = query.filter(self.model.organization_id == organization_id)
+        return (
+            query
             .order_by(self.model.start_date.desc())
             .offset(skip)
             .limit(limit)
@@ -33,6 +48,7 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         """Get leave requests by status"""
         return (
             db.query(self.model)
+            .options(joinedload(self.model.courier))
             .filter(self.model.status == status)
             .order_by(
                 self.model.requested_at.desc()
@@ -50,6 +66,7 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         """Get leave requests within a date range"""
         return (
             db.query(self.model)
+            .options(joinedload(self.model.courier))
             .filter(
                 or_(
                     and_(self.model.start_date >= start_date, self.model.start_date <= end_date),
@@ -67,7 +84,7 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         self, db: Session, *, leave_id: int, approved_by: int, notes: Optional[str] = None
     ) -> Optional[Leave]:
         """Approve a leave request"""
-        leave = db.query(self.model).filter(self.model.id == leave_id).first()
+        leave = db.query(self.model).options(joinedload(self.model.courier)).filter(self.model.id == leave_id).first()
         if not leave:
             return None
 
@@ -85,7 +102,7 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         self, db: Session, *, leave_id: int, approved_by: int, reason: Optional[str] = None
     ) -> Optional[Leave]:
         """Reject a leave request"""
-        leave = db.query(self.model).filter(self.model.id == leave_id).first()
+        leave = db.query(self.model).options(joinedload(self.model.courier)).filter(self.model.id == leave_id).first()
         if not leave:
             return None
 
@@ -101,7 +118,7 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
 
     def cancel_leave(self, db: Session, *, leave_id: int) -> Optional[Leave]:
         """Cancel a leave request"""
-        leave = db.query(self.model).filter(self.model.id == leave_id).first()
+        leave = db.query(self.model).options(joinedload(self.model.courier)).filter(self.model.id == leave_id).first()
         if not leave:
             return None
 
