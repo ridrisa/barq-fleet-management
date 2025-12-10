@@ -407,6 +407,111 @@ class BigQueryClient:
 
         return [dict(row) for row in query_job.result()]
 
+    def get_courier_payroll_data(
+        self,
+        start_date: str,
+        end_date: str,
+        barq_ids: Optional[List[int]] = None,
+        status: str = "Active",
+    ) -> List[Dict]:
+        """
+        Get courier performance data for payroll calculation for a specific period.
+
+        Per salary.txt: Period is 25th to 24th (e.g., Dec 25 - Jan 24 for January payroll)
+
+        Args:
+            start_date: Period start date (YYYY-MM-DD format)
+            end_date: Period end date (YYYY-MM-DD format)
+            barq_ids: Optional list of specific BARQ IDs to fetch
+            status: Filter by courier status (default: Active)
+
+        Returns:
+            List of courier records with aggregated performance data
+        """
+        # Build WHERE clause for BARQ_IDs if provided
+        barq_filter = ""
+        if barq_ids:
+            barq_list = ",".join(str(id) for id in barq_ids)
+            barq_filter = f"AND BARQ_ID IN ({barq_list})"
+
+        # Query aggregated data for the period
+        # Note: The ultimate table contains cumulative data, so we fetch current values
+        # For period-specific data, we'd need a different table or date-partitioned data
+        sql = f"""
+        SELECT
+            BARQ_ID,
+            Name,
+            id_number,
+            mobile_number,
+            Status,
+            SponsorshipStatus as sponsorship_status,
+            PROJECT as project,
+            Supervisor as supervisor,
+            city,
+            joining_Date as joining_date,
+            IBAN as iban,
+            Total_Orders as total_orders,
+            Total_Revenue as total_revenue,
+            Gas_Usage_without_VAT as gas_usage,
+            -- Category determination based on PROJECT field
+            CASE
+                WHEN PROJECT LIKE '%Ecommerce%WH%' OR PROJECT LIKE '%SPL%WH%' THEN 'Ecommerce WH'
+                WHEN PROJECT LIKE '%Ecommerce%' OR PROJECT LIKE '%SPL%' OR PROJECT LIKE '%Amazon%' THEN 'Ecommerce'
+                WHEN PROJECT LIKE '%Food%Trial%' THEN 'Food Trial'
+                WHEN PROJECT LIKE '%Food%New%' OR PROJECT LIKE '%In-House%New%' THEN 'Food In-House New'
+                WHEN PROJECT LIKE '%Food%Old%' OR PROJECT LIKE '%In-House%Old%' THEN 'Food In-House Old'
+                ELSE 'Motorcycle'
+            END as category
+        FROM `{self.table_ref}`
+        WHERE Status = @status
+        {barq_filter}
+        ORDER BY BARQ_ID
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("status", "STRING", status),
+            ]
+        )
+        query_job = self.client.query(sql, job_config=job_config)
+
+        return [dict(row) for row in query_job.result()]
+
+    def get_courier_targets(self, month: int, year: int) -> List[Dict]:
+        """
+        Get courier daily targets from the targets table.
+
+        Args:
+            month: Payroll month (1-12)
+            year: Payroll year
+
+        Returns:
+            List of courier targets with BARQ_ID and daily_target
+        """
+        targets_table = f"{self._project_id}.{self._dataset}.targets"
+
+        sql = f"""
+        SELECT
+            BARQ_ID,
+            daily_target,
+            category
+        FROM `{targets_table}`
+        WHERE month = @month AND year = @year
+        """
+
+        try:
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[
+                    bigquery.ScalarQueryParameter("month", "INT64", month),
+                    bigquery.ScalarQueryParameter("year", "INT64", year),
+                ]
+            )
+            query_job = self.client.query(sql, job_config=job_config)
+            return [dict(row) for row in query_job.result()]
+        except Exception as e:
+            logger.warning(f"Failed to get targets from BigQuery: {e}")
+            return []
+
     def health_check(self) -> Dict[str, Any]:
         """Check BigQuery connection health"""
         try:

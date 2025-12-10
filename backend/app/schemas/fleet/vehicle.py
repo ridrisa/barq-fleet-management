@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.fleet import FuelType, OwnershipType, VehicleStatus, VehicleType
 
@@ -162,11 +162,16 @@ class VehicleList(BaseModel):
     model: str
     year: int
     status: VehicleStatus
-    current_mileage: Decimal
+    current_mileage: Optional[Decimal] = None
     assigned_to_city: Optional[str] = None
     assigned_courier_id: Optional[int] = None
     assigned_courier_name: Optional[str] = None
     created_at: datetime
+
+    @field_validator("current_mileage", mode="before")
+    @classmethod
+    def default_mileage(cls, v):
+        return v if v is not None else Decimal("0")
 
     class Config:
         from_attributes = True

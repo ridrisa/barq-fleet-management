@@ -784,3 +784,188 @@ class PayrollCalculationService:
 
         await self.db.flush()
         return salary
+
+    async def calculate_from_bigquery(
+        self,
+        month: int,
+        year: int,
+        barq_ids: Optional[List[int]] = None,
+        save_to_db: bool = False,
+    ) -> BatchPayrollResponse:
+        """
+        Calculate salaries using data directly from BigQuery ultimate table.
+
+        This is the primary method for salary calculation per salary.txt spec.
+        Fetches courier performance data (Total_Orders, Total_Revenue, Gas_Usage)
+        from the BigQuery ultimate table and calculates salaries accordingly.
+
+        Args:
+            month: Payroll month (1-12)
+            year: Payroll year
+            barq_ids: Optional list of specific BARQ IDs to calculate
+            save_to_db: Whether to save results to the salaries table
+
+        Returns:
+            BatchPayrollResponse with all calculated salaries
+        """
+        from app.services.integrations.bigquery_client import bigquery_client
+
+        # Calculate period dates per salary.txt section 2.1
+        # Period: 25th of previous month to 24th of current month
+        if month == 1:
+            start_date = date(year - 1, 12, 25)
+            end_date = date(year, 1, 24)
+        else:
+            start_date = date(year, month - 1, 25)
+            end_date = date(year, month, 24)
+
+        period = PeriodInput(
+            month=month,
+            year=year,
+            start_date=start_date,
+            end_date=end_date,
+        )
+
+        results: List[PayrollCalculationResult] = []
+        errors: List[Dict[str, str]] = []
+        successful = 0
+        failed = 0
+        skipped = 0
+
+        try:
+            # Fetch courier data from BigQuery ultimate table
+            bq_data = bigquery_client.get_courier_payroll_data(
+                start_date=start_date.isoformat(),
+                end_date=end_date.isoformat(),
+                barq_ids=barq_ids,
+                status="Active",
+            )
+
+            # Fetch targets from BigQuery targets table
+            targets_data = bigquery_client.get_courier_targets(month, year)
+            targets_map = {t["BARQ_ID"]: t for t in targets_data}
+
+            for courier_data in bq_data:
+                try:
+                    barq_id = courier_data.get("BARQ_ID")
+                    if not barq_id:
+                        skipped += 1
+                        continue
+
+                    # Get target for this courier
+                    target_info = targets_map.get(barq_id, {})
+                    daily_target = Decimal(str(target_info.get("daily_target", 0)))
+
+                    # Determine category from BigQuery data or targets
+                    category_str = target_info.get("category") or courier_data.get("category", "Motorcycle")
+
+                    # Map category string to enum
+                    category_map = {
+                        "Motorcycle": PayrollCategoryEnum.MOTORCYCLE,
+                        "Food Trial": PayrollCategoryEnum.FOOD_TRIAL,
+                        "Food In-House New": PayrollCategoryEnum.FOOD_INHOUSE_NEW,
+                        "Food In-House Old": PayrollCategoryEnum.FOOD_INHOUSE_OLD,
+                        "Ecommerce WH": PayrollCategoryEnum.ECOMMERCE_WH,
+                        "Ecommerce": PayrollCategoryEnum.ECOMMERCE,
+                        "Ajeer": PayrollCategoryEnum.AJEER,
+                    }
+                    category = category_map.get(category_str, PayrollCategoryEnum.MOTORCYCLE)
+
+                    # Skip Ajeer
+                    if category == PayrollCategoryEnum.AJEER:
+                        skipped += 1
+                        continue
+
+                    # Parse joining date
+                    joining_date_str = courier_data.get("joining_date")
+                    if joining_date_str:
+                        if isinstance(joining_date_str, str):
+                            joining_date = date.fromisoformat(joining_date_str[:10])
+                        elif isinstance(joining_date_str, date):
+                            joining_date = joining_date_str
+                        else:
+                            joining_date = date.today()
+                    else:
+                        joining_date = date.today()
+
+                    # Look up courier in database to get courier_id
+                    courier_result = await self.db.execute(
+                        select(Courier).where(
+                            Courier.barq_id == str(barq_id),
+                            Courier.organization_id == self.organization_id,
+                        )
+                    )
+                    db_courier = courier_result.scalar_one_or_none()
+                    courier_id = db_courier.id if db_courier else None
+
+                    # Build input from BigQuery data
+                    input_data = CourierPayrollInput(
+                        barq_id=str(barq_id),
+                        courier_id=courier_id,
+                        iban=courier_data.get("iban"),
+                        id_number=courier_data.get("id_number"),
+                        name=courier_data.get("Name", "Unknown"),
+                        status=courier_data.get("Status", "Active"),
+                        sponsorship_status=courier_data.get("sponsorship_status"),
+                        project=courier_data.get("project"),
+                        supervisor=courier_data.get("supervisor"),
+                        joining_date=joining_date,
+                        total_orders=int(courier_data.get("total_orders", 0) or 0),
+                        total_revenue=to_decimal(courier_data.get("total_revenue", 0)),
+                        gas_usage=to_decimal(courier_data.get("gas_usage", 0)),
+                        target=daily_target,
+                        category=category,
+                    )
+
+                    # Calculate salary
+                    calc_result = await self.calculate_single(input_data, period)
+                    results.append(calc_result)
+                    successful += 1
+
+                    # Save to database if requested
+                    if save_to_db and courier_id:
+                        await self.save_salary_record(calc_result, period)
+
+                except Exception as e:
+                    failed += 1
+                    errors.append({
+                        "barq_id": str(courier_data.get("BARQ_ID", "unknown")),
+                        "error": str(e),
+                    })
+                    logger.error(f"Error calculating salary for BARQ_ID {courier_data.get('BARQ_ID')}: {e}")
+
+            # Commit if saving
+            if save_to_db:
+                await self.db.commit()
+
+        except Exception as e:
+            logger.error(f"Error fetching data from BigQuery: {e}")
+            errors.append({
+                "barq_id": "N/A",
+                "error": f"BigQuery error: {str(e)}",
+            })
+
+        # Calculate totals
+        total_basic = sum(r.basic_salary for r in results)
+        total_bonus = sum(r.bonus_amount for r in results)
+        total_gas = sum(r.gas_deserved for r in results)
+        total_payroll = sum(r.total_salary for r in results)
+
+        return BatchPayrollResponse(
+            period={
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "month": str(month),
+                "year": str(year),
+            },
+            total_couriers=len(bq_data) if 'bq_data' in locals() else 0,
+            successful=successful,
+            failed=failed,
+            skipped=skipped,
+            results=results,
+            errors=errors,
+            total_basic_salary=round_decimal(total_basic),
+            total_bonus=round_decimal(total_bonus),
+            total_gas_deserved=round_decimal(total_gas),
+            total_payroll=round_decimal(total_payroll),
+        )

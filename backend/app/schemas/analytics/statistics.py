@@ -255,10 +255,14 @@ class TopCourierItem(BaseModel):
     id: int
     barq_id: str
     name: str
-    performance_score: float = Field(ge=0, le=100)
+    performance_score: float = Field(ge=0)  # Removed upper bound for BigQuery real data
     total_deliveries: int = Field(ge=0)
     city: Optional[str] = None
     project_type: Optional[str] = None
+    # BigQuery-specific fields (optional for backward compatibility)
+    total_revenue: Optional[float] = None
+    vehicle: Optional[str] = None
+    plate: Optional[str] = None
 
 
 class TopCouriersResponse(BaseModel):

@@ -88,3 +88,17 @@ class CourierVehicleAssignment(TenantMixin, BaseModel):
         if self.start_mileage and self.end_mileage:
             return self.end_mileage - self.start_mileage
         return 0
+
+    @property
+    def courier_name(self) -> str | None:
+        """Get courier name from relationship"""
+        if self.courier:
+            return self.courier.full_name
+        return None
+
+    @property
+    def vehicle_plate_number(self) -> str | None:
+        """Get vehicle plate number from relationship"""
+        if self.vehicle:
+            return self.vehicle.plate_number
+        return None

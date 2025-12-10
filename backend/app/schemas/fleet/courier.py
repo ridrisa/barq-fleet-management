@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 # Enums (matching SQLAlchemy enums)
 from app.models.fleet import CourierStatus, ProjectType, SponsorshipStatus
@@ -133,7 +133,7 @@ class CourierResponse(CourierBase):
 
     id: int
     last_working_day: Optional[date] = None
-    performance_score: Decimal = Field(default=0.0, ge=0, le=100)
+    performance_score: Optional[Decimal] = Field(default=Decimal("0"))
     total_deliveries: int = Field(default=0, ge=0)
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -159,8 +159,13 @@ class CourierList(BaseModel):
     status: CourierStatus
     city: Optional[str] = None
     current_vehicle_id: Optional[int] = None
-    performance_score: Decimal = 0.0
+    performance_score: Optional[Decimal] = None
     created_at: datetime
+
+    @field_validator("performance_score", mode="before")
+    @classmethod
+    def default_performance_score(cls, v):
+        return v if v is not None else Decimal("0")
 
     class Config:
         from_attributes = True

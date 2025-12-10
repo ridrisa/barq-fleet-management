@@ -65,12 +65,9 @@ def get_leaves(
             db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
         )
 
-    # Build dynamic filters
-    filters = {"organization_id": current_org.id}
-    if leave_type:
-        filters["leave_type"] = leave_type
-
-    return leave_service.get_multi(db, skip=skip, limit=limit, filters=filters)
+    # Default: get all leaves for the organization
+    # TODO: Add leave_type filtering to service if needed
+    return leave_service.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
 
 
 @router.post("/", response_model=LeaveResponse, status_code=status.HTTP_201_CREATED)

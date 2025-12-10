@@ -382,11 +382,11 @@ export const vehicleHistoryAPI = {
 
 export const leavesAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/leave')
+    const { data } = await api.get('/hr/leave/')
     return data
   },
   create: async (leaveData: any) => {
-    const { data } = await api.post('/hr/leave', leaveData)
+    const { data } = await api.post('/hr/leave/', leaveData)
     return data
   },
   update: async (id: number, leaveData: any) => {
@@ -401,11 +401,11 @@ export const leavesAPI = {
 
 export const loansAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/loan')
+    const { data } = await api.get('/hr/loan/')
     return data
   },
   create: async (loanData: any) => {
-    const { data } = await api.post('/hr/loan', loanData)
+    const { data } = await api.post('/hr/loan/', loanData)
     return data
   },
   update: async (id: number, loanData: any) => {
@@ -420,11 +420,11 @@ export const loansAPI = {
 
 export const attendanceAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/attendance')
+    const { data } = await api.get('/hr/attendance/')
     return data
   },
   create: async (attendanceData: any) => {
-    const { data } = await api.post('/hr/attendance', attendanceData)
+    const { data } = await api.post('/hr/attendance/', attendanceData)
     return data
   },
   update: async (id: number, attendanceData: any) => {
@@ -439,7 +439,7 @@ export const attendanceAPI = {
 
 export const salaryAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/salary')
+    const { data } = await api.get('/hr/salary/')
     return data
   },
   calculate: async (salaryData: any) => {
@@ -447,7 +447,7 @@ export const salaryAPI = {
     return data
   },
   save: async (salaryData: any) => {
-    const { data } = await api.post('/hr/salary', salaryData)
+    const { data } = await api.post('/hr/salary/', salaryData)
     return data
   },
   getHistory: async (courierId: number) => {
@@ -455,7 +455,7 @@ export const salaryAPI = {
     return data
   },
   getByCourier: async (courierId: number) => {
-    const { data } = await api.get(`/hr/salary?courier_id=${courierId}`)
+    const { data } = await api.get(`/hr/salary/?courier_id=${courierId}`)
     return data
   },
 }
@@ -482,12 +482,12 @@ export const vehicleLogsAPI = {
 export const penaltiesAPI = {
   getAll: async () => {
     return safeApiCall(async () => {
-      const { data } = await api.get('/hr/penalties')
+      const { data } = await api.get('/hr/penalties/')
       return data
     }, [])
   },
   create: async (penaltyData: any) => {
-    const { data } = await api.post('/hr/penalties', penaltyData)
+    const { data } = await api.post('/hr/penalties/', penaltyData)
     return data
   },
   update: async (id: number, penaltyData: any) => {
@@ -502,15 +502,15 @@ export const penaltiesAPI = {
 
 export const assetsAPI = {
   getAll: async () => {
-    const { data } = await api.get('/hr/asset')
+    const { data } = await api.get('/hr/asset/')
     return data
   },
   getByCourier: async (courierId: number) => {
-    const { data } = await api.get(`/hr/asset?courier_id=${courierId}`)
+    const { data } = await api.get(`/hr/asset/?courier_id=${courierId}`)
     return data
   },
   create: async (assetData: any) => {
-    const { data } = await api.post('/hr/asset', assetData)
+    const { data } = await api.post('/hr/asset/', assetData)
     return data
   },
   update: async (id: number, assetData: any) => {
@@ -547,12 +547,12 @@ export const payrollAPI = {
 export const bonusesAPI = {
   getAll: async () => {
     return safeApiCall(async () => {
-      const { data } = await api.get('/hr/bonuses')
+      const { data } = await api.get('/hr/bonuses/')
       return data
     }, [])
   },
   create: async (bonusData: any) => {
-    const { data } = await api.post('/hr/bonuses', bonusData)
+    const { data } = await api.post('/hr/bonuses/', bonusData)
     return data
   },
   update: async (id: number, bonusData: any) => {

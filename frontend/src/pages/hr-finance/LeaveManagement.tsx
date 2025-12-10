@@ -53,9 +53,10 @@ export default function LeaveManagement() {
 
   const columns = [
     {
-      key: 'courier_id',
-      header: 'Courier ID',
+      key: 'barq_id',
+      header: 'BARQ ID',
       sortable: true,
+      render: (row: any) => row.courier?.barq_id || 'N/A',
     },
     {
       key: 'courier',

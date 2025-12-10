@@ -10,13 +10,15 @@ from sqlalchemy.orm import Session
 from app.graphql.types import (
     AssignmentStatus,
     AssignmentType,
-    BonusType,
+    BonusTypeEnum,
+    BonusTypeGQL,
     BuildingType,
     CourierDashboard,
     CourierStatus,
     CourierType,
     FuelType,
     LeaveStatus,
+    PaymentStatus,
 )
 from app.graphql.types import LeaveType as LeaveTypeEnum
 from app.graphql.types import (
@@ -47,6 +49,24 @@ from app.models.hr.salary import Salary
 # ============================================
 # CONVERTER FUNCTIONS
 # ============================================
+
+
+def convert_bonus(bonus: Bonus) -> BonusTypeGQL:
+    """Convert SQLAlchemy Bonus to GraphQL BonusTypeGQL"""
+    return BonusTypeGQL(
+        id=bonus.id,
+        courier_id=bonus.courier_id,
+        bonus_type=BonusTypeEnum(bonus.bonus_type.value),
+        amount=float(bonus.amount),
+        bonus_date=bonus.bonus_date,
+        payment_status=PaymentStatus(bonus.payment_status.value) if bonus.payment_status else PaymentStatus.PENDING,
+        approved_by=bonus.approved_by,
+        approval_date=bonus.approval_date,
+        description=bonus.description,
+        notes=bonus.notes,
+        created_at=bonus.created_at,
+        updated_at=bonus.updated_at,
+    )
 
 
 def convert_loan(loan: Loan) -> LoanType:
@@ -93,15 +113,39 @@ def convert_salary(salary: Salary) -> SalaryType:
         courier_id=salary.courier_id,
         month=salary.month,
         year=salary.year,
+        # Category-based payroll fields
+        category=salary.category.value if salary.category else None,
+        period_start=salary.period_start,
+        period_end=salary.period_end,
+        # Performance metrics (from BigQuery)
+        total_orders=salary.total_orders,
+        total_revenue=float(salary.total_revenue or 0),
+        gas_usage=float(salary.gas_usage or 0),
+        # Target and calculation
+        target=float(salary.target or 0),
+        daily_target=float(salary.daily_target or 0),
+        days_since_joining=salary.days_since_joining,
+        # Salary components
         base_salary=float(salary.base_salary),
+        bonus_amount=float(salary.bonus_amount or 0),
+        # Gas/Fuel components
+        gas_deserved=float(salary.gas_deserved or 0),
+        gas_difference=float(salary.gas_difference or 0),
+        # Legacy fields
         allowances=float(salary.allowances or 0),
         deductions=float(salary.deductions or 0),
         loan_deduction=float(salary.loan_deduction or 0),
         gosi_employee=float(salary.gosi_employee or 0),
+        # Calculated totals
         gross_salary=float(salary.gross_salary),
         net_salary=float(salary.net_salary),
+        # Payment tracking
         payment_date=salary.payment_date,
+        is_paid=salary.is_paid,
+        # Audit fields
         notes=salary.notes,
+        calculation_details=salary.calculation_details,
+        generated_date=salary.generated_date,
         created_at=salary.created_at,
         updated_at=salary.updated_at,
     )
@@ -298,6 +342,72 @@ class QueryResolvers:
             .all()
         )
         return [convert_salary(salary) for salary in salaries]
+
+    # Bonus Queries
+    @staticmethod
+    def get_courier_bonuses(db: Session, courier_id: int, limit: int = 50) -> List[BonusTypeGQL]:
+        """Get all bonuses for a courier, ordered by date descending"""
+        bonuses = (
+            db.query(Bonus)
+            .filter(Bonus.courier_id == courier_id)
+            .order_by(Bonus.bonus_date.desc())
+            .limit(limit)
+            .all()
+        )
+        return [convert_bonus(bonus) for bonus in bonuses]
+
+    @staticmethod
+    def get_courier_approved_bonuses(db: Session, courier_id: int) -> List[BonusTypeGQL]:
+        """Get approved bonuses for a courier"""
+        from app.models.hr.bonus import PaymentStatus as DBPaymentStatus
+
+        bonuses = (
+            db.query(Bonus)
+            .filter(
+                Bonus.courier_id == courier_id,
+                Bonus.payment_status.in_([DBPaymentStatus.APPROVED, DBPaymentStatus.PAID])
+            )
+            .order_by(Bonus.bonus_date.desc())
+            .all()
+        )
+        return [convert_bonus(bonus) for bonus in bonuses]
+
+    @staticmethod
+    def get_courier_bonuses_by_month(
+        db: Session, courier_id: int, month: int, year: int
+    ) -> List[BonusTypeGQL]:
+        """Get bonuses for a courier for a specific month/year"""
+        from sqlalchemy import extract
+
+        bonuses = (
+            db.query(Bonus)
+            .filter(
+                Bonus.courier_id == courier_id,
+                extract('month', Bonus.bonus_date) == month,
+                extract('year', Bonus.bonus_date) == year,
+            )
+            .order_by(Bonus.bonus_date.desc())
+            .all()
+        )
+        return [convert_bonus(bonus) for bonus in bonuses]
+
+    @staticmethod
+    def get_courier_bonus_total(db: Session, courier_id: int, month: int, year: int) -> float:
+        """Get total approved bonuses for a courier in a specific month"""
+        from app.models.hr.bonus import PaymentStatus as DBPaymentStatus
+        from sqlalchemy import extract, func
+
+        result = (
+            db.query(func.coalesce(func.sum(Bonus.amount), 0))
+            .filter(
+                Bonus.courier_id == courier_id,
+                extract('month', Bonus.bonus_date) == month,
+                extract('year', Bonus.bonus_date) == year,
+                Bonus.payment_status.in_([DBPaymentStatus.APPROVED, DBPaymentStatus.PAID])
+            )
+            .scalar()
+        )
+        return float(result or 0)
 
     # Fleet Queries
     @staticmethod

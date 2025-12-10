@@ -23,6 +23,23 @@ class LoanStatus(Enum):
 
 
 @strawberry.enum
+class BonusTypeEnum(Enum):
+    """Type of bonus"""
+    PERFORMANCE = "performance"
+    ATTENDANCE = "attendance"
+    SEASONAL = "seasonal"
+    SPECIAL = "special"
+
+
+@strawberry.enum
+class PaymentStatus(Enum):
+    """Payment status for bonuses"""
+    PENDING = "pending"
+    APPROVED = "approved"
+    PAID = "paid"
+
+
+@strawberry.enum
 class LeaveType(Enum):
     ANNUAL = "annual"
     SICK = "sick"
@@ -151,28 +168,63 @@ class SalaryType:
     courier_id: int
     month: int
     year: int
+    # Category-based payroll fields
+    category: Optional[str]
+    period_start: Optional[date]
+    period_end: Optional[date]
+    # Performance metrics (from BigQuery)
+    total_orders: Optional[int]
+    total_revenue: Optional[float]
+    gas_usage: Optional[float]
+    # Target and calculation
+    target: Optional[float]
+    daily_target: Optional[float]
+    days_since_joining: Optional[int]
+    # Salary components
     base_salary: float
+    bonus_amount: Optional[float]
+    # Gas/Fuel components
+    gas_deserved: Optional[float]
+    gas_difference: Optional[float]
+    # Legacy fields
     allowances: float
     deductions: float
     loan_deduction: float
     gosi_employee: float
+    # Calculated totals
     gross_salary: float
     net_salary: float
+    # Payment tracking
     payment_date: Optional[date]
+    is_paid: Optional[int]
+    # Audit fields
     notes: Optional[str]
+    calculation_details: Optional[str]
+    generated_date: Optional[date]
     created_at: datetime
     updated_at: Optional[datetime]
 
 
 @strawberry.type
-class BonusType:
+class BonusTypeGQL:
+    """Bonus/penalty record from HR dashboard"""
     id: int
     courier_id: int
+    bonus_type: BonusTypeEnum
     amount: float
-    bonus_type: str
-    reason: Optional[str]
     bonus_date: date
+    payment_status: PaymentStatus
+    approved_by: Optional[int]
+    approval_date: Optional[date]
+    description: Optional[str]
+    notes: Optional[str]
     created_at: datetime
+    updated_at: Optional[datetime]
+
+    @strawberry.field
+    def is_penalty(self) -> bool:
+        """Returns True if amount is negative (penalty)"""
+        return self.amount < 0
 
 
 # ============================================

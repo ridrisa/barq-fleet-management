@@ -1,7 +1,8 @@
+import logging
 from datetime import date, datetime, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, case, extract, func, or_
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,16 @@ from app.schemas.analytics import (
     RecentActivityResponse,
     ExecutiveSummaryResponse,
 )
+
+# BigQuery client for performance data
+try:
+    from app.services.integrations.bigquery_client import bigquery_client
+    HAS_BIGQUERY = True
+except ImportError:
+    HAS_BIGQUERY = False
+    bigquery_client = None
+
+logger = logging.getLogger(__name__)
 
 # Try importing optional models
 try:
@@ -802,13 +813,57 @@ def get_top_couriers(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     current_org: Organization = Depends(get_current_organization),
-    limit: int = 5,
+    limit: int = Query(default=5, ge=1, le=50),
+    use_bigquery: bool = Query(default=True, description="Use BigQuery for real performance data"),
 ) -> TopCouriersResponse:
     """
-    Get top performing couriers for the current organization.
+    Get top performing couriers.
+
+    - **use_bigquery=True** (default): Fetch real performance data from BigQuery (master_saned.ultimate)
+    - **use_bigquery=False**: Fetch from local PostgreSQL database (may have stale data)
     """
     org_id = current_org.id
+    result = []
 
+    # Try BigQuery first for real performance data
+    if use_bigquery and HAS_BIGQUERY and bigquery_client:
+        try:
+            bq_couriers = bigquery_client.get_performance_metrics(
+                skip=0, limit=limit, status="Active"
+            )
+
+            for i, bq_courier in enumerate(bq_couriers):
+                # Calculate performance score from BigQuery data
+                total_orders = bq_courier.get("total_orders", 0) or 0
+                total_revenue = bq_courier.get("total_revenue", 0) or 0
+                # Performance score: weighted combination of orders and revenue
+                performance_score = (total_orders * 10) + (total_revenue / 100)
+
+                result.append(
+                    {
+                        "rank": i + 1,
+                        "id": 0,  # Not available from BigQuery
+                        "barq_id": str(bq_courier.get("barq_id", "")),
+                        "name": bq_courier.get("name", "Unknown"),
+                        "performance_score": round(performance_score, 2),
+                        "total_deliveries": total_orders,
+                        "city": bq_courier.get("city"),
+                        "project_type": None,  # Not in BigQuery
+                        # Additional BigQuery fields
+                        "total_revenue": round(total_revenue, 2),
+                        "vehicle": bq_courier.get("vehicle"),
+                        "plate": bq_courier.get("plate"),
+                    }
+                )
+
+            if result:
+                logger.debug(f"Returning {len(result)} top couriers from BigQuery")
+                return {"top_couriers": result}
+
+        except Exception as e:
+            logger.warning(f"BigQuery top couriers failed, falling back to local DB: {e}")
+
+    # Fallback to local PostgreSQL
     top_couriers = (
         db.query(Courier)
         .filter(Courier.organization_id == org_id, Courier.status == CourierStatus.ACTIVE)
@@ -820,7 +875,6 @@ def get_top_couriers(
         .all()
     )
 
-    result = []
     for i, courier in enumerate(top_couriers):
         result.append(
             {

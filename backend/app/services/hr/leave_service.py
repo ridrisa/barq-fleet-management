@@ -43,13 +43,18 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         )
 
     def get_by_status(
-        self, db: Session, *, status: LeaveStatus, skip: int = 0, limit: int = 100
+        self, db: Session, *, status: LeaveStatus, skip: int = 0, limit: int = 100, organization_id: int | None = None
     ) -> List[Leave]:
         """Get leave requests by status"""
-        return (
+        query = (
             db.query(self.model)
             .options(joinedload(self.model.courier))
             .filter(self.model.status == status)
+        )
+        if organization_id:
+            query = query.filter(self.model.organization_id == organization_id)
+        return (
+            query
             .order_by(
                 self.model.requested_at.desc()
                 if hasattr(self.model, "requested_at")
@@ -61,10 +66,10 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         )
 
     def get_by_date_range(
-        self, db: Session, *, start_date: date, end_date: date, skip: int = 0, limit: int = 100
+        self, db: Session, *, start_date: date, end_date: date, skip: int = 0, limit: int = 100, organization_id: int | None = None
     ) -> List[Leave]:
         """Get leave requests within a date range"""
-        return (
+        query = (
             db.query(self.model)
             .options(joinedload(self.model.courier))
             .filter(
@@ -74,6 +79,11 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
                     and_(self.model.start_date <= start_date, self.model.end_date >= end_date),
                 )
             )
+        )
+        if organization_id:
+            query = query.filter(self.model.organization_id == organization_id)
+        return (
+            query
             .order_by(self.model.start_date)
             .offset(skip)
             .limit(limit)

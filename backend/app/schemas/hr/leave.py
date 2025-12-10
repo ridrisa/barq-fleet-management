@@ -19,6 +19,15 @@ class LeaveStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class CourierBrief(BaseModel):
+    """Brief courier info for leave responses"""
+    id: int
+    barq_id: str
+    full_name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class LeaveBase(BaseModel):
     courier_id: int = Field(..., description="Courier ID")
     leave_type: LeaveType
@@ -49,5 +58,6 @@ class LeaveResponse(LeaveBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     courier_name: Optional[str] = None  # Added for frontend display
+    courier: Optional[CourierBrief] = None  # Full courier info with barq_id
 
     model_config = ConfigDict(from_attributes=True)
