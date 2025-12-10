@@ -1,11 +1,15 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.services.operations import priority_queue_service
+from app.models.operations.delivery import Delivery
+from app.models.operations.priority_queue import PriorityQueueEntry, QueueStatus
+from app.models.operations.zone import Zone
+from app.services.operations import delivery_service, priority_queue_service, zone_service
 from app.models.tenant.organization import Organization
 from app.schemas.operations.priority_queue import (
     PriorityQueueEntryCreate,
@@ -160,8 +164,32 @@ def create_queue_entry(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Delivery already in queue"
         )
 
-    # TODO: Validate delivery exists
-    # TODO: Validate zone exists if provided
+    # Validate delivery exists and belongs to organization
+    delivery = delivery_service.get(db, id=entry_in.delivery_id)
+    if not delivery:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Delivery with ID {entry_in.delivery_id} not found",
+        )
+    if hasattr(delivery, "organization_id") and delivery.organization_id != current_org.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Delivery with ID {entry_in.delivery_id} not found",
+        )
+
+    # Validate zone exists if provided
+    if hasattr(entry_in, "required_zone_id") and entry_in.required_zone_id:
+        zone = zone_service.get(db, id=entry_in.required_zone_id)
+        if not zone:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Zone with ID {entry_in.required_zone_id} not found",
+            )
+        if hasattr(zone, "organization_id") and zone.organization_id != current_org.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Zone with ID {entry_in.required_zone_id} not found",
+            )
 
     entry = priority_queue_service.create_with_number(db, obj_in=entry_in, organization_id=current_org.id)
     return entry
@@ -415,18 +443,95 @@ def get_queue_metrics(
     - Escalation rate
     - Entries by priority distribution
     """
-    # TODO: Calculate comprehensive metrics with organization_id filter
-    # For now, return placeholder
+    # Base query with organization filter
+    base_query = db.query(PriorityQueueEntry).filter(
+        PriorityQueueEntry.organization_id == current_org.id
+    )
+
+    # Count by status
+    total_entries = base_query.count()
+    queued_entries = base_query.filter(
+        PriorityQueueEntry.status == QueueStatus.QUEUED
+    ).count()
+    processing_entries = base_query.filter(
+        PriorityQueueEntry.status == QueueStatus.PROCESSING
+    ).count()
+    assigned_entries = base_query.filter(
+        PriorityQueueEntry.status == QueueStatus.ASSIGNED
+    ).count()
+    completed_entries = base_query.filter(
+        PriorityQueueEntry.status == QueueStatus.COMPLETED
+    ).count()
+    expired_entries = base_query.filter(
+        PriorityQueueEntry.status == QueueStatus.EXPIRED
+    ).count()
+
+    # Calculate average wait time (for completed/assigned entries)
+    avg_wait_result = db.query(
+        func.avg(PriorityQueueEntry.time_in_queue_minutes)
+    ).filter(
+        PriorityQueueEntry.organization_id == current_org.id,
+        PriorityQueueEntry.time_in_queue_minutes.isnot(None),
+    ).scalar()
+    avg_wait_time_minutes = float(avg_wait_result) if avg_wait_result else 0.0
+
+    # Calculate average processing time (time from processing_started_at to assigned_at)
+    # For entries that have both timestamps
+    processing_entries_with_times = db.query(PriorityQueueEntry).filter(
+        PriorityQueueEntry.organization_id == current_org.id,
+        PriorityQueueEntry.processing_started_at.isnot(None),
+        PriorityQueueEntry.assigned_at.isnot(None),
+    ).all()
+
+    if processing_entries_with_times:
+        total_processing_time = sum(
+            (e.assigned_at - e.processing_started_at).total_seconds() / 60
+            for e in processing_entries_with_times
+        )
+        avg_processing_time_minutes = total_processing_time / len(processing_entries_with_times)
+    else:
+        avg_processing_time_minutes = 0.0
+
+    # Calculate SLA compliance rate
+    completed_with_sla = base_query.filter(
+        PriorityQueueEntry.status == QueueStatus.COMPLETED,
+        PriorityQueueEntry.was_sla_met.isnot(None),
+    ).count()
+    sla_met_count = base_query.filter(
+        PriorityQueueEntry.status == QueueStatus.COMPLETED,
+        PriorityQueueEntry.was_sla_met == True,
+    ).count()
+    sla_compliance_rate = (sla_met_count / completed_with_sla * 100) if completed_with_sla > 0 else 0.0
+
+    # Calculate escalation rate
+    escalated_count = base_query.filter(
+        PriorityQueueEntry.is_escalated == True
+    ).count()
+    escalation_rate = (escalated_count / total_entries * 100) if total_entries > 0 else 0.0
+
+    # Count entries by priority
+    entries_by_priority = {}
+    priority_counts = db.query(
+        PriorityQueueEntry.priority,
+        func.count(PriorityQueueEntry.id)
+    ).filter(
+        PriorityQueueEntry.organization_id == current_org.id
+    ).group_by(PriorityQueueEntry.priority).all()
+
+    for priority, count in priority_counts:
+        if priority:
+            entries_by_priority[priority.value if hasattr(priority, 'value') else str(priority)] = count
+
     return QueueMetrics(
-        total_entries=0,
-        queued_entries=0,
-        processing_entries=0,
-        assigned_entries=0,
-        completed_entries=0,
-        expired_entries=0,
-        avg_wait_time_minutes=0.0,
-        avg_processing_time_minutes=0.0,
-        sla_compliance_rate=0.0,
-        escalation_rate=0.0,
-        entries_by_priority={},
+        total_entries=total_entries,
+        queued_entries=queued_entries,
+        processing_entries=processing_entries,
+        assigned_entries=assigned_entries,
+        completed_entries=completed_entries,
+        expired_entries=expired_entries,
+        avg_wait_time_minutes=round(avg_wait_time_minutes, 2),
+        avg_processing_time_minutes=round(avg_processing_time_minutes, 2),
+        sla_compliance_rate=round(sla_compliance_rate, 2),
+        escalation_rate=round(escalation_rate, 2),
+        entries_by_priority=entries_by_priority,
     )

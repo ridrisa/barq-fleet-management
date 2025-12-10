@@ -22,6 +22,7 @@ from app.schemas.operations.handover import (
 )
 from app.services.fleet import courier_service, vehicle_service
 from app.services.operations import handover_service
+from app.services.email_notification_service import email_notification_service, EmailRecipient
 
 logger = logging.getLogger(__name__)
 
@@ -281,8 +282,9 @@ def complete_handover(
         organization_id=current_org.id,
     )
 
-    # Send completion notification (log for now, can integrate with notification service)
+    # Send completion notification via email notification service
     _send_handover_completion_notification(
+        db=db,
         handover_number=handover.handover_number,
         from_courier_id=handover.from_courier_id,
         to_courier_id=handover.to_courier_id,
@@ -458,6 +460,7 @@ def _transfer_pending_deliveries(
 
 
 def _send_handover_completion_notification(
+    db: Session,
     handover_number: str,
     from_courier_id: int,
     to_courier_id: int,
@@ -467,11 +470,8 @@ def _send_handover_completion_notification(
     """
     Send notification about completed handover.
 
-    Currently logs the notification. Can be extended to integrate with:
-    - Push notification service
-    - SMS service
-    - Email service
-    - In-app notifications
+    Sends email notifications to both couriers involved in the handover.
+    Also logs the notification for audit purposes.
     """
     notification_data = {
         "type": "handover_completed",
@@ -489,9 +489,50 @@ def _send_handover_completion_notification(
         f"Deliveries transferred: {transferred_deliveries}"
     )
 
-    # TODO: Integrate with actual notification service when available
-    # notification_service.send(
-    #     recipients=[from_courier_id, to_courier_id],
-    #     template="handover_completed",
-    #     data=notification_data
-    # )
+    # Get courier details for notifications
+    from_courier = db.query(Courier).filter(Courier.id == from_courier_id).first()
+    to_courier = db.query(Courier).filter(Courier.id == to_courier_id).first()
+
+    # Prepare email content
+    vehicle_info = f"Vehicle ID: {vehicle_id}" if vehicle_id else "No vehicle involved"
+    html_content = f"""
+    <html>
+    <body>
+        <h2>Handover Completed</h2>
+        <p>Handover <strong>{handover_number}</strong> has been completed successfully.</p>
+        <ul>
+            <li><strong>From Courier:</strong> {from_courier.full_name if from_courier else f'ID {from_courier_id}'}</li>
+            <li><strong>To Courier:</strong> {to_courier.full_name if to_courier else f'ID {to_courier_id}'}</li>
+            <li><strong>{vehicle_info}</strong></li>
+            <li><strong>Deliveries Transferred:</strong> {transferred_deliveries}</li>
+        </ul>
+        <p>Please ensure all items have been properly handed over.</p>
+        <p>Best regards,<br>BARQ Fleet Management</p>
+    </body>
+    </html>
+    """
+
+    subject = f"Handover Completed - {handover_number}"
+
+    # Send notification to both couriers
+    if from_courier and from_courier.email:
+        try:
+            email_notification_service.send_email(
+                to=EmailRecipient(email=from_courier.email, name=from_courier.full_name),
+                subject=subject,
+                html_content=html_content,
+            )
+            logger.info(f"Handover notification sent to from_courier: {from_courier.email}")
+        except Exception as e:
+            logger.error(f"Failed to send notification to from_courier {from_courier.email}: {e}")
+
+    if to_courier and to_courier.email:
+        try:
+            email_notification_service.send_email(
+                to=EmailRecipient(email=to_courier.email, name=to_courier.full_name),
+                subject=subject,
+                html_content=html_content,
+            )
+            logger.info(f"Handover notification sent to to_courier: {to_courier.email}")
+        except Exception as e:
+            logger.error(f"Failed to send notification to to_courier {to_courier.email}: {e}")

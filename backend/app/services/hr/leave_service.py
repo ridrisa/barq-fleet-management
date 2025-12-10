@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.hr.leave import Leave, LeaveStatus
+from app.models.hr.leave import Leave, LeaveStatus, LeaveType
 from app.schemas.hr.leave import LeaveCreate, LeaveUpdate
 from app.services.base import CRUDBase
 
@@ -85,6 +85,25 @@ class LeaveService(CRUDBase[Leave, LeaveCreate, LeaveUpdate]):
         return (
             query
             .order_by(self.model.start_date)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+    def get_by_leave_type(
+        self, db: Session, *, leave_type: LeaveType, skip: int = 0, limit: int = 100, organization_id: int | None = None
+    ) -> List[Leave]:
+        """Get leave requests by leave type (annual, sick, emergency, unpaid)"""
+        query = (
+            db.query(self.model)
+            .options(joinedload(self.model.courier))
+            .filter(self.model.leave_type == leave_type)
+        )
+        if organization_id:
+            query = query.filter(self.model.organization_id == organization_id)
+        return (
+            query
+            .order_by(self.model.start_date.desc())
             .offset(skip)
             .limit(limit)
             .all()

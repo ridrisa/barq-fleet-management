@@ -619,7 +619,12 @@ class PayrollCalculationService:
     ) -> BatchPayrollResponse:
         """
         Calculate salaries for multiple couriers.
+
+        Fetches performance data (total_orders, total_revenue, gas_usage) from BigQuery
+        for accurate salary calculations.
         """
+        from app.services.integrations.bigquery_client import bigquery_client
+
         results: List[PayrollCalculationResult] = []
         errors: List[Dict[str, str]] = []
         successful = 0
@@ -637,6 +642,23 @@ class PayrollCalculationService:
 
         result = await self.db.execute(query)
         couriers = result.scalars().all()
+
+        # Fetch performance data from BigQuery for all couriers in this batch
+        performance_data_map: Dict[str, Dict] = {}
+        try:
+            bq_data = bigquery_client.get_courier_payroll_data(
+                start_date=request.period.start_date.isoformat(),
+                end_date=request.period.end_date.isoformat(),
+                status="Active",
+            )
+            # Create a map of BARQ_ID to performance data
+            for record in bq_data:
+                barq_id = record.get("BARQ_ID")
+                if barq_id:
+                    performance_data_map[str(barq_id)] = record
+            logger.info(f"Fetched performance data for {len(performance_data_map)} couriers from BigQuery")
+        except Exception as e:
+            logger.warning(f"Failed to fetch performance data from BigQuery: {e}. Using defaults.")
 
         for courier in couriers:
             try:
@@ -664,9 +686,16 @@ class PayrollCalculationService:
                     skipped += 1
                     continue
 
+                # Get performance data from BigQuery (if available)
+                barq_id = courier.barq_id or str(courier.id)
+                perf_data = performance_data_map.get(barq_id, {})
+                total_orders = int(perf_data.get("total_orders", 0) or 0)
+                total_revenue = to_decimal(perf_data.get("total_revenue", 0))
+                gas_usage = to_decimal(perf_data.get("gas_usage", 0))
+
                 # Build input
                 input_data = CourierPayrollInput(
-                    barq_id=courier.barq_id or str(courier.id),
+                    barq_id=barq_id,
                     courier_id=courier.id,
                     iban=courier.iban,
                     id_number=courier.national_id,
@@ -676,9 +705,9 @@ class PayrollCalculationService:
                     project=courier.project_type,
                     supervisor=courier.supervisor_name,
                     joining_date=courier.joining_date or date.today(),
-                    total_orders=0,  # TODO: Get from BigQuery
-                    total_revenue=Decimal("0"),  # TODO: Get from BigQuery
-                    gas_usage=Decimal("0"),  # TODO: Get from BigQuery
+                    total_orders=total_orders,
+                    total_revenue=total_revenue,
+                    gas_usage=gas_usage,
                     target=daily_target,
                     category=category,
                 )
