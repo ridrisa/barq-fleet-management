@@ -15,7 +15,7 @@ export {
 } from '@/hooks/useMobile'
 
 // Layout Components
-export { BottomNav, BottomNavSpacer, type BottomNavItem, type BottomNavProps } from '@/components/layout/BottomNav'
+export { BottomNav, BottomNavSpacer, type BottomNavItem, type BottomNavProps } from '@/components/layouts/BottomNav'
 
 // UI Components
 export { FilterSheet, FilterGroup, FilterChip, FilterTrigger } from '@/components/ui/FilterSheet'

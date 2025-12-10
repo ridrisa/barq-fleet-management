@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/cn'
 import { OrganizationSelector } from '@/components/OrganizationSelector'
-import { BottomNav } from '@/components/layout/BottomNav'
+import { BottomNav } from '@/components/layouts/BottomNav'
 import { useMobile, useLockBodyScroll, useSwipe } from '@/hooks/useMobile'
 import {
   Home,
