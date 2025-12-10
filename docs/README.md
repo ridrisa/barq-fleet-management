@@ -1,7 +1,7 @@
 # BARQ Fleet Management - Documentation Index
 
-**Version:** 1.2.0
-**Last Updated:** December 9, 2025
+**Version:** 1.3.0
+**Last Updated:** December 10, 2025
 
 ---
 
@@ -45,12 +45,27 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
 | [Security Documentation](SECURITY.md) | Security architecture, best practices, compliance | Security review or audit |
 | [Troubleshooting Guide](TROUBLESHOOTING.md) | Diagnosing and fixing issues | System problems |
 
+### For UX & Product
+
+| Document | Description | Use When |
+|----------|-------------|----------|
+| [UX Documentation](ux/README.md) | User journey maps, personas, accessibility guidelines | UX research and design |
+| [User Personas](ux/personas.md) | Detailed user personas for all roles | Understanding user needs |
+| [Accessibility Report](ux/accessibility_report.md) | WCAG 2.1 AA compliance audit | Accessibility improvements |
+| [Responsive Checklist](ux/responsive_checklist.md) | Mobile responsiveness guidelines | Mobile-first design |
+
 ### For End Users
 
 | Document | Description | Use When |
 |----------|-------------|----------|
 | [User Guide](user/README.md) | Complete user manual for all roles | Learning how to use BARQ |
 | [FAQ](#faq) | Frequently asked questions | Quick answers |
+
+### Historical Documentation
+
+| Document | Description | Use When |
+|----------|-------------|----------|
+| [Archive](archive/README.md) | Historical project documentation from discovery phases | Understanding past decisions and project history |
 
 ### For Project Management
 
@@ -136,6 +151,15 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
   - Testing guidelines
   - Pull request process
 
+### UX & Product
+
+- [UX Documentation](ux/README.md)
+  - User journey maps
+  - User personas
+  - Accessibility guidelines
+  - Responsive design
+  - Design principles
+
 ### Support
 
 - [User Guide](user/README.md)
@@ -152,6 +176,17 @@ This directory contains comprehensive documentation for the BARQ Fleet Managemen
   - Database issues
   - API errors
   - Deployment issues
+
+### Archive
+
+- [Historical Documentation](archive/README.md)
+  - Phase 1: Discovery & Technical Audit
+  - Phase 2: User Research & Benchmarking
+  - Phase 3: Heuristic & Accessibility Audit
+  - Phase 4: Information Architecture & Flows
+  - Phase 5: Visual Design & Prototyping
+  - Phase 6: Testing & Validation
+  - Phase 7: Handoff & Implementation Roadmap
 
 ---
 
@@ -390,6 +425,8 @@ See [Contributing Guidelines](../CONTRIBUTING.md) for:
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.3.0 | 2025-12-10 | Added UX documentation section and archive for phase documents | Documentation Team |
+| 1.2.0 | 2025-12-09 | Updated API and deployment documentation | Engineering Team |
 | 1.0.0 | 2025-11-23 | Initial comprehensive documentation | Engineering Team |
 
 ---
@@ -409,5 +446,5 @@ We're continuously improving our documentation. If you have feedback:
 ---
 
 **Document Owner:** Engineering Team
-**Last Updated:** December 9, 2025
-**Next Review:** January 9, 2026
+**Last Updated:** December 10, 2025
+**Next Review:** January 10, 2026
