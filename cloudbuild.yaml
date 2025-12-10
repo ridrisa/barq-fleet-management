@@ -336,14 +336,12 @@ steps:
         echo "======================================"
         echo ""
         # Get actual URLs from deployed services
-        BACKEND_URL=$(gcloud run services describe ${_SERVICE_BACKEND}-staging --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "Not available")
-        FRONTEND_URL=$(gcloud run services describe ${_SERVICE_FRONTEND}-staging --region=${_REGION} --format='value(status.url)' 2>/dev/null || echo "Not available")
-        echo "Backend URL: $BACKEND_URL"
-        echo "Frontend URL: $FRONTEND_URL"
+        gcloud run services describe ${_SERVICE_BACKEND}-staging --region=${_REGION} --format='value(status.url)' 2>/dev/null && echo "Backend service deployed" || echo "Backend URL: Not available"
+        gcloud run services describe ${_SERVICE_FRONTEND}-staging --region=${_REGION} --format='value(status.url)' 2>/dev/null && echo "Frontend service deployed" || echo "Frontend URL: Not available"
         echo ""
         echo "Image Tags:"
-        echo "  - Backend: ${SHORT_SHA:-${_TAG}}"
-        echo "  - Frontend: ${SHORT_SHA:-${_TAG}}"
+        echo "  - Backend: ${_TAG}"
+        echo "  - Frontend: ${_TAG}"
         echo ""
         echo "✅ Deployment completed successfully!"
         echo "======================================"
