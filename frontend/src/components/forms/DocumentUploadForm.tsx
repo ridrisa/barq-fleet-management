@@ -61,6 +61,7 @@ export const DocumentUploadForm = ({
     if (!validate()) return
     await onSubmit({
       ...formData,
+      file_url: '', // This will be set by the backend after upload
       files,
     })
   }

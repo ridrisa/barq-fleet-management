@@ -1,16 +1,31 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuthStore } from '@/stores/authStore'
+import { loginSchema, LoginFormData } from '@/schemas'
 
 // Google OAuth Client ID from environment
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [googleLoading, setGoogleLoading] = useState(false)
   const { login, loginWithGoogle, isAuthenticated, isLoading, error, clearError } = useAuthStore()
   const navigate = useNavigate()
+
+  // React Hook Form with Zod validation
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+    mode: 'onBlur',
+  })
 
   // Handle Google Sign-In callback
   const handleGoogleCallback = useCallback(async (response: { credential: string }) => {
@@ -62,10 +77,9 @@ export default function Login() {
     return () => clearError()
   }, [clearError])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(email, password)
+      await login(data.email, data.password)
     } catch (err) {
       // Error is handled by the store
     }
@@ -91,7 +105,7 @@ export default function Login() {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           {error && (
             <div className="rounded-md bg-red-50 p-4">
               <div className="text-sm text-red-800">{error}</div>
@@ -105,15 +119,17 @@ export default function Login() {
               </label>
               <input
                 id="email"
-                name="email"
                 type="email"
                 autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm"
+                {...register('email')}
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
+                  errors.email ? 'border-red-500' : 'border-gray-300'
+                } placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm`}
                 placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
               />
+              {errors.email && (
+                <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>
+              )}
             </div>
             <div>
               <label htmlFor="password" className="sr-only">
@@ -121,15 +137,17 @@ export default function Login() {
               </label>
               <input
                 id="password"
-                name="password"
                 type="password"
                 autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm"
+                {...register('password')}
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
+                  errors.password ? 'border-red-500' : 'border-gray-300'
+                } placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-amber-500 focus:border-amber-500 focus:z-10 sm:text-sm`}
                 placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
               />
+              {errors.password && (
+                <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
+              )}
             </div>
           </div>
 

@@ -1,18 +1,20 @@
+import { z } from 'zod'
 import { FormConfig } from './DynamicForm'
-import { ValidationSchema } from '@/hooks/useForm'
 import { type ChecklistItem } from './ChecklistField'
 
 // ============================================
 // PENALTY FORM
 // ============================================
-export interface PenaltyFormData {
-  courier_id: string
-  date: string
-  reason: string
-  amount: number
-  status: 'pending' | 'approved' | 'rejected'
-  notes: string
-}
+export const penaltyFormSchema = z.object({
+  courier_id: z.string().min(1, 'Courier is required'),
+  date: z.string().min(1, 'Date is required'),
+  reason: z.string().min(1, 'Reason is required'),
+  amount: z.number().positive('Amount must be greater than 0'),
+  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
+  notes: z.string().optional().default(''),
+})
+
+export type PenaltyFormData = z.infer<typeof penaltyFormSchema>
 
 export const penaltyFormConfig: FormConfig = {
   sections: [
@@ -56,24 +58,19 @@ export const penaltyInitialData: PenaltyFormData = {
   notes: '',
 }
 
-export const penaltyValidation: ValidationSchema<PenaltyFormData> = {
-  courier_id: (data) => !data.courier_id ? 'Courier is required' : null,
-  date: (data) => !data.date ? 'Date is required' : null,
-  reason: (data) => !data.reason ? 'Reason is required' : null,
-  amount: (data) => data.amount <= 0 ? 'Amount must be greater than 0' : null,
-}
-
 // ============================================
 // BONUS FORM
 // ============================================
-export interface BonusFormData {
-  courier_id: string
-  month: string
-  amount: number
-  reason: string
-  status: 'pending' | 'approved' | 'rejected'
-  notes: string
-}
+export const bonusFormSchema = z.object({
+  courier_id: z.string().min(1, 'Courier is required'),
+  month: z.string().min(1, 'Month is required'),
+  amount: z.number().positive('Amount must be greater than 0'),
+  reason: z.string().min(1, 'Reason is required'),
+  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
+  notes: z.string().optional().default(''),
+})
+
+export type BonusFormData = z.infer<typeof bonusFormSchema>
 
 export const bonusFormConfig: FormConfig = {
   sections: [
@@ -117,24 +114,19 @@ export const bonusInitialData: BonusFormData = {
   notes: '',
 }
 
-export const bonusValidation: ValidationSchema<BonusFormData> = {
-  courier_id: (data) => !data.courier_id ? 'Courier is required' : null,
-  month: (data) => !data.month ? 'Month is required' : null,
-  amount: (data) => data.amount <= 0 ? 'Amount must be greater than 0' : null,
-  reason: (data) => !data.reason ? 'Reason is required' : null,
-}
-
 // ============================================
 // EXPENSE FORM
 // ============================================
-export interface ExpenseFormData {
-  date: string
-  category: string
-  description: string
-  amount: number
-  status: 'pending' | 'approved' | 'rejected'
-  receipt_url: string
-}
+export const expenseFormSchema = z.object({
+  date: z.string().min(1, 'Date is required'),
+  category: z.string().min(1, 'Category is required'),
+  description: z.string().min(1, 'Description is required'),
+  amount: z.number().positive('Amount must be greater than 0'),
+  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
+  receipt_url: z.string().optional().default(''),
+})
+
+export type ExpenseFormData = z.infer<typeof expenseFormSchema>
 
 export const expenseFormConfig: FormConfig = {
   sections: [
@@ -180,25 +172,20 @@ export const expenseInitialData: ExpenseFormData = {
   receipt_url: '',
 }
 
-export const expenseValidation: ValidationSchema<ExpenseFormData> = {
-  date: (data) => !data.date ? 'Date is required' : null,
-  category: (data) => !data.category ? 'Category is required' : null,
-  description: (data) => !data.description ? 'Description is required' : null,
-  amount: (data) => data.amount <= 0 ? 'Amount must be greater than 0' : null,
-}
-
 // ============================================
 // SERVICE LEVEL (SLA) FORM
 // ============================================
-export interface ServiceLevelFormData {
-  service_type: string
-  target_time: number
-  time_unit: 'minutes' | 'hours' | 'days'
-  measurement: string
-  penalty_amount: number
-  measurement_period: 'daily' | 'weekly' | 'monthly'
-  is_active: boolean
-}
+export const serviceLevelFormSchema = z.object({
+  service_type: z.string().min(1, 'Service type is required'),
+  target_time: z.number().positive('Target time must be greater than 0'),
+  time_unit: z.enum(['minutes', 'hours', 'days']).default('hours'),
+  measurement: z.string().optional().default(''),
+  penalty_amount: z.number().nonnegative().optional().default(0),
+  measurement_period: z.enum(['daily', 'weekly', 'monthly']).default('monthly'),
+  is_active: z.boolean().optional().default(true),
+})
+
+export type ServiceLevelFormData = z.infer<typeof serviceLevelFormSchema>
 
 export const serviceLevelFormConfig: FormConfig = {
   sections: [
@@ -249,22 +236,19 @@ export const serviceLevelInitialData: ServiceLevelFormData = {
   is_active: true,
 }
 
-export const serviceLevelValidation: ValidationSchema<ServiceLevelFormData> = {
-  service_type: (data) => !data.service_type ? 'Service type is required' : null,
-  target_time: (data) => data.target_time <= 0 ? 'Target time must be greater than 0' : null,
-}
-
 // ============================================
 // BUDGET FORM
 // ============================================
-export interface BudgetFormData {
-  department: string
-  category: string
-  allocated: number
-  spent: number
-  period: string
-  notes: string
-}
+export const budgetFormSchema = z.object({
+  department: z.string().min(1, 'Department is required'),
+  category: z.string().min(1, 'Category is required'),
+  allocated: z.number().nonnegative('Allocated amount cannot be negative'),
+  spent: z.number().nonnegative().optional().default(0),
+  period: z.string().min(1, 'Period is required'),
+  notes: z.string().optional().default(''),
+})
+
+export type BudgetFormData = z.infer<typeof budgetFormSchema>
 
 export const budgetFormConfig: FormConfig = {
   sections: [
@@ -315,24 +299,19 @@ export const budgetInitialData: BudgetFormData = {
   notes: '',
 }
 
-export const budgetValidation: ValidationSchema<BudgetFormData> = {
-  department: (data) => !data.department ? 'Department is required' : null,
-  category: (data) => !data.category ? 'Category is required' : null,
-  period: (data) => !data.period ? 'Period is required' : null,
-  allocated: (data) => data.allocated < 0 ? 'Allocated amount cannot be negative' : null,
-}
-
 // ============================================
 // COURIER DOCUMENT FORM
 // ============================================
-export interface CourierDocumentFormData {
-  courier_id: string
-  document_type: string
-  expiry_date: string
-  status: 'valid' | 'expiring' | 'expired'
-  notes: string
-  file_url?: string
-}
+export const courierDocumentFormSchema = z.object({
+  courier_id: z.string().min(1, 'Courier is required'),
+  document_type: z.string().min(1, 'Document type is required'),
+  expiry_date: z.string().optional().default(''),
+  status: z.enum(['valid', 'expiring', 'expired']).default('valid'),
+  notes: z.string().optional().default(''),
+  file_url: z.string().optional().default(''),
+})
+
+export type CourierDocumentFormData = z.infer<typeof courierDocumentFormSchema>
 
 export const courierDocumentFormConfig: FormConfig = {
   sections: [
@@ -377,23 +356,20 @@ export const courierDocumentInitialData: CourierDocumentFormData = {
   file_url: '',
 }
 
-export const courierDocumentValidation: ValidationSchema<CourierDocumentFormData> = {
-  courier_id: (data) => !data.courier_id ? 'Courier is required' : null,
-  document_type: (data) => !data.document_type ? 'Document type is required' : null,
-}
-
 // ============================================
 // QUALITY CONTROL FORM
 // ============================================
-export interface QualityControlFormData {
-  delivery_id: string
-  inspector: string
-  check_date: string
-  passed: boolean
-  issues: string
-  corrective_action: string
-  status: 'pending' | 'in_progress' | 'completed'
-}
+export const qualityControlFormSchema = z.object({
+  delivery_id: z.string().min(1, 'Delivery ID is required'),
+  inspector: z.string().min(1, 'Inspector is required'),
+  check_date: z.string().min(1, 'Inspection date is required'),
+  passed: z.boolean().optional().default(false),
+  issues: z.string().optional().default(''),
+  corrective_action: z.string().optional().default(''),
+  status: z.enum(['pending', 'in_progress', 'completed']).default('pending'),
+})
+
+export type QualityControlFormData = z.infer<typeof qualityControlFormSchema>
 
 export const qualityControlFormConfig: FormConfig = {
   sections: [
@@ -432,25 +408,21 @@ export const qualityControlInitialData: QualityControlFormData = {
   status: 'pending',
 }
 
-export const qualityControlValidation: ValidationSchema<QualityControlFormData> = {
-  delivery_id: (data) => !data.delivery_id ? 'Delivery ID is required' : null,
-  inspector: (data) => !data.inspector ? 'Inspector is required' : null,
-  check_date: (data) => !data.check_date ? 'Inspection date is required' : null,
-}
-
 // ============================================
 // INCIDENT REPORTING FORM
 // ============================================
-export interface IncidentReportFormData {
-  title: string
-  incident_type: string
-  severity: 'low' | 'medium' | 'high' | 'critical'
-  location: string
-  description: string
-  status: 'open' | 'investigating' | 'resolved' | 'closed'
-  reported_by: string
-  evidence_urls: string[]
-}
+export const incidentFormSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  incident_type: z.string().min(1, 'Incident type is required'),
+  severity: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+  location: z.string().optional().default(''),
+  description: z.string().min(1, 'Description is required'),
+  status: z.enum(['open', 'investigating', 'resolved', 'closed']).default('open'),
+  reported_by: z.string().optional().default(''),
+  evidence_urls: z.array(z.string()).optional().default([]),
+})
+
+export type IncidentReportFormData = z.infer<typeof incidentFormSchema>
 
 export const incidentFormConfig: FormConfig = {
   sections: [
@@ -504,23 +476,19 @@ export const incidentInitialData: IncidentReportFormData = {
   evidence_urls: [],
 }
 
-export const incidentValidation: ValidationSchema<IncidentReportFormData> = {
-  title: (data) => !data.title ? 'Title is required' : null,
-  incident_type: (data) => !data.incident_type ? 'Incident type is required' : null,
-  description: (data) => !data.description ? 'Description is required' : null,
-}
-
 // ============================================
 // DOCUMENT UPLOAD FORM
 // ============================================
-export interface DocumentUploadFormData {
-  doc_name: string
-  category: string
-  version: string
-  description: string
-  tags: string
-  file_url?: string
-}
+export const documentUploadFormSchema = z.object({
+  doc_name: z.string().min(1, 'Document name is required'),
+  category: z.string().min(1, 'Category is required'),
+  version: z.string().optional().default('1.0'),
+  description: z.string().optional().default(''),
+  tags: z.string().optional().default(''),
+  file_url: z.string().optional().default(''),
+})
+
+export type DocumentUploadFormData = z.infer<typeof documentUploadFormSchema>
 
 export const documentUploadFormConfig: FormConfig = {
   sections: [
@@ -560,23 +528,24 @@ export const documentUploadInitialData: DocumentUploadFormData = {
   file_url: '',
 }
 
-export const documentUploadValidation: ValidationSchema<DocumentUploadFormData> = {
-  doc_name: (data) => !data.doc_name ? 'Document name is required' : null,
-  category: (data) => !data.category ? 'Category is required' : null,
-}
-
 // ============================================
 // HANDOVER FORM
 // ============================================
-export interface HandoverFormData {
-  from_courier: string
-  to_courier: string
-  vehicle_id: string
-  handover_date: string
-  checklist: ChecklistItem[]
-  notes: string
-  signature?: string
-}
+export const handoverFormSchema = z.object({
+  from_courier: z.string().min(1, 'From courier is required'),
+  to_courier: z.string().min(1, 'To courier is required'),
+  vehicle_id: z.string().optional().default(''),
+  handover_date: z.string().min(1, 'Handover date is required'),
+  checklist: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    checked: z.boolean(),
+  })).optional(),
+  notes: z.string().optional().default(''),
+  signature: z.string().optional().default(''),
+})
+
+export type HandoverFormData = z.infer<typeof handoverFormSchema>
 
 export const defaultHandoverChecklist: ChecklistItem[] = [
   { id: '1', label: 'Vehicle keys handed over', checked: false },
@@ -619,14 +588,8 @@ export const handoverInitialData: HandoverFormData = {
   signature: '',
 }
 
-export const handoverValidation: ValidationSchema<HandoverFormData> = {
-  from_courier: (data) => !data.from_courier ? 'From courier is required' : null,
-  to_courier: (data) => !data.to_courier ? 'To courier is required' : null,
-  handover_date: (data) => !data.handover_date ? 'Handover date is required' : null,
-}
-
 // ============================================
-// HELPER: Get courier options
+// HELPER: Get options
 // ============================================
 export const getCourierOptions = (couriers: Array<{ id: string | number; name: string }>) => [
   { value: '', label: 'Select courier' },

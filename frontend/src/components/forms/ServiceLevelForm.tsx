@@ -2,7 +2,7 @@ import { DynamicForm } from './DynamicForm'
 import {
   serviceLevelFormConfig,
   serviceLevelInitialData,
-  serviceLevelValidation,
+  serviceLevelFormSchema,
   type ServiceLevelFormData
 } from './formConfigs'
 
@@ -28,7 +28,7 @@ export const ServiceLevelForm = ({
     <DynamicForm
       formConfig={serviceLevelFormConfig}
       initialData={defaultValues}
-      validationSchema={serviceLevelValidation}
+      zodSchema={serviceLevelFormSchema}
       onSubmit={onSubmit}
       onCancel={onCancel}
       isLoading={isLoading}

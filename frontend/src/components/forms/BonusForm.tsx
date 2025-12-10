@@ -2,7 +2,7 @@ import { DynamicForm } from './DynamicForm'
 import {
   bonusFormConfig,
   bonusInitialData,
-  bonusValidation,
+  bonusFormSchema,
   getCourierOptions,
   type BonusFormData
 } from './formConfigs'
@@ -48,7 +48,7 @@ export const BonusForm = ({
     <DynamicForm
       formConfig={config}
       initialData={defaultValues}
-      validationSchema={bonusValidation}
+      zodSchema={bonusFormSchema}
       onSubmit={onSubmit}
       onCancel={onCancel}
       isLoading={isLoading}
