@@ -24,6 +24,7 @@ from app.services.operations.settings_service import (
 )
 from app.services.operations.sla_service import sla_definition_service, sla_tracking_service
 from app.services.operations.zone_service import zone_service
+from app.services.operations.priority_queue_service import priority_queue_service
 
 __all__ = [
     # Core operations
@@ -54,4 +55,6 @@ __all__ = [
     "zone_default_service",
     # Documents
     "operations_document_service",
+    # Priority Queue
+    "priority_queue_service",
 ]

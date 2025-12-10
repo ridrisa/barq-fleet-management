@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.operations import priority_queue_entry as crud_queue
+from app.services.operations import priority_queue_service
 from app.models.tenant.organization import Organization
 from app.schemas.operations.priority_queue import (
     PriorityQueueEntryCreate,
@@ -37,15 +37,15 @@ def list_queue_entries(
     2. Queue time (ascending - older first)
     """
     if priority:
-        entries = crud_queue.get_by_priority(
+        entries = priority_queue_service.get_by_priority(
             db, priority=priority, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif zone_id:
-        entries = crud_queue.get_by_zone(
+        entries = priority_queue_service.get_by_zone(
             db, zone_id=zone_id, skip=skip, limit=limit, organization_id=current_org.id
         )
     else:
-        entries = crud_queue.get_queued(db, skip=skip, limit=limit, organization_id=current_org.id)
+        entries = priority_queue_service.get_queued(db, skip=skip, limit=limit, organization_id=current_org.id)
     return entries
 
 
@@ -62,7 +62,7 @@ def list_urgent_entries(
     - Used for immediate attention dashboard
     - Sorted by SLA deadline (closest first)
     """
-    entries = crud_queue.get_urgent(db, organization_id=current_org.id)
+    entries = priority_queue_service.get_urgent(db, organization_id=current_org.id)
     return entries
 
 
@@ -80,7 +80,7 @@ def list_at_risk_entries(
     - Requires immediate action
     - Triggers escalation if not assigned soon
     """
-    entries = crud_queue.get_at_risk(db, organization_id=current_org.id)
+    entries = priority_queue_service.get_at_risk(db, organization_id=current_org.id)
     return entries
 
 
@@ -97,7 +97,7 @@ def list_escalated_entries(
     - Requires supervisor/manager attention
     - May have exceeded normal assignment attempts
     """
-    entries = crud_queue.get_escalated(db, organization_id=current_org.id)
+    entries = priority_queue_service.get_escalated(db, organization_id=current_org.id)
     return entries
 
 
@@ -109,7 +109,7 @@ def get_queue_entry(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific queue entry by ID"""
-    entry = crud_queue.get(db, id=entry_id)
+    entry = priority_queue_service.get(db, id=entry_id)
     if not entry or entry.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
     return entry
@@ -123,7 +123,7 @@ def get_entry_by_delivery(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get queue entry for a specific delivery"""
-    entry = crud_queue.get_by_delivery(db, delivery_id=delivery_id, organization_id=current_org.id)
+    entry = priority_queue_service.get_by_delivery(db, delivery_id=delivery_id, organization_id=current_org.id)
     if not entry:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found for this delivery"
@@ -152,7 +152,7 @@ def create_queue_entry(
     - Updates all queue positions
     """
     # Check if delivery already in queue within organization
-    existing = crud_queue.get_by_delivery(
+    existing = priority_queue_service.get_by_delivery(
         db, delivery_id=entry_in.delivery_id, organization_id=current_org.id
     )
     if existing:
@@ -163,7 +163,7 @@ def create_queue_entry(
     # TODO: Validate delivery exists
     # TODO: Validate zone exists if provided
 
-    entry = crud_queue.create_with_number(db, obj_in=entry_in, organization_id=current_org.id)
+    entry = priority_queue_service.create_with_number(db, obj_in=entry_in, organization_id=current_org.id)
     return entry
 
 
@@ -182,7 +182,7 @@ def update_queue_entry(
     - Recalculates queue position if priority changed
     - Cannot update if already assigned
     """
-    entry = crud_queue.get(db, id=entry_id)
+    entry = priority_queue_service.get(db, id=entry_id)
     if not entry or entry.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
 
@@ -192,7 +192,7 @@ def update_queue_entry(
             detail="Cannot update entry that is already assigned or completed",
         )
 
-    entry = crud_queue.update(db, db_obj=entry, obj_in=entry_in)
+    entry = priority_queue_service.update(db, db_obj=entry, obj_in=entry_in)
     return entry
 
 
@@ -204,10 +204,10 @@ def delete_queue_entry(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a queue entry"""
-    entry = crud_queue.get(db, id=entry_id)
+    entry = priority_queue_service.get(db, id=entry_id)
     if not entry or entry.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
-    crud_queue.remove(db, id=entry_id)
+    priority_queue_service.delete(db, id=entry_id)
     return None
 
 
@@ -226,7 +226,7 @@ def mark_as_processing(
     - Prevents multiple processors from picking same entry
     - Updates queue positions
     """
-    entry = crud_queue.get(db, id=entry_id)
+    entry = priority_queue_service.get(db, id=entry_id)
     if not entry or entry.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
 
@@ -236,7 +236,7 @@ def mark_as_processing(
             detail="Only queued entries can be marked as processing",
         )
 
-    entry = crud_queue.mark_as_processing(db, entry_id=entry_id)
+    entry = priority_queue_service.mark_as_processing(db, entry_id=entry_id)
     return entry
 
 
@@ -256,7 +256,7 @@ def mark_as_assigned(
     - Removes from active queue
     - Updates remaining queue positions
     """
-    entry = crud_queue.get(db, id=entry_id)
+    entry = priority_queue_service.get(db, id=entry_id)
     if not entry or entry.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
 
@@ -266,7 +266,7 @@ def mark_as_assigned(
             detail="Only queued or processing entries can be assigned",
         )
 
-    entry = crud_queue.mark_as_assigned(db, entry_id=entry_id)
+    entry = priority_queue_service.mark_as_assigned(db, entry_id=entry_id)
     return entry
 
 
@@ -287,11 +287,11 @@ def mark_as_completed(
     - If SLA not met, calculates breach duration
     - Used for reporting and analytics
     """
-    entry = crud_queue.get(db, id=entry_id)
+    entry = priority_queue_service.get(db, id=entry_id)
     if not entry or entry.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
 
-    entry = crud_queue.mark_as_completed(db, entry_id=entry_id, sla_met=sla_met)
+    entry = priority_queue_service.mark_as_completed(db, entry_id=entry_id, sla_met=sla_met)
     return entry
 
 
@@ -311,7 +311,7 @@ def mark_as_expired(
     - Triggers escalation
     - Requires immediate action
     """
-    entry = crud_queue.get(db, id=entry_id)
+    entry = priority_queue_service.get(db, id=entry_id)
     if not entry or entry.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
 
@@ -321,7 +321,7 @@ def mark_as_expired(
             detail="Only queued entries can be marked as expired",
         )
 
-    entry = crud_queue.mark_as_expired(db, entry_id=entry_id)
+    entry = priority_queue_service.mark_as_expired(db, entry_id=entry_id)
     return entry
 
 
@@ -342,12 +342,12 @@ def escalate_entry(
     - Can optionally boost priority
     - Sends escalation notifications
     """
-    entry = crud_queue.get(db, id=entry_id)
+    entry = priority_queue_service.get(db, id=entry_id)
     if not entry or entry.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Queue entry not found")
 
     # Escalate the entry
-    entry = crud_queue.escalate(
+    entry = priority_queue_service.escalate(
         db,
         entry_id=entry_id,
         reason=escalation.escalation_reason,
@@ -357,7 +357,7 @@ def escalate_entry(
     # Optionally update priority
     if escalation.new_priority:
         entry_update = PriorityQueueEntryUpdate(priority=escalation.new_priority)
-        entry = crud_queue.update(db, db_obj=entry, obj_in=entry_update)
+        entry = priority_queue_service.update(db, db_obj=entry, obj_in=entry_update)
 
     return entry
 
@@ -378,12 +378,12 @@ def get_queue_position(
     - Priority level
     - SLA risk status
     """
-    entry = crud_queue.get_by_delivery(db, delivery_id=delivery_id, organization_id=current_org.id)
+    entry = priority_queue_service.get_by_delivery(db, delivery_id=delivery_id, organization_id=current_org.id)
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delivery not in queue")
 
     # Get total queued count
-    all_queued = crud_queue.get_queued(db, skip=0, limit=10000, organization_id=current_org.id)
+    all_queued = priority_queue_service.get_queued(db, skip=0, limit=10000, organization_id=current_org.id)
     total_in_queue = len(all_queued)
 
     position = QueuePosition(

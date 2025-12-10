@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_organization, get_current_user, get_db
-from app.services.operations import operations_document_service_service
+from app.services.operations import operations_document_service
 from app.models.operations.document import DocumentCategory
 from app.models.tenant.organization import Organization
 from app.models.user import User
@@ -126,7 +126,7 @@ def delete_document(
     if not doc or doc.organization_id != current_org.id:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    operations_document_service.remove(db, id=document_id)
+    operations_document_service.delete(db, id=document_id)
     return None
 
 
