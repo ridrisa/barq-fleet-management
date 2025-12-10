@@ -2,16 +2,23 @@
 Customer Feedback API Routes
 """
 
-from datetime import datetime
-from typing import List, Optional
+import logging
+import re
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
 from app.models.tenant.organization import Organization
-from app.services.operations import customer_feedback_service, feedback_template_service
+from app.models.operations.feedback import CustomerFeedback
+from app.services.operations import customer_feedback_service, feedback_template_service, delivery_service
+from app.services.fleet import courier_service
+from app.services.user_service import user_service
+from app.services.email_notification_service import email_notification_service, EmailRecipient
 from app.schemas.operations.feedback import (
     CustomerFeedbackCreate,
     CustomerFeedbackResponse,
@@ -29,6 +36,304 @@ from app.schemas.operations.feedback import (
     FeedbackTemplateUpdate,
     FeedbackType,
 )
+
+logger = logging.getLogger(__name__)
+
+
+# Feedback Analysis Utilities
+def analyze_sentiment(text: str, rating: int) -> FeedbackSentiment:
+    """
+    Analyze sentiment of feedback text using keyword-based analysis.
+    Combines text analysis with overall rating for better accuracy.
+
+    Args:
+        text: The feedback text to analyze
+        rating: The overall rating (1-5)
+
+    Returns:
+        FeedbackSentiment enum value
+    """
+    text_lower = text.lower()
+
+    # Positive keywords
+    positive_keywords = [
+        'excellent', 'amazing', 'great', 'fantastic', 'wonderful', 'perfect',
+        'best', 'love', 'thank', 'thanks', 'appreciate', 'happy', 'satisfied',
+        'quick', 'fast', 'professional', 'friendly', 'helpful', 'awesome',
+        'outstanding', 'exceptional', 'recommend', 'impressed', 'pleasant'
+    ]
+
+    # Negative keywords
+    negative_keywords = [
+        'terrible', 'horrible', 'awful', 'bad', 'worst', 'hate', 'angry',
+        'disappointed', 'frustrat', 'poor', 'slow', 'late', 'damaged',
+        'broken', 'rude', 'unprofessional', 'missing', 'lost', 'never',
+        'wrong', 'complaint', 'refund', 'unacceptable', 'disgusting'
+    ]
+
+    # Count keyword matches
+    positive_count = sum(1 for keyword in positive_keywords if keyword in text_lower)
+    negative_count = sum(1 for keyword in negative_keywords if keyword in text_lower)
+
+    # Combine text analysis with rating
+    # Rating: 1-2 = negative, 3 = neutral, 4-5 = positive
+    rating_sentiment = 0 if rating <= 2 else (1 if rating == 3 else 2)
+
+    # Text sentiment
+    if negative_count > positive_count:
+        text_sentiment = 0
+    elif positive_count > negative_count:
+        text_sentiment = 2
+    else:
+        text_sentiment = 1
+
+    # Combined score
+    combined_score = (rating_sentiment + text_sentiment) / 2
+
+    if combined_score < 0.8:
+        return FeedbackSentiment.NEGATIVE
+    elif combined_score > 1.2:
+        return FeedbackSentiment.POSITIVE
+    else:
+        return FeedbackSentiment.NEUTRAL
+
+
+def auto_categorize_feedback(text: str, feedback_type: FeedbackType) -> str:
+    """
+    Auto-categorize feedback based on text content and feedback type.
+
+    Args:
+        text: The feedback text to analyze
+        feedback_type: The type of feedback
+
+    Returns:
+        Category string
+    """
+    text_lower = text.lower()
+
+    # Category keyword mappings
+    category_keywords = {
+        'delivery_speed': ['fast', 'slow', 'late', 'delay', 'time', 'quick', 'wait', 'early', 'on time'],
+        'courier_behavior': ['rude', 'friendly', 'polite', 'professional', 'helpful', 'attitude', 'behavior', 'manner'],
+        'package_handling': ['damaged', 'broken', 'condition', 'package', 'item', 'handling', 'careful', 'intact'],
+        'communication': ['call', 'message', 'notify', 'update', 'inform', 'contact', 'respond', 'communication'],
+        'pricing': ['price', 'cost', 'expensive', 'cheap', 'fee', 'charge', 'value', 'money'],
+        'app_experience': ['app', 'website', 'interface', 'tracking', 'order', 'easy', 'difficult', 'navigation'],
+        'customer_service': ['support', 'help', 'service', 'issue', 'problem', 'resolve', 'complaint', 'assistance'],
+        'general': []
+    }
+
+    # Score each category
+    category_scores = {}
+    for category, keywords in category_keywords.items():
+        if keywords:
+            score = sum(1 for keyword in keywords if keyword in text_lower)
+            category_scores[category] = score
+
+    # Find best matching category
+    if category_scores:
+        best_category = max(category_scores, key=category_scores.get)
+        if category_scores[best_category] > 0:
+            return best_category
+
+    # Default based on feedback type
+    type_defaults = {
+        FeedbackType.DELIVERY: 'delivery_speed',
+        FeedbackType.COURIER: 'courier_behavior',
+        FeedbackType.SERVICE: 'customer_service',
+        FeedbackType.APP: 'app_experience',
+        FeedbackType.SUPPORT: 'customer_service',
+        FeedbackType.GENERAL: 'general'
+    }
+
+    return type_defaults.get(feedback_type, 'general')
+
+
+def send_feedback_response_email(
+    customer_email: str,
+    customer_name: str,
+    feedback_number: str,
+    response_text: str
+) -> bool:
+    """
+    Send email notification to customer when feedback is responded to.
+
+    Args:
+        customer_email: Customer email address
+        customer_name: Customer name
+        feedback_number: Feedback reference number
+        response_text: The response text
+
+    Returns:
+        True if email sent successfully
+    """
+    if not customer_email:
+        return False
+
+    subject = f"Response to Your Feedback - {feedback_number}"
+    html_content = f"""
+    <html>
+    <body>
+        <h2>Thank You for Your Feedback</h2>
+        <p>Dear {customer_name or 'Valued Customer'},</p>
+        <p>Thank you for taking the time to share your feedback with us. We have reviewed your feedback (Reference: {feedback_number}) and would like to share our response:</p>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p>{response_text}</p>
+        </div>
+        <p>We value your input as it helps us improve our service.</p>
+        <p>Best regards,<br>BARQ Fleet Management Team</p>
+    </body>
+    </html>
+    """
+
+    try:
+        return email_notification_service.send_email(
+            to=EmailRecipient(email=customer_email, name=customer_name),
+            subject=subject,
+            html_content=html_content
+        )
+    except Exception as e:
+        logger.error(f"Failed to send feedback response email: {e}")
+        return False
+
+
+def send_feedback_resolution_email(
+    customer_email: str,
+    customer_name: str,
+    feedback_number: str,
+    resolution_text: str,
+    compensation_amount: float = 0,
+    refund_amount: float = 0
+) -> bool:
+    """
+    Send email notification to customer when feedback is resolved.
+
+    Args:
+        customer_email: Customer email address
+        customer_name: Customer name
+        feedback_number: Feedback reference number
+        resolution_text: The resolution details
+        compensation_amount: Compensation amount if any
+        refund_amount: Refund amount if any
+
+    Returns:
+        True if email sent successfully
+    """
+    if not customer_email:
+        return False
+
+    compensation_section = ""
+    if compensation_amount > 0 or refund_amount > 0:
+        compensation_section = "<h3>Compensation Details:</h3><ul>"
+        if refund_amount > 0:
+            compensation_section += f"<li>Refund Amount: SAR {refund_amount:,.2f}</li>"
+        if compensation_amount > 0:
+            compensation_section += f"<li>Compensation Amount: SAR {compensation_amount:,.2f}</li>"
+        compensation_section += "</ul>"
+
+    subject = f"Your Feedback Has Been Resolved - {feedback_number}"
+    html_content = f"""
+    <html>
+    <body>
+        <h2>Feedback Resolution</h2>
+        <p>Dear {customer_name or 'Valued Customer'},</p>
+        <p>We are pleased to inform you that your feedback (Reference: {feedback_number}) has been resolved.</p>
+        <h3>Resolution Details:</h3>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p>{resolution_text}</p>
+        </div>
+        {compensation_section}
+        <p>We apologize for any inconvenience and thank you for bringing this to our attention.</p>
+        <p>If you have any further concerns, please don't hesitate to contact us.</p>
+        <p>Best regards,<br>BARQ Fleet Management Team</p>
+    </body>
+    </html>
+    """
+
+    try:
+        return email_notification_service.send_email(
+            to=EmailRecipient(email=customer_email, name=customer_name),
+            subject=subject,
+            html_content=html_content
+        )
+    except Exception as e:
+        logger.error(f"Failed to send feedback resolution email: {e}")
+        return False
+
+
+def send_escalation_notification(
+    escalated_to_email: str,
+    escalated_to_name: str,
+    feedback_number: str,
+    feedback_text: str,
+    escalation_reason: str,
+    customer_name: str,
+    priority: str
+) -> bool:
+    """
+    Send email notification to the person receiving the escalation.
+
+    Args:
+        escalated_to_email: Email of person receiving escalation
+        escalated_to_name: Name of person receiving escalation
+        feedback_number: Feedback reference number
+        feedback_text: Original feedback text
+        escalation_reason: Reason for escalation
+        customer_name: Customer name
+        priority: Priority level
+
+    Returns:
+        True if email sent successfully
+    """
+    if not escalated_to_email:
+        return False
+
+    priority_color = {
+        'urgent': 'red',
+        'high': 'orange',
+        'normal': 'blue'
+    }.get(priority, 'blue')
+
+    subject = f"[{priority.upper()}] Feedback Escalated - {feedback_number}"
+    html_content = f"""
+    <html>
+    <body>
+        <h2 style="color: {priority_color};">Escalated Feedback Requires Your Attention</h2>
+        <p>Dear {escalated_to_name or 'Team'},</p>
+        <p>A customer feedback has been escalated to you for review and action.</p>
+
+        <h3>Feedback Details:</h3>
+        <ul>
+            <li><strong>Reference:</strong> {feedback_number}</li>
+            <li><strong>Customer:</strong> {customer_name or 'Not provided'}</li>
+            <li><strong>Priority:</strong> <span style="color: {priority_color}; font-weight: bold;">{priority.upper()}</span></li>
+        </ul>
+
+        <h3>Original Feedback:</h3>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 10px 0;">
+            <p>{feedback_text[:500]}{'...' if len(feedback_text) > 500 else ''}</p>
+        </div>
+
+        <h3>Escalation Reason:</h3>
+        <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 10px 0;">
+            <p>{escalation_reason}</p>
+        </div>
+
+        <p>Please review and take appropriate action as soon as possible.</p>
+        <p>Best regards,<br>BARQ Fleet Management System</p>
+    </body>
+    </html>
+    """
+
+    try:
+        return email_notification_service.send_email(
+            to=EmailRecipient(email=escalated_to_email, name=escalated_to_name),
+            subject=subject,
+            html_content=html_content
+        )
+    except Exception as e:
+        logger.error(f"Failed to send escalation notification: {e}")
+        return False
 
 router = APIRouter()
 
@@ -193,14 +498,50 @@ def create_feedback(
     - Auto-categorizes based on keywords
     - Triggers notification for negative feedback
     """
-    # TODO: Validate delivery exists if delivery_id provided
-    # TODO: Validate courier exists if courier_id provided
-    # TODO: AI sentiment analysis
-    # TODO: Auto-categorization
+    # Validate delivery exists if delivery_id provided
+    if feedback_in.delivery_id:
+        delivery = delivery_service.get(db, id=feedback_in.delivery_id)
+        if not delivery:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Delivery with id {feedback_in.delivery_id} not found"
+            )
 
+    # Validate courier exists if courier_id provided
+    if feedback_in.courier_id:
+        courier = courier_service.get(db, id=feedback_in.courier_id)
+        if not courier:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Courier with id {feedback_in.courier_id} not found"
+            )
+
+    # Create feedback first
     feedback = customer_feedback_service.create_with_number(
         db, obj_in=feedback_in, organization_id=current_org.id
     )
+
+    # AI sentiment analysis
+    sentiment = analyze_sentiment(feedback_in.feedback_text, feedback_in.overall_rating)
+    feedback.sentiment = sentiment
+
+    # Auto-categorization (only if category not provided)
+    if not feedback_in.category:
+        category = auto_categorize_feedback(feedback_in.feedback_text, feedback_in.feedback_type)
+        feedback.category = category
+
+    # Mark as complaint if negative sentiment or low rating
+    if sentiment == FeedbackSentiment.NEGATIVE or feedback_in.overall_rating <= 2:
+        feedback.is_complaint = True
+
+    # Mark as compliment if positive sentiment and high rating
+    if sentiment == FeedbackSentiment.POSITIVE and feedback_in.overall_rating >= 4:
+        feedback.is_compliment = True
+
+    db.add(feedback)
+    db.commit()
+    db.refresh(feedback)
+
     return feedback
 
 
@@ -268,7 +609,14 @@ def respond_to_feedback(
         db.commit()
         db.refresh(feedback)
 
-    # TODO: Send email if response_data.send_email
+    # Send email if configured
+    if response_data.send_email and feedback.customer_email:
+        send_feedback_response_email(
+            customer_email=feedback.customer_email,
+            customer_name=feedback.customer_name,
+            feedback_number=feedback.feedback_number,
+            response_text=response_text
+        )
 
     return feedback
 
@@ -312,7 +660,16 @@ def resolve_feedback(
         action_taken=resolution.action_taken,
     )
 
-    # TODO: Notify customer if resolution.notify_customer
+    # Notify customer if resolution.notify_customer is enabled
+    if resolution.notify_customer and feedback.customer_email:
+        send_feedback_resolution_email(
+            customer_email=feedback.customer_email,
+            customer_name=feedback.customer_name,
+            feedback_number=feedback.feedback_number,
+            resolution_text=resolution.resolution_text,
+            compensation_amount=float(resolution.compensation_amount or 0),
+            refund_amount=float(resolution.refund_amount or 0)
+        )
 
     return feedback
 
@@ -354,7 +711,18 @@ def escalate_feedback(
     feedback_update = CustomerFeedbackUpdate(priority=escalation.priority)
     feedback = customer_feedback_service.update(db, db_obj=feedback, obj_in=feedback_update)
 
-    # TODO: Send escalation notification
+    # Send escalation notification to the assigned person
+    escalated_user = user_service.get(db, id=escalation.escalated_to_id)
+    if escalated_user and escalated_user.email:
+        send_escalation_notification(
+            escalated_to_email=escalated_user.email,
+            escalated_to_name=escalated_user.full_name,
+            feedback_number=feedback.feedback_number,
+            feedback_text=feedback.feedback_text,
+            escalation_reason=escalation.escalation_reason,
+            customer_name=feedback.customer_name,
+            priority=escalation.priority
+        )
 
     return feedback
 
@@ -501,26 +869,132 @@ def get_feedback_metrics(
     - Sentiment distribution
     - Top categories
     """
-    # TODO: Implement comprehensive metrics calculation with organization_id filter
-    # For now, return placeholder
+    # Calculate date range based on period
+    now = datetime.utcnow()
+    if period == "week":
+        start_date = now - timedelta(days=7)
+    elif period == "month":
+        start_date = now - timedelta(days=30)
+    elif period == "quarter":
+        start_date = now - timedelta(days=90)
+    else:  # year
+        start_date = now - timedelta(days=365)
+
+    # Base query with organization and date filters
+    base_query = db.query(CustomerFeedback).filter(
+        CustomerFeedback.organization_id == current_org.id,
+        CustomerFeedback.submitted_at >= start_date
+    )
+
+    # Get all feedbacks in period
+    feedbacks = base_query.all()
+    total_feedbacks = len(feedbacks)
+
+    if total_feedbacks == 0:
+        return FeedbackMetrics(
+            period=period,
+            total_feedbacks=0,
+            avg_overall_rating=0.0,
+            avg_delivery_speed_rating=0.0,
+            avg_courier_behavior_rating=0.0,
+            avg_package_condition_rating=0.0,
+            avg_communication_rating=0.0,
+            complaints_count=0,
+            compliments_count=0,
+            response_rate=0.0,
+            avg_response_time_hours=0.0,
+            resolution_rate=0.0,
+            avg_resolution_satisfaction=0.0,
+            escalation_rate=0.0,
+            sentiment_distribution={"positive": 0, "neutral": 0, "negative": 0},
+            rating_distribution={"1": 0, "2": 0, "3": 0, "4": 0, "5": 0},
+            top_categories=[],
+        )
+
+    # Calculate average ratings
+    overall_ratings = [f.overall_rating for f in feedbacks if f.overall_rating]
+    delivery_speed_ratings = [f.delivery_speed_rating for f in feedbacks if f.delivery_speed_rating]
+    courier_behavior_ratings = [f.courier_behavior_rating for f in feedbacks if f.courier_behavior_rating]
+    package_condition_ratings = [f.package_condition_rating for f in feedbacks if f.package_condition_rating]
+    communication_ratings = [f.communication_rating for f in feedbacks if f.communication_rating]
+
+    avg_overall_rating = sum(overall_ratings) / len(overall_ratings) if overall_ratings else 0.0
+    avg_delivery_speed = sum(delivery_speed_ratings) / len(delivery_speed_ratings) if delivery_speed_ratings else 0.0
+    avg_courier_behavior = sum(courier_behavior_ratings) / len(courier_behavior_ratings) if courier_behavior_ratings else 0.0
+    avg_package_condition = sum(package_condition_ratings) / len(package_condition_ratings) if package_condition_ratings else 0.0
+    avg_communication = sum(communication_ratings) / len(communication_ratings) if communication_ratings else 0.0
+
+    # Count complaints and compliments
+    complaints_count = sum(1 for f in feedbacks if f.is_complaint)
+    compliments_count = sum(1 for f in feedbacks if f.is_compliment)
+
+    # Calculate response rate and average response time
+    responded_feedbacks = [f for f in feedbacks if f.responded_at]
+    response_rate = (len(responded_feedbacks) / total_feedbacks * 100) if total_feedbacks > 0 else 0.0
+
+    response_times = [f.response_time_hours for f in responded_feedbacks if f.response_time_hours]
+    avg_response_time = sum(float(rt) for rt in response_times) / len(response_times) if response_times else 0.0
+
+    # Calculate resolution rate and satisfaction
+    resolved_feedbacks = [f for f in feedbacks if f.status in [FeedbackStatus.RESOLVED, FeedbackStatus.CLOSED]]
+    resolution_rate = (len(resolved_feedbacks) / total_feedbacks * 100) if total_feedbacks > 0 else 0.0
+
+    resolution_satisfactions = [f.resolution_satisfaction for f in resolved_feedbacks if f.resolution_satisfaction]
+    avg_resolution_satisfaction = (
+        sum(resolution_satisfactions) / len(resolution_satisfactions)
+        if resolution_satisfactions else 0.0
+    )
+
+    # Calculate escalation rate
+    escalated_feedbacks = [f for f in feedbacks if f.is_escalated]
+    escalation_rate = (len(escalated_feedbacks) / total_feedbacks * 100) if total_feedbacks > 0 else 0.0
+
+    # Sentiment distribution
+    sentiment_distribution = {
+        "positive": sum(1 for f in feedbacks if f.sentiment == FeedbackSentiment.POSITIVE),
+        "neutral": sum(1 for f in feedbacks if f.sentiment == FeedbackSentiment.NEUTRAL),
+        "negative": sum(1 for f in feedbacks if f.sentiment == FeedbackSentiment.NEGATIVE),
+    }
+
+    # Rating distribution
+    rating_distribution = {
+        "1": sum(1 for f in feedbacks if f.overall_rating == 1),
+        "2": sum(1 for f in feedbacks if f.overall_rating == 2),
+        "3": sum(1 for f in feedbacks if f.overall_rating == 3),
+        "4": sum(1 for f in feedbacks if f.overall_rating == 4),
+        "5": sum(1 for f in feedbacks if f.overall_rating == 5),
+    }
+
+    # Top categories
+    category_counts: Dict[str, int] = {}
+    for f in feedbacks:
+        if f.category:
+            category_counts[f.category] = category_counts.get(f.category, 0) + 1
+
+    top_categories = sorted(
+        [{"category": k, "count": v} for k, v in category_counts.items()],
+        key=lambda x: x["count"],
+        reverse=True
+    )[:10]
+
     return FeedbackMetrics(
         period=period,
-        total_feedbacks=0,
-        avg_overall_rating=0.0,
-        avg_delivery_speed_rating=0.0,
-        avg_courier_behavior_rating=0.0,
-        avg_package_condition_rating=0.0,
-        avg_communication_rating=0.0,
-        complaints_count=0,
-        compliments_count=0,
-        response_rate=0.0,
-        avg_response_time_hours=0.0,
-        resolution_rate=0.0,
-        avg_resolution_satisfaction=0.0,
-        escalation_rate=0.0,
-        sentiment_distribution={},
-        rating_distribution={},
-        top_categories=[],
+        total_feedbacks=total_feedbacks,
+        avg_overall_rating=round(avg_overall_rating, 2),
+        avg_delivery_speed_rating=round(avg_delivery_speed, 2),
+        avg_courier_behavior_rating=round(avg_courier_behavior, 2),
+        avg_package_condition_rating=round(avg_package_condition, 2),
+        avg_communication_rating=round(avg_communication, 2),
+        complaints_count=complaints_count,
+        compliments_count=compliments_count,
+        response_rate=round(response_rate, 2),
+        avg_response_time_hours=round(avg_response_time, 2),
+        resolution_rate=round(resolution_rate, 2),
+        avg_resolution_satisfaction=round(avg_resolution_satisfaction, 2),
+        escalation_rate=round(escalation_rate, 2),
+        sentiment_distribution=sentiment_distribution,
+        rating_distribution=rating_distribution,
+        top_categories=top_categories,
     )
 
 

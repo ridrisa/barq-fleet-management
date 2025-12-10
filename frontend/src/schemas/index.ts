@@ -104,6 +104,34 @@ export {
   type EOSCalculationFormData,
 } from './hr.schema'
 
+// Finance schemas
+export {
+  expenseSchema,
+  expenseCategorySchema as financeExpenseCategorySchema,
+  expenseStatusSchema as financeExpenseStatusSchema,
+  budgetSchema,
+  budgetDepartmentSchema as financeBudgetDepartmentSchema,
+  budgetCategorySchema as financeBudgetCategorySchema,
+  payrollRunSchema,
+  payrollRecordSchema,
+  payrollStatusSchema,
+  gosiContributionSchema,
+  gosiBatchSchema,
+  financialReportSchema,
+  financialReportTypeSchema,
+  reportGroupingSchema,
+  invoiceSchema,
+  invoiceStatusSchema,
+  type ExpenseFormData as FinanceExpenseFormData,
+  type BudgetFormData as FinanceBudgetFormData,
+  type PayrollRunFormData,
+  type PayrollRecordFormData,
+  type GOSIContributionFormData,
+  type GOSIBatchFormData,
+  type FinancialReportFormData,
+  type InvoiceFormData,
+} from './finance.schema'
+
 // Admin schemas
 export {
   userRoleAdminSchema,

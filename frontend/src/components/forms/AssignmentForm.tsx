@@ -1,19 +1,12 @@
-import { useState, FormEvent } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Form, FormField, FormSection, FormActions } from './Form'
+import { assignmentSchema, type AssignmentFormData } from '@/schemas/fleet.schema'
 
-export interface AssignmentFormData {
-  courier_id: string
-  vehicle_id: string
-  assignment_type: 'permanent' | 'temporary' | 'shift_based'
-  start_date: string
-  end_date?: string
-  shift?: 'morning' | 'evening' | 'night'
-  notes?: string
-  status: 'active' | 'completed' | 'cancelled'
-}
+export type { AssignmentFormData }
 
 export interface AssignmentFormProps {
   initialData?: Partial<AssignmentFormData>
@@ -34,78 +27,41 @@ export const AssignmentForm = ({
   couriers = [],
   vehicles = [],
 }: AssignmentFormProps) => {
-  const [formData, setFormData] = useState<AssignmentFormData>({
-    courier_id: initialData?.courier_id || '',
-    vehicle_id: initialData?.vehicle_id || '',
-    assignment_type: initialData?.assignment_type || 'permanent',
-    start_date: initialData?.start_date || '',
-    end_date: initialData?.end_date || '',
-    shift: initialData?.shift,
-    notes: initialData?.notes || '',
-    status: initialData?.status || 'active',
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<AssignmentFormData>({
+    resolver: zodResolver(assignmentSchema),
+    defaultValues: {
+      courier_id: initialData?.courier_id || '',
+      vehicle_id: initialData?.vehicle_id || '',
+      assignment_type: initialData?.assignment_type || 'permanent',
+      start_date: initialData?.start_date || '',
+      end_date: initialData?.end_date || '',
+      shift: initialData?.shift,
+      notes: initialData?.notes || '',
+      status: initialData?.status || 'active',
+    },
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof AssignmentFormData, string>>>({})
+  const assignmentType = watch('assignment_type')
 
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof AssignmentFormData, string>> = {}
-
-    if (!formData.courier_id) {
-      newErrors.courier_id = 'Courier is required'
-    }
-
-    if (!formData.vehicle_id) {
-      newErrors.vehicle_id = 'Vehicle is required'
-    }
-
-    if (!formData.start_date) {
-      newErrors.start_date = 'Start date is required'
-    }
-
-    if (formData.end_date && formData.start_date) {
-      const start = new Date(formData.start_date)
-      const end = new Date(formData.end_date)
-      if (end < start) {
-        newErrors.end_date = 'End date must be after start date'
-      }
-    }
-
-    if (formData.assignment_type === 'shift_based' && !formData.shift) {
-      newErrors.shift = 'Shift is required for shift-based assignments'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    if (!validate()) {
-      return
-    }
-
-    await onSubmit(formData)
-  }
-
-  const handleChange = (field: keyof AssignmentFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
+  const onFormSubmit = async (data: AssignmentFormData) => {
+    await onSubmit(data)
   }
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="Assignment Details"
         description="Assign a courier to a vehicle"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Courier" required error={errors.courier_id}>
+          <FormField label="Courier" required error={errors.courier_id?.message}>
             <Select
-              value={formData.courier_id}
-              onChange={(e) => handleChange('courier_id', e.target.value)}
+              {...register('courier_id')}
               options={[
                 { value: '', label: 'Select a courier...' },
                 ...couriers.map((c) => ({ value: c.id, label: c.name })),
@@ -113,10 +69,9 @@ export const AssignmentForm = ({
             />
           </FormField>
 
-          <FormField label="Vehicle" required error={errors.vehicle_id}>
+          <FormField label="Vehicle" required error={errors.vehicle_id?.message}>
             <Select
-              value={formData.vehicle_id}
-              onChange={(e) => handleChange('vehicle_id', e.target.value)}
+              {...register('vehicle_id')}
               options={[
                 { value: '', label: 'Select a vehicle...' },
                 ...vehicles.map((v) => ({ value: v.id, label: v.plate_number })),
@@ -124,10 +79,9 @@ export const AssignmentForm = ({
             />
           </FormField>
 
-          <FormField label="Assignment Type" required>
+          <FormField label="Assignment Type" required error={errors.assignment_type?.message}>
             <Select
-              value={formData.assignment_type}
-              onChange={(e) => handleChange('assignment_type', e.target.value)}
+              {...register('assignment_type')}
               options={[
                 { value: 'permanent', label: 'Permanent' },
                 { value: 'temporary', label: 'Temporary' },
@@ -136,10 +90,9 @@ export const AssignmentForm = ({
             />
           </FormField>
 
-          <FormField label="Status" required>
+          <FormField label="Status" required error={errors.status?.message}>
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              {...register('status')}
               options={[
                 { value: 'active', label: 'Active' },
                 { value: 'completed', label: 'Completed' },
@@ -155,27 +108,24 @@ export const AssignmentForm = ({
         description="Set the assignment period"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Start Date" required error={errors.start_date}>
+          <FormField label="Start Date" required error={errors.start_date?.message}>
             <Input
               type="date"
-              value={formData.start_date}
-              onChange={(e) => handleChange('start_date', e.target.value)}
+              {...register('start_date')}
             />
           </FormField>
 
-          <FormField label="End Date" error={errors.end_date}>
+          <FormField label="End Date" error={errors.end_date?.message}>
             <Input
               type="date"
-              value={formData.end_date}
-              onChange={(e) => handleChange('end_date', e.target.value)}
+              {...register('end_date')}
             />
           </FormField>
 
-          {formData.assignment_type === 'shift_based' && (
-            <FormField label="Shift" required error={errors.shift}>
+          {assignmentType === 'shift_based' && (
+            <FormField label="Shift" required error={errors.shift?.message}>
               <Select
-                value={formData.shift || ''}
-                onChange={(e) => handleChange('shift', e.target.value)}
+                {...register('shift')}
                 options={[
                   { value: '', label: 'Select a shift...' },
                   { value: 'morning', label: 'Morning (6AM - 2PM)' },
@@ -192,10 +142,9 @@ export const AssignmentForm = ({
         title="Additional Information"
         description="Notes and special instructions"
       >
-        <FormField label="Notes">
+        <FormField label="Notes" error={errors.notes?.message}>
           <Input
-            value={formData.notes}
-            onChange={(e) => handleChange('notes', e.target.value)}
+            {...register('notes')}
             placeholder="Any special instructions or notes..."
           />
         </FormField>

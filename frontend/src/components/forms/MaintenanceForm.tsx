@@ -1,21 +1,13 @@
-import { useState, FormEvent } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { Textarea } from '@/components/ui/Textarea';
+import { Textarea } from '@/components/ui/Textarea'
 import { Form, FormField, FormSection, FormActions } from './Form'
+import { maintenanceFormSchema, type MaintenanceFormData } from '@/schemas/fleet.schema'
 
-export interface MaintenanceFormData {
-  vehicle_id: number | string
-  maintenance_type: string
-  scheduled_date: string
-  completed_date?: string
-  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
-  cost?: number | string
-  service_provider?: string
-  description?: string
-  notes?: string
-}
+export type { MaintenanceFormData }
 
 export interface MaintenanceFormProps {
   initialData?: Partial<MaintenanceFormData>
@@ -34,80 +26,42 @@ export const MaintenanceForm = ({
   mode = 'create',
   vehicles = [],
 }: MaintenanceFormProps) => {
-  const [formData, setFormData] = useState<MaintenanceFormData>({
-    vehicle_id: initialData?.vehicle_id || '',
-    maintenance_type: initialData?.maintenance_type || 'oil_change',
-    scheduled_date: initialData?.scheduled_date || '',
-    completed_date: initialData?.completed_date || '',
-    status: initialData?.status || 'scheduled',
-    cost: initialData?.cost || '',
-    service_provider: initialData?.service_provider || '',
-    description: initialData?.description || '',
-    notes: initialData?.notes || '',
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<MaintenanceFormData>({
+    resolver: zodResolver(maintenanceFormSchema),
+    defaultValues: {
+      vehicle_id: initialData?.vehicle_id || '',
+      maintenance_type: initialData?.maintenance_type || 'oil_change',
+      scheduled_date: initialData?.scheduled_date || '',
+      completed_date: initialData?.completed_date || '',
+      status: initialData?.status || 'scheduled',
+      cost: initialData?.cost,
+      service_provider: initialData?.service_provider || '',
+      description: initialData?.description || '',
+      notes: initialData?.notes || '',
+    },
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof MaintenanceFormData, string>>>({})
+  const status = watch('status')
 
-  // Basic validation
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof MaintenanceFormData, string>> = {}
-
-    if (!formData.vehicle_id) {
-      newErrors.vehicle_id = 'Vehicle is required'
-    }
-
-    if (!formData.scheduled_date) {
-      newErrors.scheduled_date = 'Scheduled date is required'
-    }
-
-    if (formData.status === 'completed' && !formData.completed_date) {
-      newErrors.completed_date = 'Completed date is required when status is completed'
-    }
-
-    if (formData.cost && Number(formData.cost) < 0) {
-      newErrors.cost = 'Cost cannot be negative'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    if (!validate()) {
-      return
-    }
-
-    // Convert string values to numbers where needed
-    const submitData: MaintenanceFormData = {
-      ...formData,
-      vehicle_id: Number(formData.vehicle_id),
-      cost: formData.cost ? Number(formData.cost) : undefined,
-    }
-
-    await onSubmit(submitData)
-  }
-
-  const handleChange = (field: keyof MaintenanceFormData, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error for this field when user starts typing
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
+  const onFormSubmit = async (data: MaintenanceFormData) => {
+    await onSubmit(data)
   }
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="Maintenance Details"
         description="Enter vehicle maintenance information"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Vehicle" required error={errors.vehicle_id}>
+          <FormField label="Vehicle" required error={errors.vehicle_id?.message}>
             <Select
-              value={String(formData.vehicle_id)}
-              onChange={(e) => handleChange('vehicle_id', e.target.value)}
+              {...register('vehicle_id')}
               options={[
                 { value: '', label: 'Select Vehicle' },
                 ...vehicles.map((v) => ({
@@ -118,10 +72,9 @@ export const MaintenanceForm = ({
             />
           </FormField>
 
-          <FormField label="Maintenance Type" required>
+          <FormField label="Maintenance Type" required error={errors.maintenance_type?.message}>
             <Select
-              value={formData.maintenance_type}
-              onChange={(e) => handleChange('maintenance_type', e.target.value)}
+              {...register('maintenance_type')}
               options={[
                 { value: 'oil_change', label: 'Oil Change' },
                 { value: 'tire_replacement', label: 'Tire Replacement' },
@@ -136,18 +89,16 @@ export const MaintenanceForm = ({
             />
           </FormField>
 
-          <FormField label="Scheduled Date" required error={errors.scheduled_date}>
+          <FormField label="Scheduled Date" required error={errors.scheduled_date?.message}>
             <Input
               type="date"
-              value={formData.scheduled_date}
-              onChange={(e) => handleChange('scheduled_date', e.target.value)}
+              {...register('scheduled_date')}
             />
           </FormField>
 
-          <FormField label="Status" required>
+          <FormField label="Status" required error={errors.status?.message}>
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              {...register('status')}
               options={[
                 { value: 'scheduled', label: 'Scheduled' },
                 { value: 'in_progress', label: 'In Progress' },
@@ -157,49 +108,44 @@ export const MaintenanceForm = ({
             />
           </FormField>
 
-          {formData.status === 'completed' && (
-            <FormField label="Completed Date" required={formData.status === 'completed'} error={errors.completed_date}>
+          {status === 'completed' && (
+            <FormField label="Completed Date" required error={errors.completed_date?.message}>
               <Input
                 type="date"
-                value={formData.completed_date}
-                onChange={(e) => handleChange('completed_date', e.target.value)}
+                {...register('completed_date')}
               />
             </FormField>
           )}
 
-          <FormField label="Cost (SAR)" error={errors.cost}>
+          <FormField label="Cost (SAR)" error={errors.cost?.message}>
             <Input
               type="number"
               step="0.01"
-              value={formData.cost}
-              onChange={(e) => handleChange('cost', e.target.value)}
+              {...register('cost', { valueAsNumber: true })}
               placeholder="250.00"
             />
           </FormField>
 
-          <FormField label="Service Provider">
+          <FormField label="Service Provider" error={errors.service_provider?.message}>
             <Input
-              value={formData.service_provider}
-              onChange={(e) => handleChange('service_provider', e.target.value)}
+              {...register('service_provider')}
               placeholder="ABC Auto Service"
             />
           </FormField>
         </div>
 
         <div className="mt-4">
-          <FormField label="Description">
+          <FormField label="Description" error={errors.description?.message}>
             <Textarea
-              value={formData.description}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange('description', e.target.value)}
+              {...register('description')}
               placeholder="Detailed description of maintenance work"
               rows={3}
             />
           </FormField>
 
-          <FormField label="Notes">
+          <FormField label="Notes" error={errors.notes?.message}>
             <Textarea
-              value={formData.notes}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange('notes', e.target.value)}
+              {...register('notes')}
               placeholder="Additional notes"
               rows={2}
             />

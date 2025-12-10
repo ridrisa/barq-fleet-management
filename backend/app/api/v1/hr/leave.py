@@ -59,6 +59,12 @@ def get_leaves(
             db, status=status, skip=skip, limit=limit, organization_id=current_org.id
         )
 
+    # If leave_type filter is provided
+    if leave_type:
+        return leave_service.get_by_leave_type(
+            db, leave_type=leave_type, skip=skip, limit=limit, organization_id=current_org.id
+        )
+
     # If courier_id filter is provided
     if courier_id:
         return leave_service.get_by_courier(
@@ -66,7 +72,6 @@ def get_leaves(
         )
 
     # Default: get all leaves for the organization
-    # TODO: Add leave_type filtering to service if needed
     return leave_service.get_multi(db, skip=skip, limit=limit, organization_id=current_org.id)
 
 

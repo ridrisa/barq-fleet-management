@@ -233,10 +233,22 @@ def get_chat_transcript(
         duration_seconds = (session.ended_at - session.started_at).total_seconds()
         duration_minutes = int(duration_seconds / 60)
 
+    # Get actual customer name from User table
+    customer_name = None
+    if session.customer_id:
+        customer = db.query(User).filter(User.id == session.customer_id).first()
+        customer_name = customer.full_name if customer else f"Customer {session.customer_id}"
+
+    # Get actual agent name from User table
+    agent_name = None
+    if session.agent_id:
+        agent = db.query(User).filter(User.id == session.agent_id).first()
+        agent_name = agent.full_name if agent else f"Agent {session.agent_id}"
+
     return {
         "session_id": session.session_id,
-        "customer_name": f"Customer {session.customer_id}",  # TODO: Get actual name
-        "agent_name": f"Agent {session.agent_id}" if session.agent_id else None,
+        "customer_name": customer_name,
+        "agent_name": agent_name,
         "started_at": session.started_at,
         "ended_at": session.ended_at,
         "duration_minutes": duration_minutes,

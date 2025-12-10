@@ -25,6 +25,13 @@ export * from './BuildingForm'
 export * from './RoomForm'
 export * from './WorkflowTemplateForm'
 
+// Fleet Forms
+export * from './MaintenanceForm'
+export * from './FuelLogForm'
+export * from './ZoneForm'
+export * from './PriorityQueueForm'
+export * from './TrackingForm'
+
 // New Forms (Generated)
 export * from './PenaltyForm'
 export * from './BonusForm'
@@ -36,3 +43,11 @@ export * from './HandoverForm'
 export * from './QualityControlForm'
 export * from './DocumentUploadForm'
 export * from './IncidentReportingForm'
+
+// HR & Finance Forms (Zod Validated)
+export * from './LeaveForm'
+export * from './SalaryForm'
+export * from './EOSForm'
+export * from './PayrollForm'
+export * from './GOSIForm'
+export * from './FinancialReportForm'
