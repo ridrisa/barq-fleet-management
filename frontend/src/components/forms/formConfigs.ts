@@ -1,21 +1,60 @@
-import { z } from 'zod'
 import { FormConfig } from './DynamicForm'
 import { type ChecklistItem } from './ChecklistField'
 
-// ============================================
-// PENALTY FORM
-// ============================================
-export const penaltyFormSchema = z.object({
-  courier_id: z.string().min(1, 'Courier is required'),
-  date: z.string().min(1, 'Date is required'),
-  reason: z.string().min(1, 'Reason is required'),
-  amount: z.number().positive('Amount must be greater than 0'),
-  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
-  notes: z.string().optional().default(''),
-})
+// Import schemas from centralized location
+import {
+  serviceLevelFormSchema as _serviceLevelFormSchema,
+  incidentFormSchema as _incidentFormSchema,
+  qualityControlFormSchema as _qualityControlFormSchema,
+  documentUploadFormSchema as _documentUploadFormSchema,
+  handoverFormSchema as _handoverFormSchema,
+  expenseFormSchema as _expenseFormSchema,
+  budgetFormSchema as _budgetFormSchema,
+  penaltyFormConfigSchema,
+  bonusFormConfigSchema,
+  courierDocumentFormSchema as _courierDocumentFormSchema,
+  type ServiceLevelFormData,
+  type IncidentReportFormData,
+  type QualityControlFormData,
+  type DocumentUploadFormData,
+  type HandoverFormData,
+  type ExpenseFormData,
+  type BudgetFormData,
+  type PenaltyFormConfigData,
+  type BonusFormConfigData,
+  type CourierDocumentFormConfigData,
+} from '@/schemas/operations.schema'
 
-export type PenaltyFormData = z.infer<typeof penaltyFormSchema>
+// Re-export schemas from centralized location for backward compatibility
+export const serviceLevelFormSchema = _serviceLevelFormSchema
+export const incidentFormSchema = _incidentFormSchema
+export const qualityControlFormSchema = _qualityControlFormSchema
+export const documentUploadFormSchema = _documentUploadFormSchema
+export const handoverFormSchema = _handoverFormSchema
+export const expenseFormSchema = _expenseFormSchema
+export const budgetFormSchema = _budgetFormSchema
+export const penaltyFormSchema = penaltyFormConfigSchema
+export const bonusFormSchema = bonusFormConfigSchema
+export const courierDocumentFormSchema = _courierDocumentFormSchema
 
+// Re-export types for backward compatibility
+export type {
+  ServiceLevelFormData,
+  IncidentReportFormData,
+  QualityControlFormData,
+  DocumentUploadFormData,
+  HandoverFormData,
+  ExpenseFormData,
+  BudgetFormData,
+}
+
+export type PenaltyFormData = PenaltyFormConfigData
+export type BonusFormData = BonusFormConfigData
+export type CourierDocumentFormData = CourierDocumentFormConfigData
+
+// ============================================
+// PENALTY FORM CONFIG
+// ============================================
 export const penaltyFormConfig: FormConfig = {
   sections: [
     {
@@ -59,19 +98,8 @@ export const penaltyInitialData: PenaltyFormData = {
 }
 
 // ============================================
-// BONUS FORM
+// BONUS FORM CONFIG
 // ============================================
-export const bonusFormSchema = z.object({
-  courier_id: z.string().min(1, 'Courier is required'),
-  month: z.string().min(1, 'Month is required'),
-  amount: z.number().positive('Amount must be greater than 0'),
-  reason: z.string().min(1, 'Reason is required'),
-  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
-  notes: z.string().optional().default(''),
-})
-
-export type BonusFormData = z.infer<typeof bonusFormSchema>
-
 export const bonusFormConfig: FormConfig = {
   sections: [
     {
@@ -115,19 +143,8 @@ export const bonusInitialData: BonusFormData = {
 }
 
 // ============================================
-// EXPENSE FORM
+// EXPENSE FORM CONFIG
 // ============================================
-export const expenseFormSchema = z.object({
-  date: z.string().min(1, 'Date is required'),
-  category: z.string().min(1, 'Category is required'),
-  description: z.string().min(1, 'Description is required'),
-  amount: z.number().positive('Amount must be greater than 0'),
-  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
-  receipt_url: z.string().optional().default(''),
-})
-
-export type ExpenseFormData = z.infer<typeof expenseFormSchema>
-
 export const expenseFormConfig: FormConfig = {
   sections: [
     {
@@ -173,20 +190,8 @@ export const expenseInitialData: ExpenseFormData = {
 }
 
 // ============================================
-// SERVICE LEVEL (SLA) FORM
+// SERVICE LEVEL (SLA) FORM CONFIG
 // ============================================
-export const serviceLevelFormSchema = z.object({
-  service_type: z.string().min(1, 'Service type is required'),
-  target_time: z.number().positive('Target time must be greater than 0'),
-  time_unit: z.enum(['minutes', 'hours', 'days']).default('hours'),
-  measurement: z.string().optional().default(''),
-  penalty_amount: z.number().nonnegative().optional().default(0),
-  measurement_period: z.enum(['daily', 'weekly', 'monthly']).default('monthly'),
-  is_active: z.boolean().optional().default(true),
-})
-
-export type ServiceLevelFormData = z.infer<typeof serviceLevelFormSchema>
-
 export const serviceLevelFormConfig: FormConfig = {
   sections: [
     {
@@ -237,19 +242,8 @@ export const serviceLevelInitialData: ServiceLevelFormData = {
 }
 
 // ============================================
-// BUDGET FORM
+// BUDGET FORM CONFIG
 // ============================================
-export const budgetFormSchema = z.object({
-  department: z.string().min(1, 'Department is required'),
-  category: z.string().min(1, 'Category is required'),
-  allocated: z.number().nonnegative('Allocated amount cannot be negative'),
-  spent: z.number().nonnegative().optional().default(0),
-  period: z.string().min(1, 'Period is required'),
-  notes: z.string().optional().default(''),
-})
-
-export type BudgetFormData = z.infer<typeof budgetFormSchema>
-
 export const budgetFormConfig: FormConfig = {
   sections: [
     {
@@ -300,19 +294,8 @@ export const budgetInitialData: BudgetFormData = {
 }
 
 // ============================================
-// COURIER DOCUMENT FORM
+// COURIER DOCUMENT FORM CONFIG
 // ============================================
-export const courierDocumentFormSchema = z.object({
-  courier_id: z.string().min(1, 'Courier is required'),
-  document_type: z.string().min(1, 'Document type is required'),
-  expiry_date: z.string().optional().default(''),
-  status: z.enum(['valid', 'expiring', 'expired']).default('valid'),
-  notes: z.string().optional().default(''),
-  file_url: z.string().optional().default(''),
-})
-
-export type CourierDocumentFormData = z.infer<typeof courierDocumentFormSchema>
-
 export const courierDocumentFormConfig: FormConfig = {
   sections: [
     {
@@ -357,20 +340,8 @@ export const courierDocumentInitialData: CourierDocumentFormData = {
 }
 
 // ============================================
-// QUALITY CONTROL FORM
+// QUALITY CONTROL FORM CONFIG
 // ============================================
-export const qualityControlFormSchema = z.object({
-  delivery_id: z.string().min(1, 'Delivery ID is required'),
-  inspector: z.string().min(1, 'Inspector is required'),
-  check_date: z.string().min(1, 'Inspection date is required'),
-  passed: z.boolean().optional().default(false),
-  issues: z.string().optional().default(''),
-  corrective_action: z.string().optional().default(''),
-  status: z.enum(['pending', 'in_progress', 'completed']).default('pending'),
-})
-
-export type QualityControlFormData = z.infer<typeof qualityControlFormSchema>
-
 export const qualityControlFormConfig: FormConfig = {
   sections: [
     {
@@ -409,21 +380,8 @@ export const qualityControlInitialData: QualityControlFormData = {
 }
 
 // ============================================
-// INCIDENT REPORTING FORM
+// INCIDENT REPORTING FORM CONFIG
 // ============================================
-export const incidentFormSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  incident_type: z.string().min(1, 'Incident type is required'),
-  severity: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
-  location: z.string().optional().default(''),
-  description: z.string().min(1, 'Description is required'),
-  status: z.enum(['open', 'investigating', 'resolved', 'closed']).default('open'),
-  reported_by: z.string().optional().default(''),
-  evidence_urls: z.array(z.string()).optional().default([]),
-})
-
-export type IncidentReportFormData = z.infer<typeof incidentFormSchema>
-
 export const incidentFormConfig: FormConfig = {
   sections: [
     {
@@ -477,19 +435,8 @@ export const incidentInitialData: IncidentReportFormData = {
 }
 
 // ============================================
-// DOCUMENT UPLOAD FORM
+// DOCUMENT UPLOAD FORM CONFIG
 // ============================================
-export const documentUploadFormSchema = z.object({
-  doc_name: z.string().min(1, 'Document name is required'),
-  category: z.string().min(1, 'Category is required'),
-  version: z.string().optional().default('1.0'),
-  description: z.string().optional().default(''),
-  tags: z.string().optional().default(''),
-  file_url: z.string().optional().default(''),
-})
-
-export type DocumentUploadFormData = z.infer<typeof documentUploadFormSchema>
-
 export const documentUploadFormConfig: FormConfig = {
   sections: [
     {
@@ -529,24 +476,8 @@ export const documentUploadInitialData: DocumentUploadFormData = {
 }
 
 // ============================================
-// HANDOVER FORM
+// HANDOVER FORM CONFIG
 // ============================================
-export const handoverFormSchema = z.object({
-  from_courier: z.string().min(1, 'From courier is required'),
-  to_courier: z.string().min(1, 'To courier is required'),
-  vehicle_id: z.string().optional().default(''),
-  handover_date: z.string().min(1, 'Handover date is required'),
-  checklist: z.array(z.object({
-    id: z.string(),
-    label: z.string(),
-    checked: z.boolean(),
-  })).optional(),
-  notes: z.string().optional().default(''),
-  signature: z.string().optional().default(''),
-})
-
-export type HandoverFormData = z.infer<typeof handoverFormSchema>
-
 export const defaultHandoverChecklist: ChecklistItem[] = [
   { id: '1', label: 'Vehicle keys handed over', checked: false },
   { id: '2', label: 'Vehicle condition verified', checked: false },

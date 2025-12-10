@@ -1,18 +1,17 @@
-import { useState, FormEvent } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Form, FormField, FormSection, FormActions } from './Form'
+import {
+  userCreateSchema,
+  userEditSchema,
+  type UserCreateFormData,
+  type UserEditFormData,
+} from '@/schemas/admin.schema'
 
-export interface UserFormData {
-  email: string
-  full_name: string
-  password?: string
-  role: 'admin' | 'manager' | 'user' | 'viewer'
-  is_active: boolean
-  department?: string
-  phone?: string
-}
+export type UserFormData = UserCreateFormData | UserEditFormData
 
 export interface UserFormProps {
   initialData?: Partial<UserFormData>
@@ -29,120 +28,69 @@ export const UserForm = ({
   isLoading = false,
   mode = 'create',
 }: UserFormProps) => {
-  const [formData, setFormData] = useState<UserFormData>({
-    email: initialData?.email || '',
-    full_name: initialData?.full_name || '',
-    password: initialData?.password || '',
-    role: initialData?.role || 'user',
-    is_active: initialData?.is_active !== undefined ? initialData.is_active : true,
-    department: initialData?.department || '',
-    phone: initialData?.phone || '',
+  const schema = mode === 'create' ? userCreateSchema : userEditSchema
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<UserFormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      email: initialData?.email || '',
+      full_name: initialData?.full_name || '',
+      password: initialData?.password || '',
+      role: initialData?.role || 'user',
+      is_active: initialData?.is_active !== undefined ? initialData.is_active : true,
+      department: initialData?.department || '',
+      phone: initialData?.phone || '',
+    },
+    mode: 'onBlur',
   })
 
-  const [errors, setErrors] = useState<Partial<Record<keyof UserFormData, string>>>({})
+  const formIsLoading = isLoading || isSubmitting
 
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
-
-  const validatePhone = (phone: string): boolean => {
-    if (!phone) return true // Phone is optional
-    const phoneRegex = /^[+]?[\d\s\-()]{10,}$/
-    return phoneRegex.test(phone)
-  }
-
-  const validate = (): boolean => {
-    const newErrors: Partial<Record<keyof UserFormData, string>> = {}
-
-    if (!formData.email || formData.email.trim().length === 0) {
-      newErrors.email = 'Email is required'
-    } else if (!validateEmail(formData.email)) {
-      newErrors.email = 'Please enter a valid email address'
-    }
-
-    if (!formData.full_name || formData.full_name.trim().length === 0) {
-      newErrors.full_name = 'Full name is required'
-    }
-
-    if (formData.full_name.length < 2) {
-      newErrors.full_name = 'Full name must be at least 2 characters'
-    }
-
-    // Password validation only for create mode
-    if (mode === 'create') {
-      if (!formData.password || formData.password.length === 0) {
-        newErrors.password = 'Password is required'
-      } else if (formData.password.length < 8) {
-        newErrors.password = 'Password must be at least 8 characters'
-      }
-    } else if (mode === 'edit' && formData.password && formData.password.length < 8) {
-      // If editing and password is provided, validate it
-      newErrors.password = 'Password must be at least 8 characters if provided'
-    }
-
-    if (formData.phone && !validatePhone(formData.phone)) {
-      newErrors.phone = 'Please enter a valid phone number'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    if (!validate()) {
-      return
-    }
-
+  const onFormSubmit = async (data: UserFormData) => {
     // Don't send password field if empty in edit mode
-    const submitData = { ...formData }
+    const submitData = { ...data }
     if (mode === 'edit' && !submitData.password) {
       delete submitData.password
     }
-
     await onSubmit(submitData)
   }
 
-  const handleChange = (field: keyof UserFormData, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
-    }
-  }
+  const isActiveValue = watch('is_active')
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="User Information"
         description="Basic user account details"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Email" required error={errors.email}>
+          <FormField label="Email" required error={errors.email?.message}>
             <Input
               type="email"
-              value={formData.email}
-              onChange={(e) => handleChange('email', e.target.value)}
+              {...register('email')}
               placeholder="user@example.com"
               disabled={mode === 'edit'}
             />
           </FormField>
 
-          <FormField label="Full Name" required error={errors.full_name}>
+          <FormField label="Full Name" required error={errors.full_name?.message}>
             <Input
-              value={formData.full_name}
-              onChange={(e) => handleChange('full_name', e.target.value)}
+              {...register('full_name')}
               placeholder="John Doe"
             />
           </FormField>
 
           {mode === 'create' && (
-            <FormField label="Password" required error={errors.password}>
+            <FormField label="Password" required error={errors.password?.message}>
               <Input
                 type="password"
-                value={formData.password}
-                onChange={(e) => handleChange('password', e.target.value)}
+                {...register('password')}
                 placeholder="Minimum 8 characters"
               />
             </FormField>
@@ -151,13 +99,12 @@ export const UserForm = ({
           {mode === 'edit' && (
             <FormField
               label="New Password"
-              error={errors.password}
+              error={errors.password?.message}
               helperText="Leave empty to keep current password"
             >
               <Input
                 type="password"
-                value={formData.password}
-                onChange={(e) => handleChange('password', e.target.value)}
+                {...register('password')}
                 placeholder="Enter new password or leave empty"
               />
             </FormField>
@@ -165,8 +112,7 @@ export const UserForm = ({
 
           <FormField label="Role" required>
             <Select
-              value={formData.role}
-              onChange={(e) => handleChange('role', e.target.value)}
+              {...register('role')}
               options={[
                 { value: 'viewer', label: 'Viewer' },
                 { value: 'user', label: 'User' },
@@ -185,17 +131,15 @@ export const UserForm = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField label="Department">
             <Input
-              value={formData.department}
-              onChange={(e) => handleChange('department', e.target.value)}
+              {...register('department')}
               placeholder="e.g., Operations, HR, Finance"
             />
           </FormField>
 
-          <FormField label="Phone" error={errors.phone}>
+          <FormField label="Phone" error={errors.phone?.message}>
             <Input
               type="tel"
-              value={formData.phone}
-              onChange={(e) => handleChange('phone', e.target.value)}
+              {...register('phone')}
               placeholder="+971 50 123 4567"
             />
           </FormField>
@@ -203,8 +147,8 @@ export const UserForm = ({
           <div className="md:col-span-2">
             <FormField label="Account Status">
               <Select
-                value={formData.is_active ? 'true' : 'false'}
-                onChange={(e) => handleChange('is_active', e.target.value === 'true')}
+                value={isActiveValue ? 'true' : 'false'}
+                onChange={(e) => setValue('is_active', e.target.value === 'true', { shouldValidate: true })}
                 options={[
                   { value: 'true', label: 'Active' },
                   { value: 'false', label: 'Inactive' },
@@ -216,11 +160,11 @@ export const UserForm = ({
       </FormSection>
 
       <FormActions>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={formIsLoading}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : mode === 'create' ? 'Create User' : 'Update User'}
+        <Button type="submit" disabled={formIsLoading}>
+          {formIsLoading ? 'Saving...' : mode === 'create' ? 'Create User' : 'Update User'}
         </Button>
       </FormActions>
     </Form>

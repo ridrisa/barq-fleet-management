@@ -1,11 +1,15 @@
-import { useState, FormEvent } from 'react'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Form, FormField, FormSection, FormActions } from './Form'
 import { FileUpload, type UploadedFile } from './FileUpload'
-import { type DocumentUploadFormData } from './formConfigs'
+import { documentUploadFormSchema, type DocumentUploadFormData } from '@/schemas/operations.schema'
+
+export type { DocumentUploadFormData }
 
 export interface DocumentUploadFormProps {
   initialData?: Partial<DocumentUploadFormData & { files?: UploadedFile[] }> & { id?: string }
@@ -30,95 +34,94 @@ export const DocumentUploadForm = ({
   onCancel,
   isLoading = false
 }: DocumentUploadFormProps) => {
-  const [formData, setFormData] = useState({
-    doc_name: initialData?.doc_name || '',
-    category: initialData?.category || '',
-    version: initialData?.version || '1.0',
-    description: initialData?.description || '',
-    tags: initialData?.tags || '',
-  })
   const [files, setFiles] = useState<UploadedFile[]>(initialData?.files || [])
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [fileError, setFileError] = useState<string | null>(null)
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<DocumentUploadFormData>({
+    resolver: zodResolver(documentUploadFormSchema),
+    defaultValues: {
+      doc_name: initialData?.doc_name || '',
+      category: initialData?.category || '',
+      version: initialData?.version || '1.0',
+      description: initialData?.description || '',
+      tags: initialData?.tags || '',
+      file_url: initialData?.file_url || '',
+    },
+    mode: 'onBlur',
+  })
+
+  const formIsLoading = isLoading || isSubmitting
+  const hasFiles = files.length > 0
+
+  const onFormSubmit = async (data: DocumentUploadFormData) => {
+    if (files.length === 0) {
+      setFileError('At least one file is required')
+      return
     }
-  }
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {}
-    if (!formData.doc_name.trim()) newErrors.doc_name = 'Document name is required'
-    if (!formData.category) newErrors.category = 'Category is required'
-    if (files.length === 0) newErrors.files = 'At least one file is required'
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!validate()) return
+    setFileError(null)
     await onSubmit({
-      ...formData,
-      file_url: '', // This will be set by the backend after upload
+      ...data,
       files,
     })
   }
 
-  const hasFiles = files.length > 0
+  const handleFilesChange = (newFiles: UploadedFile[]) => {
+    setFiles(newFiles)
+    if (newFiles.length > 0) {
+      setFileError(null)
+    }
+  }
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="Document Information"
         description="Enter details about the document"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Document Name" error={errors.doc_name} required>
+          <FormField label="Document Name" error={errors.doc_name?.message} required>
             <Input
-              value={formData.doc_name}
-              onChange={(e) => handleChange('doc_name', e.target.value)}
+              {...register('doc_name')}
               placeholder="Enter document name..."
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
 
-          <FormField label="Category" error={errors.category} required>
+          <FormField label="Category" error={errors.category?.message} required>
             <Select
-              value={formData.category}
-              onChange={(e) => handleChange('category', e.target.value)}
+              {...register('category')}
               options={categoryOptions}
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
 
           <FormField label="Version">
             <Input
-              value={formData.version}
-              onChange={(e) => handleChange('version', e.target.value)}
+              {...register('version')}
               placeholder="e.g., 1.0"
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
 
           <FormField label="Tags" helperText="Comma-separated (e.g., safety, fleet, training)">
             <Input
-              value={formData.tags}
-              onChange={(e) => handleChange('tags', e.target.value)}
+              {...register('tags')}
               placeholder="safety, fleet, training"
-              disabled={isLoading}
+              disabled={formIsLoading}
             />
           </FormField>
         </div>
 
         <FormField label="Description">
           <Textarea
-            value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
+            {...register('description')}
             placeholder="Provide a brief description of this document..."
             rows={3}
-            disabled={isLoading}
+            disabled={formIsLoading}
           />
         </FormField>
       </FormSection>
@@ -129,28 +132,28 @@ export const DocumentUploadForm = ({
       >
         <FileUpload
           value={files}
-          onChange={setFiles}
+          onChange={handleFilesChange}
           accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
           maxFiles={5}
           maxSize={25 * 1024 * 1024}
           uploadEndpoint="/api/documents/upload"
-          disabled={isLoading}
+          disabled={formIsLoading}
           multiple
         />
 
-        {errors.files && (
-          <p className="mt-2 text-sm text-red-600">{errors.files}</p>
+        {fileError && (
+          <p className="mt-2 text-sm text-red-600">{fileError}</p>
         )}
       </FormSection>
 
       <FormActions>
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={formIsLoading}>
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={isLoading || !hasFiles}>
-          {isLoading ? 'Uploading...' : initialData?.id ? 'Update Document' : 'Upload Document'}
+        <Button type="submit" disabled={formIsLoading || !hasFiles}>
+          {formIsLoading ? 'Uploading...' : initialData?.id ? 'Update Document' : 'Upload Document'}
         </Button>
       </FormActions>
     </Form>
