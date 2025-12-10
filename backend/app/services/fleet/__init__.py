@@ -3,6 +3,8 @@
 from app.services.fleet.accident_log import AccidentLogService, accident_log_service
 from app.services.fleet.assignment import AssignmentService, assignment_service
 from app.services.fleet.courier import CourierService, courier_service
+from app.services.fleet.document import DocumentService, document_service
+from app.services.fleet.fuel_log import FuelLogService, fuel_log_service
 from app.services.fleet.inspection import InspectionService, inspection_service
 from app.services.fleet.maintenance import MaintenanceService, maintenance_service
 from app.services.fleet.vehicle import VehicleService, vehicle_service
@@ -17,6 +19,8 @@ __all__ = [
     "maintenance_service",
     "inspection_service",
     "accident_log_service",
+    "document_service",
+    "fuel_log_service",
     # Service classes (for customization if needed)
     "CourierService",
     "VehicleService",
@@ -25,4 +29,6 @@ __all__ = [
     "MaintenanceService",
     "InspectionService",
     "AccidentLogService",
+    "DocumentService",
+    "FuelLogService",
 ]

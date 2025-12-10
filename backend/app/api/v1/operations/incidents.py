@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.operations import incident as crud_incident
 from app.models.tenant.organization import Organization
+from app.services.operations import incident_service
 from app.schemas.operations.incident import IncidentCreate, IncidentResponse, IncidentUpdate
 
 router = APIRouter()
@@ -26,7 +26,7 @@ def list_incidents(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List all incidents with optional filters"""
-    incidents = crud_incident.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
+    incidents = incident_service.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
     return incidents
 
 
@@ -38,7 +38,7 @@ def get_incident(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific incident by ID"""
-    incident = crud_incident.get(db, id=incident_id)
+    incident = incident_service.get(db, id=incident_id)
     if not incident or incident.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
     return incident
@@ -65,7 +65,7 @@ def create_incident(
     # TODO: Auto-categorize severity
     # TODO: Send notification to supervisor
 
-    incident = crud_incident.create(db, obj_in=incident_in, organization_id=current_org.id)
+    incident = incident_service.create(db, obj_in=incident_in, organization_id=current_org.id)
     return incident
 
 
@@ -85,11 +85,11 @@ def update_incident(
     - Logs resolution information
     - Updates cost if applicable
     """
-    incident = crud_incident.get(db, id=incident_id)
+    incident = incident_service.get(db, id=incident_id)
     if not incident or incident.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
 
-    incident = crud_incident.update(db, db_obj=incident, obj_in=incident_in)
+    incident = incident_service.update(db, db_obj=incident, obj_in=incident_in)
     return incident
 
 
@@ -101,10 +101,10 @@ def delete_incident(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete an incident"""
-    incident = crud_incident.get(db, id=incident_id)
+    incident = incident_service.get(db, id=incident_id)
     if not incident or incident.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
-    crud_incident.remove(db, id=incident_id)
+    incident_service.remove(db, id=incident_id)
     return None
 
 
@@ -125,12 +125,12 @@ def resolve_incident(
     - Updates cost
     - Closes incident workflow
     """
-    incident = crud_incident.get(db, id=incident_id)
+    incident = incident_service.get(db, id=incident_id)
     if not incident or incident.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
 
     incident_update = IncidentUpdate(status="resolved", resolution=resolution, cost=cost)
-    incident = crud_incident.update(db, db_obj=incident, obj_in=incident_update)
+    incident = incident_service.update(db, db_obj=incident, obj_in=incident_update)
     return incident
 
 

@@ -9,14 +9,14 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.operations.settings import (
-    dispatch_rule,
-    notification_setting,
-    operations_settings,
-    sla_threshold,
-    zone_default,
-)
 from app.models.tenant.organization import Organization
+from app.services.operations import (
+    dispatch_rule_service,
+    notification_setting_service,
+    operations_settings_service,
+    sla_threshold_service,
+    zone_default_service,
+)
 from app.schemas.operations.settings import (
     DispatchRuleCreate,
     DispatchRuleResponse,
@@ -58,11 +58,11 @@ def list_settings(
     - notification: Notification settings
     """
     if setting_group:
-        settings = operations_settings.get_by_group(
+        settings = operations_settings_service.get_by_group(
             db, setting_group=setting_group, organization_id=current_org.id
         )
     else:
-        settings = operations_settings.get_active_settings(db, organization_id=current_org.id)
+        settings = operations_settings_service.get_active_settings(db, organization_id=current_org.id)
     return settings
 
 
@@ -73,7 +73,7 @@ def list_setting_groups(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List all setting groups"""
-    return operations_settings.get_groups(db, organization_id=current_org.id)
+    return operations_settings_service.get_groups(db, organization_id=current_org.id)
 
 
 @router.get("/grouped", response_model=List[SettingsGroup])
@@ -83,10 +83,10 @@ def get_settings_grouped(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get all settings organized by group"""
-    groups = operations_settings.get_groups(db, organization_id=current_org.id)
+    groups = operations_settings_service.get_groups(db, organization_id=current_org.id)
     result = []
     for group in groups:
-        settings = operations_settings.get_by_group(
+        settings = operations_settings_service.get_by_group(
             db, setting_group=group, organization_id=current_org.id
         )
         result.append(SettingsGroup(group_name=group, settings=settings))
@@ -101,7 +101,7 @@ def get_setting_by_key(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific setting by key"""
-    setting = operations_settings.get_by_key(
+    setting = operations_settings_service.get_by_key(
         db, setting_key=setting_key, organization_id=current_org.id
     )
     if not setting:
@@ -117,7 +117,7 @@ def get_setting_value(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get the value of a specific setting"""
-    setting = operations_settings.get_by_key(
+    setting = operations_settings_service.get_by_key(
         db, setting_key=setting_key, organization_id=current_org.id
     )
     if not setting:
@@ -133,7 +133,7 @@ def get_setting(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific setting by ID"""
-    setting = operations_settings.get(db, id=setting_id)
+    setting = operations_settings_service.get(db, id=setting_id)
     if not setting or setting.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Setting not found")
     return setting
@@ -153,7 +153,7 @@ def create_setting(
     - Sets value based on value_type
     - Validates against constraints if provided
     """
-    existing = operations_settings.get_by_key(
+    existing = operations_settings_service.get_by_key(
         db, setting_key=setting_in.setting_key, organization_id=current_org.id
     )
     if existing:
@@ -162,7 +162,7 @@ def create_setting(
             detail=f"Setting with key '{setting_in.setting_key}' already exists",
         )
 
-    setting = operations_settings.create(db, obj_in=setting_in, organization_id=current_org.id)
+    setting = operations_settings_service.create(db, obj_in=setting_in, organization_id=current_org.id)
     return setting
 
 
@@ -175,7 +175,7 @@ def update_setting(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a setting"""
-    setting = operations_settings.get(db, id=setting_id)
+    setting = operations_settings_service.get(db, id=setting_id)
     if not setting or setting.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Setting not found")
 
@@ -185,7 +185,7 @@ def update_setting(
             detail="This setting is read-only and cannot be modified",
         )
 
-    setting = operations_settings.update(db, db_obj=setting, obj_in=setting_in)
+    setting = operations_settings_service.update(db, db_obj=setting, obj_in=setting_in)
     return setting
 
 
@@ -206,7 +206,7 @@ def set_setting_value(
     """
     modified_by_id = current_user.id if hasattr(current_user, "id") else None
 
-    setting = operations_settings.set_value(
+    setting = operations_settings_service.set_value(
         db,
         setting_key=setting_key,
         value=value_in.value,
@@ -230,7 +230,7 @@ def delete_setting(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a setting"""
-    setting = operations_settings.get(db, id=setting_id)
+    setting = operations_settings_service.get(db, id=setting_id)
     if not setting or setting.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Setting not found")
 
@@ -239,7 +239,7 @@ def delete_setting(
             status_code=status.HTTP_400_BAD_REQUEST, detail="System settings cannot be deleted"
         )
 
-    operations_settings.remove(db, id=setting_id)
+    operations_settings_service.remove(db, id=setting_id)
     return None
 
 
@@ -260,13 +260,13 @@ def list_dispatch_rules(
     - Active rules are used by dispatch system
     """
     if zone_id:
-        rules = dispatch_rule.get_rules_for_zone(
+        rules = dispatch_rule_service.get_rules_for_zone(
             db, zone_id=zone_id, organization_id=current_org.id
         )
     elif active_only:
-        rules = dispatch_rule.get_active_rules(db, organization_id=current_org.id)
+        rules = dispatch_rule_service.get_active_rules(db, organization_id=current_org.id)
     else:
-        rules = dispatch_rule.get_multi(db, skip=0, limit=100, filters={"organization_id": current_org.id})
+        rules = dispatch_rule_service.get_multi(db, skip=0, limit=100, filters={"organization_id": current_org.id})
     return rules
 
 
@@ -278,7 +278,7 @@ def get_dispatch_rule(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific dispatch rule"""
-    rule = dispatch_rule.get(db, id=rule_id)
+    rule = dispatch_rule_service.get(db, id=rule_id)
     if not rule or rule.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch rule not found")
     return rule
@@ -301,7 +301,7 @@ def create_dispatch_rule(
     - Applies to specified zones or all zones
     - Time restrictions if configured
     """
-    existing = dispatch_rule.get_by_code(
+    existing = dispatch_rule_service.get_by_code(
         db, rule_code=rule_in.rule_code, organization_id=current_org.id
     )
     if existing:
@@ -310,7 +310,7 @@ def create_dispatch_rule(
             detail=f"Rule with code '{rule_in.rule_code}' already exists",
         )
 
-    rule = dispatch_rule.create(db, obj_in=rule_in, organization_id=current_org.id)
+    rule = dispatch_rule_service.create(db, obj_in=rule_in, organization_id=current_org.id)
     return rule
 
 
@@ -323,10 +323,10 @@ def update_dispatch_rule(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a dispatch rule"""
-    rule = dispatch_rule.get(db, id=rule_id)
+    rule = dispatch_rule_service.get(db, id=rule_id)
     if not rule or rule.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch rule not found")
-    rule = dispatch_rule.update(db, db_obj=rule, obj_in=rule_in)
+    rule = dispatch_rule_service.update(db, db_obj=rule, obj_in=rule_in)
     return rule
 
 
@@ -338,10 +338,10 @@ def delete_dispatch_rule(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a dispatch rule"""
-    rule = dispatch_rule.get(db, id=rule_id)
+    rule = dispatch_rule_service.get(db, id=rule_id)
     if not rule or rule.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dispatch rule not found")
-    dispatch_rule.remove(db, id=rule_id)
+    dispatch_rule_service.remove(db, id=rule_id)
     return None
 
 
@@ -358,14 +358,14 @@ def reorder_dispatch_rules(
     """
     # Verify all rules belong to organization
     for rule_order in rule_orders:
-        rule = dispatch_rule.get(db, id=rule_order.get("rule_id"))
+        rule = dispatch_rule_service.get(db, id=rule_order.get("rule_id"))
         if not rule or rule.organization_id != current_org.id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Dispatch rule {rule_order.get('rule_id')} not found",
             )
 
-    dispatch_rule.reorder_priorities(db, rule_orders=rule_orders)
+    dispatch_rule_service.reorder_priorities(db, rule_orders=rule_orders)
     return {"message": "Rules reordered successfully"}
 
 
@@ -388,17 +388,17 @@ def list_sla_thresholds(
     - resolution_time: Issue resolution time
     """
     if sla_type:
-        thresholds = sla_threshold.get_by_sla_type(
+        thresholds = sla_threshold_service.get_by_sla_type(
             db, sla_type=sla_type, organization_id=current_org.id
         )
     elif service_type:
-        thresholds = sla_threshold.get_by_service_type(
+        thresholds = sla_threshold_service.get_by_service_type(
             db, service_type=service_type, organization_id=current_org.id
         )
     elif zone_id:
-        thresholds = sla_threshold.get_for_zone(db, zone_id=zone_id, organization_id=current_org.id)
+        thresholds = sla_threshold_service.get_for_zone(db, zone_id=zone_id, organization_id=current_org.id)
     else:
-        thresholds = sla_threshold.get_active_thresholds(db, organization_id=current_org.id)
+        thresholds = sla_threshold_service.get_active_thresholds(db, organization_id=current_org.id)
     return thresholds
 
 
@@ -410,7 +410,7 @@ def get_sla_threshold(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific SLA threshold"""
-    threshold = sla_threshold.get(db, id=threshold_id)
+    threshold = sla_threshold_service.get(db, id=threshold_id)
     if not threshold or threshold.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SLA threshold not found")
     return threshold
@@ -433,7 +433,7 @@ def create_sla_threshold(
     - Critical must be greater than target
     - Can apply to specific zone or all zones
     """
-    existing = sla_threshold.get_by_code(
+    existing = sla_threshold_service.get_by_code(
         db, threshold_code=threshold_in.threshold_code, organization_id=current_org.id
     )
     if existing:
@@ -442,7 +442,7 @@ def create_sla_threshold(
             detail=f"Threshold with code '{threshold_in.threshold_code}' already exists",
         )
 
-    threshold = sla_threshold.create(db, obj_in=threshold_in, organization_id=current_org.id)
+    threshold = sla_threshold_service.create(db, obj_in=threshold_in, organization_id=current_org.id)
     return threshold
 
 
@@ -455,10 +455,10 @@ def update_sla_threshold(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update an SLA threshold"""
-    threshold = sla_threshold.get(db, id=threshold_id)
+    threshold = sla_threshold_service.get(db, id=threshold_id)
     if not threshold or threshold.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SLA threshold not found")
-    threshold = sla_threshold.update(db, db_obj=threshold, obj_in=threshold_in)
+    threshold = sla_threshold_service.update(db, db_obj=threshold, obj_in=threshold_in)
     return threshold
 
 
@@ -470,10 +470,10 @@ def delete_sla_threshold(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete an SLA threshold"""
-    threshold = sla_threshold.get(db, id=threshold_id)
+    threshold = sla_threshold_service.get(db, id=threshold_id)
     if not threshold or threshold.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SLA threshold not found")
-    sla_threshold.remove(db, id=threshold_id)
+    sla_threshold_service.remove(db, id=threshold_id)
     return None
 
 
@@ -496,12 +496,12 @@ def list_notification_settings(
     - feedback_negative: Negative customer feedback
     """
     if event_type:
-        setting = notification_setting.get_by_event_type(
+        setting = notification_setting_service.get_by_event_type(
             db, event_type=event_type, organization_id=current_org.id
         )
         return [setting] if setting else []
     else:
-        return notification_setting.get_active_settings(db, organization_id=current_org.id)
+        return notification_setting_service.get_active_settings(db, organization_id=current_org.id)
 
 
 @router.get("/notifications/{setting_id}", response_model=NotificationSettingResponse)
@@ -512,7 +512,7 @@ def get_notification_setting(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific notification setting"""
-    setting = notification_setting.get(db, id=setting_id)
+    setting = notification_setting_service.get(db, id=setting_id)
     if not setting or setting.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notification setting not found"
@@ -539,7 +539,7 @@ def create_notification_setting(
     - Configures cooldown between notifications
     - Links to email/SMS templates
     """
-    existing = notification_setting.get_by_code(
+    existing = notification_setting_service.get_by_code(
         db, setting_code=setting_in.setting_code, organization_id=current_org.id
     )
     if existing:
@@ -548,7 +548,7 @@ def create_notification_setting(
             detail=f"Notification setting with code '{setting_in.setting_code}' already exists",
         )
 
-    setting = notification_setting.create(db, obj_in=setting_in, organization_id=current_org.id)
+    setting = notification_setting_service.create(db, obj_in=setting_in, organization_id=current_org.id)
     return setting
 
 
@@ -561,12 +561,12 @@ def update_notification_setting(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a notification setting"""
-    setting = notification_setting.get(db, id=setting_id)
+    setting = notification_setting_service.get(db, id=setting_id)
     if not setting or setting.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notification setting not found"
         )
-    setting = notification_setting.update(db, db_obj=setting, obj_in=setting_in)
+    setting = notification_setting_service.update(db, db_obj=setting, obj_in=setting_in)
     return setting
 
 
@@ -578,12 +578,12 @@ def delete_notification_setting(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a notification setting"""
-    setting = notification_setting.get(db, id=setting_id)
+    setting = notification_setting_service.get(db, id=setting_id)
     if not setting or setting.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Notification setting not found"
         )
-    notification_setting.remove(db, id=setting_id)
+    notification_setting_service.remove(db, id=setting_id)
     return None
 
 
@@ -595,7 +595,7 @@ def list_zone_defaults(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List all zone default configurations"""
-    return zone_default.get_active_defaults(db, organization_id=current_org.id)
+    return zone_default_service.get_active_defaults(db, organization_id=current_org.id)
 
 
 @router.get("/zone-defaults/default", response_model=ZoneDefaultResponse)
@@ -605,7 +605,7 @@ def get_default_zone_template(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get the default zone configuration template"""
-    default = zone_default.get_default_template(db, organization_id=current_org.id)
+    default = zone_default_service.get_default_template(db, organization_id=current_org.id)
     if not default:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="No default zone template configured"
@@ -621,7 +621,7 @@ def get_zone_default(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific zone default configuration"""
-    default = zone_default.get(db, id=default_id)
+    default = zone_default_service.get(db, id=default_id)
     if not default or default.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone default not found")
     return default
@@ -643,7 +643,7 @@ def create_zone_default(
     - Provides default values for capacity, pricing, SLA
     - Can set as main default template
     """
-    existing = zone_default.get_by_code(
+    existing = zone_default_service.get_by_code(
         db, default_code=default_in.default_code, organization_id=current_org.id
     )
     if existing:
@@ -652,7 +652,7 @@ def create_zone_default(
             detail=f"Zone default with code '{default_in.default_code}' already exists",
         )
 
-    default = zone_default.create(db, obj_in=default_in, organization_id=current_org.id)
+    default = zone_default_service.create(db, obj_in=default_in, organization_id=current_org.id)
     return default
 
 
@@ -665,10 +665,10 @@ def update_zone_default(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a zone default configuration"""
-    default = zone_default.get(db, id=default_id)
+    default = zone_default_service.get(db, id=default_id)
     if not default or default.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone default not found")
-    default = zone_default.update(db, db_obj=default, obj_in=default_in)
+    default = zone_default_service.update(db, db_obj=default, obj_in=default_in)
     return default
 
 
@@ -680,11 +680,11 @@ def set_as_default_template(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Set a zone default as the main default template"""
-    existing = zone_default.get(db, id=default_id)
+    existing = zone_default_service.get(db, id=default_id)
     if not existing or existing.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone default not found")
 
-    default = zone_default.set_as_default(db, default_id=default_id)
+    default = zone_default_service.set_as_default(db, default_id=default_id)
     if not default:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone default not found")
     return default
@@ -698,8 +698,8 @@ def delete_zone_default(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a zone default configuration"""
-    default = zone_default.get(db, id=default_id)
+    default = zone_default_service.get(db, id=default_id)
     if not default or default.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone default not found")
-    zone_default.remove(db, id=default_id)
+    zone_default_service.remove(db, id=default_id)
     return None

@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.operations import zone as crud_zone
 from app.models.tenant.organization import Organization
+from app.services.operations import zone_service
 from app.schemas.operations.zone import ZoneCreate, ZoneMetrics, ZoneResponse, ZoneUpdate
 
 router = APIRouter()
@@ -24,15 +24,15 @@ def list_zones(
 ):
     """List all zones with optional filters"""
     if city:
-        zones = crud_zone.get_by_city(
+        zones = zone_service.get_by_city(
             db, city=city, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif status == "active":
-        zones = crud_zone.get_active_zones(
+        zones = zone_service.get_active_zones(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     else:
-        zones = crud_zone.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
+        zones = zone_service.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
     return zones
 
 
@@ -49,7 +49,7 @@ def list_zones_at_capacity(
     - Used for load balancing decisions
     - Helps identify zones needing additional resources
     """
-    zones = crud_zone.get_at_capacity(db, organization_id=current_org.id)
+    zones = zone_service.get_at_capacity(db, organization_id=current_org.id)
     return zones
 
 
@@ -61,7 +61,7 @@ def get_zone(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific zone by ID"""
-    zone = crud_zone.get(db, id=zone_id)
+    zone = zone_service.get(db, id=zone_id)
     if not zone or zone.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
     return zone
@@ -75,7 +75,7 @@ def get_zone_by_code(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get zone by unique code"""
-    zone = crud_zone.get_by_code(db, zone_code=zone_code, organization_id=current_org.id)
+    zone = zone_service.get_by_code(db, zone_code=zone_code, organization_id=current_org.id)
     if not zone:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
     return zone
@@ -97,7 +97,7 @@ def create_zone(
     - Sets status to ACTIVE by default
     """
     # Check if zone code already exists in organization
-    existing_zone = crud_zone.get_by_code(
+    existing_zone = zone_service.get_by_code(
         db, zone_code=zone_in.zone_code, organization_id=current_org.id
     )
     if existing_zone:
@@ -109,7 +109,7 @@ def create_zone(
     # TODO: Validate GeoJSON boundaries
     # TODO: Calculate coverage area from boundaries
 
-    zone = crud_zone.create(db, obj_in=zone_in, organization_id=current_org.id)
+    zone = zone_service.create(db, obj_in=zone_in, organization_id=current_org.id)
     return zone
 
 
@@ -122,10 +122,10 @@ def update_zone(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a zone"""
-    zone = crud_zone.get(db, id=zone_id)
+    zone = zone_service.get(db, id=zone_id)
     if not zone or zone.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
-    zone = crud_zone.update(db, db_obj=zone, obj_in=zone_in)
+    zone = zone_service.update(db, db_obj=zone, obj_in=zone_in)
     return zone
 
 
@@ -143,7 +143,7 @@ def delete_zone(
     - Validates no pending deliveries in zone
     - Soft delete or hard delete based on business rules
     """
-    zone = crud_zone.get(db, id=zone_id)
+    zone = zone_service.get(db, id=zone_id)
     if not zone or zone.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
@@ -154,7 +154,7 @@ def delete_zone(
             detail="Cannot delete zone with active couriers",
         )
 
-    crud_zone.remove(db, id=zone_id)
+    zone_service.remove(db, id=zone_id)
     return None
 
 
@@ -174,7 +174,7 @@ def get_zone_metrics(
     - Total deliveries completed
     - Capacity status
     """
-    zone = crud_zone.get(db, id=zone_id)
+    zone = zone_service.get(db, id=zone_id)
     if not zone or zone.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
@@ -211,7 +211,7 @@ def increment_courier_count(
     - Validates capacity not exceeded
     - Updates current_couriers count
     """
-    zone = crud_zone.get(db, id=zone_id)
+    zone = zone_service.get(db, id=zone_id)
     if not zone or zone.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
@@ -220,7 +220,7 @@ def increment_courier_count(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Zone is at maximum capacity"
         )
 
-    zone = crud_zone.increment_courier_count(db, zone_id=zone_id)
+    zone = zone_service.increment_courier_count(db, zone_id=zone_id)
     return zone
 
 
@@ -238,9 +238,9 @@ def decrement_courier_count(
     - Updates current_couriers count
     - Prevents negative count
     """
-    zone = crud_zone.get(db, id=zone_id)
+    zone = zone_service.get(db, id=zone_id)
     if not zone or zone.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Zone not found")
 
-    zone = crud_zone.decrement_courier_count(db, zone_id=zone_id)
+    zone = zone_service.decrement_courier_count(db, zone_id=zone_id)
     return zone

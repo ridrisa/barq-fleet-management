@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.operations import sla_definition, sla_tracking
 from app.models.tenant.organization import Organization
+from app.services.operations import sla_definition_service, sla_tracking_service
 from app.schemas.operations.sla import (
     SLABreachReport,
     SLAComplianceReport,
@@ -36,17 +36,17 @@ def list_sla_definitions(
 ):
     """List all SLA definitions"""
     if sla_type:
-        definitions = sla_definition.get_by_type(
+        definitions = sla_definition_service.get_by_type(
             db, sla_type=sla_type, organization_id=current_org.id
         )
     elif zone_id:
-        definitions = sla_definition.get_by_zone(
+        definitions = sla_definition_service.get_by_zone(
             db, zone_id=zone_id, organization_id=current_org.id
         )
     elif active_only:
-        definitions = sla_definition.get_active_slas(db, organization_id=current_org.id)
+        definitions = sla_definition_service.get_active_slas(db, organization_id=current_org.id)
     else:
-        definitions = sla_definition.get_multi(
+        definitions = sla_definition_service.get_multi(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     return definitions
@@ -60,7 +60,7 @@ def get_sla_definition(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific SLA definition by ID"""
-    definition = sla_definition.get(db, id=definition_id)
+    definition = sla_definition_service.get(db, id=definition_id)
     if not definition or definition.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="SLA definition not found"
@@ -86,7 +86,7 @@ def create_sla_definition(
     - Applies to specific zones/service types/customer tiers
     - Sets effective date range
     """
-    existing = sla_definition.get_by_code(
+    existing = sla_definition_service.get_by_code(
         db, sla_code=definition_in.sla_code, organization_id=current_org.id
     )
     if existing:
@@ -97,7 +97,7 @@ def create_sla_definition(
 
     # TODO: Validate zone exists if specified
 
-    definition = sla_definition.create(db, obj_in=definition_in, organization_id=current_org.id)
+    definition = sla_definition_service.create(db, obj_in=definition_in, organization_id=current_org.id)
     return definition
 
 
@@ -110,12 +110,12 @@ def update_sla_definition(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update an SLA definition"""
-    definition = sla_definition.get(db, id=definition_id)
+    definition = sla_definition_service.get(db, id=definition_id)
     if not definition or definition.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="SLA definition not found"
         )
-    definition = sla_definition.update(db, db_obj=definition, obj_in=definition_in)
+    definition = sla_definition_service.update(db, db_obj=definition, obj_in=definition_in)
     return definition
 
 
@@ -133,27 +133,27 @@ def list_sla_tracking(
 ):
     """List all SLA tracking records"""
     if delivery_id:
-        trackings = sla_tracking.get_by_delivery(
+        trackings = sla_tracking_service.get_by_delivery(
             db, delivery_id=delivery_id, organization_id=current_org.id
         )
     elif courier_id:
-        trackings = sla_tracking.get_by_courier(
+        trackings = sla_tracking_service.get_by_courier(
             db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif status == "active":
-        trackings = sla_tracking.get_active(
+        trackings = sla_tracking_service.get_active(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif status == "at_risk":
-        trackings = sla_tracking.get_at_risk(
+        trackings = sla_tracking_service.get_at_risk(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif status == "breached":
-        trackings = sla_tracking.get_breached(
+        trackings = sla_tracking_service.get_breached(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     else:
-        trackings = sla_tracking.get_multi(
+        trackings = sla_tracking_service.get_multi(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     return trackings
@@ -174,7 +174,7 @@ def list_active_sla_tracking(
     - Status = ACTIVE
     - Not yet completed or breached
     """
-    trackings = sla_tracking.get_active(db, skip=skip, limit=limit, organization_id=current_org.id)
+    trackings = sla_tracking_service.get_active(db, skip=skip, limit=limit, organization_id=current_org.id)
     return trackings
 
 
@@ -195,7 +195,7 @@ def list_at_risk_sla_tracking(
     - Requires immediate attention
     - Sorted by target completion time (closest first)
     """
-    trackings = sla_tracking.get_at_risk(db, skip=skip, limit=limit, organization_id=current_org.id)
+    trackings = sla_tracking_service.get_at_risk(db, skip=skip, limit=limit, organization_id=current_org.id)
     return trackings
 
 
@@ -216,7 +216,7 @@ def list_breached_sla_tracking(
     - Used for penalty calculation and reporting
     - Sorted by breach time (most recent first)
     """
-    trackings = sla_tracking.get_breached(
+    trackings = sla_tracking_service.get_breached(
         db, skip=skip, limit=limit, organization_id=current_org.id
     )
     return trackings
@@ -230,7 +230,7 @@ def get_sla_tracking(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific SLA tracking record by ID"""
-    tracking = sla_tracking.get(db, id=tracking_id)
+    tracking = sla_tracking_service.get(db, id=tracking_id)
     if not tracking or tracking.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SLA tracking not found")
     return tracking
@@ -256,7 +256,7 @@ def create_sla_tracking(
     # TODO: Validate SLA definition exists
     # TODO: Validate subject (delivery/route/courier/incident) exists
 
-    tracking = sla_tracking.create_with_number(
+    tracking = sla_tracking_service.create_with_number(
         db, obj_in=tracking_in, organization_id=current_org.id
     )
     return tracking
@@ -271,10 +271,10 @@ def update_sla_tracking(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update SLA tracking record"""
-    tracking = sla_tracking.get(db, id=tracking_id)
+    tracking = sla_tracking_service.get(db, id=tracking_id)
     if not tracking or tracking.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SLA tracking not found")
-    tracking = sla_tracking.update(db, db_obj=tracking, obj_in=tracking_in)
+    tracking = sla_tracking_service.update(db, db_obj=tracking, obj_in=tracking_in)
     return tracking
 
 
@@ -297,7 +297,7 @@ def report_sla_breach(
     - Triggers escalation if required
     - Sends breach notifications
     """
-    tracking = sla_tracking.get(db, id=tracking_id)
+    tracking = sla_tracking_service.get(db, id=tracking_id)
     if not tracking or tracking.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SLA tracking not found")
 
@@ -307,7 +307,7 @@ def report_sla_breach(
         )
 
     # Mark as breached
-    tracking = sla_tracking.mark_as_breached(
+    tracking = sla_tracking_service.mark_as_breached(
         db,
         tracking_id=tracking_id,
         breach_reason=breach.breach_reason,
@@ -316,7 +316,7 @@ def report_sla_breach(
 
     # Escalate if requested
     if breach.escalate and breach.escalated_to_id:
-        tracking = sla_tracking.escalate(
+        tracking = sla_tracking_service.escalate(
             db, tracking_id=tracking_id, escalated_to_id=breach.escalated_to_id
         )
 
@@ -344,7 +344,7 @@ def complete_sla_tracking(
     - Calculates compliance score
     - Closes tracking record
     """
-    tracking = sla_tracking.get(db, id=tracking_id)
+    tracking = sla_tracking_service.get(db, id=tracking_id)
     if not tracking or tracking.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SLA tracking not found")
 
@@ -354,7 +354,7 @@ def complete_sla_tracking(
             detail="Only active or at-risk SLAs can be completed",
         )
 
-    tracking = sla_tracking.mark_as_met(db, tracking_id=tracking_id, actual_value=actual_value)
+    tracking = sla_tracking_service.mark_as_met(db, tracking_id=tracking_id, actual_value=actual_value)
 
     return tracking
 
@@ -375,11 +375,11 @@ def escalate_sla_tracking(
     - Triggers escalation notifications
     - Requires immediate action
     """
-    tracking = sla_tracking.get(db, id=tracking_id)
+    tracking = sla_tracking_service.get(db, id=tracking_id)
     if not tracking or tracking.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SLA tracking not found")
 
-    tracking = sla_tracking.escalate(db, tracking_id=tracking_id, escalated_to_id=escalated_to_id)
+    tracking = sla_tracking_service.escalate(db, tracking_id=tracking_id, escalated_to_id=escalated_to_id)
 
     return tracking
 

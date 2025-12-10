@@ -2,6 +2,7 @@
 
 from app.services.hr.asset_service import AssetService, asset_service
 from app.services.hr.attendance_service import AttendanceService, attendance_service
+from app.services.hr.bonus_service import BonusService, bonus_service
 from app.services.hr.eos_calculator_service import EOSCalculatorService, eos_calculator_service
 from app.services.hr.gosi_calculator_service import GOSICalculatorService, gosi_calculator_service
 from app.services.hr.leave_service import LeaveService, leave_service
@@ -16,6 +17,7 @@ __all__ = [
     "LoanService",
     "SalaryService",
     "AssetService",
+    "BonusService",
     "GOSICalculatorService",
     "EOSCalculatorService",
     "PayrollEngineService",
@@ -25,6 +27,7 @@ __all__ = [
     "loan_service",
     "salary_service",
     "asset_service",
+    "bonus_service",
     "gosi_calculator_service",
     "eos_calculator_service",
     "payroll_engine_service",

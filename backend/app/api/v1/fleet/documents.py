@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.crud.fleet.document import document as crud_document
+from app.models.fleet.document import DocumentEntity
 from app.schemas.fleet.document import DocumentCreate, DocumentResponse, DocumentUpdate
+from app.services.fleet import document_service
 
 router = APIRouter()
 
@@ -23,40 +24,32 @@ def list_documents(
     """List all documents with optional filtering"""
     if entity_type and entity_id:
         # Filter by both entity_type and entity_id
-        from app.models.fleet.document import Document
-
-        documents = (
-            db.query(Document)
-            .filter(Document.entity_type == entity_type, Document.entity_id == entity_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
+        documents = document_service.get_by_entity(
+            db,
+            entity_type=DocumentEntity(entity_type),
+            entity_id=entity_id,
+            skip=skip,
+            limit=limit,
         )
     elif entity_type:
         # Filter by entity_type only
-        from app.models.fleet.document import Document
-
-        documents = (
-            db.query(Document)
-            .filter(Document.entity_type == entity_type)
-            .offset(skip)
-            .limit(limit)
-            .all()
+        documents = document_service.get_by_entity_type(
+            db,
+            entity_type=DocumentEntity(entity_type),
+            skip=skip,
+            limit=limit,
         )
     elif entity_id:
-        # Filter by entity_id only
-        from app.models.fleet.document import Document
-
-        documents = (
-            db.query(Document)
-            .filter(Document.entity_id == entity_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
+        # Filter by entity_id only - get all documents for this entity
+        documents = document_service.get_multi(
+            db,
+            skip=skip,
+            limit=limit,
+            filters={"entity_id": entity_id},
         )
     else:
         # No filter, get all documents
-        documents = crud_document.get_multi(db, skip=skip, limit=limit)
+        documents = document_service.get_multi(db, skip=skip, limit=limit)
 
     return documents
 
@@ -66,7 +59,7 @@ def get_document(
     document_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Get a specific document by ID"""
-    document = crud_document.get(db, id=document_id)
+    document = document_service.get(db, id=document_id)
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return document
@@ -79,7 +72,7 @@ def create_document(
     current_user=Depends(get_current_user),
 ):
     """Create a new document"""
-    document = crud_document.create(db, obj_in=document_in)
+    document = document_service.create(db, obj_in=document_in)
     return document
 
 
@@ -91,10 +84,10 @@ def update_document(
     current_user=Depends(get_current_user),
 ):
     """Update a document"""
-    document = crud_document.get(db, id=document_id)
+    document = document_service.get(db, id=document_id)
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    document = crud_document.update(db, db_obj=document, obj_in=document_in)
+    document = document_service.update(db, db_obj=document, obj_in=document_in)
     return document
 
 
@@ -103,8 +96,8 @@ def delete_document(
     document_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Delete a document"""
-    document = crud_document.get(db, id=document_id)
+    document = document_service.get(db, id=document_id)
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    crud_document.remove(db, id=document_id)
+    document_service.delete(db, id=document_id)
     return None

@@ -25,10 +25,10 @@ from sqlalchemy.orm import Session
 from app.config.settings import settings
 from app.core.database import db_manager, get_db
 from app.core.token_blacklist import is_token_blacklisted
-from app.crud.user import crud_user
 from app.models.tenant.organization import Organization
 from app.models.user import User
 from app.schemas.token import TokenPayload
+from app.services.user_service import user_service
 
 # Re-export get_db for convenience
 __all__ = [
@@ -88,7 +88,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     except (JWTError, ValueError):
         raise credentials_exception
 
-    user = crud_user.get(db, id=user_id)
+    user = user_service.get(db, user_id)
     if user is None:
         raise credentials_exception
 
@@ -108,7 +108,7 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
     Raises:
         HTTPException: 400 if user is inactive
     """
-    if not crud_user.is_active(current_user):
+    if not user_service.is_active(current_user):
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
@@ -126,7 +126,7 @@ def get_current_superuser(current_user: User = Depends(get_current_user)) -> Use
     Raises:
         HTTPException: 403 if user is not a superuser
     """
-    if not crud_user.is_superuser(current_user):
+    if not user_service.is_superuser(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="The user doesn't have enough privileges"
         )
@@ -259,7 +259,7 @@ def get_tenant_db_session(
     db = db_manager.create_session()
     try:
         # Set RLS context variables
-        is_superuser = crud_user.is_superuser(current_user)
+        is_superuser = user_service.is_superuser(current_user)
         db.execute(text("SET app.current_org_id = :org_id"), {"org_id": str(int(current_org.id))})
         db.execute(text("SET app.is_superuser = :is_super"), {"is_super": str(is_superuser).lower()})
         yield db

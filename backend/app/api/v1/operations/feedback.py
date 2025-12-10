@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.operations.feedback import customer_feedback, feedback_template
 from app.models.tenant.organization import Organization
+from app.services.operations import customer_feedback_service, feedback_template_service
 from app.schemas.operations.feedback import (
     CustomerFeedbackCreate,
     CustomerFeedbackResponse,
@@ -60,23 +60,23 @@ def list_feedbacks(
     - min_rating/max_rating: Filter by rating range
     """
     if feedback_type:
-        feedbacks = customer_feedback.get_by_type(
+        feedbacks = customer_feedback_service.get_by_type(
             db, feedback_type=feedback_type, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif courier_id:
-        feedbacks = customer_feedback.get_by_courier(
+        feedbacks = customer_feedback_service.get_by_courier(
             db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif delivery_id:
-        feedbacks = customer_feedback.get_by_delivery(
+        feedbacks = customer_feedback_service.get_by_delivery(
             db, delivery_id=delivery_id, organization_id=current_org.id
         )
     elif is_complaint:
-        feedbacks = customer_feedback.get_complaints(
+        feedbacks = customer_feedback_service.get_complaints(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     else:
-        feedbacks = customer_feedback.get_multi(
+        feedbacks = customer_feedback_service.get_multi(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     return feedbacks
@@ -97,7 +97,7 @@ def list_pending_feedbacks(
     - Sorted by submission time (oldest first - FIFO)
     - Used by support team dashboard
     """
-    feedbacks = customer_feedback.get_pending(
+    feedbacks = customer_feedback_service.get_pending(
         db, skip=skip, limit=limit, organization_id=current_org.id
     )
     return feedbacks
@@ -118,7 +118,7 @@ def list_negative_feedbacks(
     - Requires immediate attention
     - Priority for resolution
     """
-    feedbacks = customer_feedback.get_negative_feedbacks(
+    feedbacks = customer_feedback_service.get_negative_feedbacks(
         db, skip=skip, limit=limit, organization_id=current_org.id
     )
     return feedbacks
@@ -139,7 +139,7 @@ def list_escalated_feedbacks(
     - Requires supervisor/manager attention
     - Sorted by escalation time
     """
-    feedbacks = customer_feedback.get_escalated(
+    feedbacks = customer_feedback_service.get_escalated(
         db, skip=skip, limit=limit, organization_id=current_org.id
     )
     return feedbacks
@@ -158,7 +158,7 @@ def list_feedbacks_requiring_followup(
     - Excludes completed follow-ups
     - Sorted by follow-up date (due soonest first)
     """
-    feedbacks = customer_feedback.get_requiring_followup(db, organization_id=current_org.id)
+    feedbacks = customer_feedback_service.get_requiring_followup(db, organization_id=current_org.id)
     return feedbacks
 
 
@@ -170,7 +170,7 @@ def get_feedback(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific feedback by ID"""
-    feedback = customer_feedback.get(db, id=feedback_id)
+    feedback = customer_feedback_service.get(db, id=feedback_id)
     if not feedback or feedback.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
     return feedback
@@ -198,7 +198,7 @@ def create_feedback(
     # TODO: AI sentiment analysis
     # TODO: Auto-categorization
 
-    feedback = customer_feedback.create_with_number(
+    feedback = customer_feedback_service.create_with_number(
         db, obj_in=feedback_in, organization_id=current_org.id
     )
     return feedback
@@ -213,10 +213,10 @@ def update_feedback(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update feedback details"""
-    feedback = customer_feedback.get(db, id=feedback_id)
+    feedback = customer_feedback_service.get(db, id=feedback_id)
     if not feedback or feedback.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
-    feedback = customer_feedback.update(db, db_obj=feedback, obj_in=feedback_in)
+    feedback = customer_feedback_service.update(db, db_obj=feedback, obj_in=feedback_in)
     return feedback
 
 
@@ -237,7 +237,7 @@ def respond_to_feedback(
     - Optionally sends email to customer
     - Can use template if specified
     """
-    feedback = customer_feedback.get(db, id=feedback_id)
+    feedback = customer_feedback_service.get(db, id=feedback_id)
     if not feedback or feedback.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
 
@@ -249,15 +249,15 @@ def respond_to_feedback(
     # Use template if specified
     response_text = response_data.response_text
     if response_data.use_template:
-        template = feedback_template.get_by_code(db, template_code=response_data.use_template)
+        template = feedback_template_service.get_by_code(db, template_code=response_data.use_template)
         if template:
             response_text = template.body
-            feedback_template.increment_usage(db, template_id=template.id)
+            feedback_template_service.increment_usage(db, template_id=template.id)
 
     # Get current user ID
     responded_by_id = current_user.id if hasattr(current_user, "id") else 1
 
-    feedback = customer_feedback.respond(
+    feedback = customer_feedback_service.respond(
         db, feedback_id=feedback_id, response_text=response_text, responded_by_id=responded_by_id
     )
 
@@ -290,7 +290,7 @@ def resolve_feedback(
     - Documents action taken
     - Optionally notifies customer
     """
-    feedback = customer_feedback.get(db, id=feedback_id)
+    feedback = customer_feedback_service.get(db, id=feedback_id)
     if not feedback or feedback.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
 
@@ -302,7 +302,7 @@ def resolve_feedback(
     # Get current user ID
     resolved_by_id = current_user.id if hasattr(current_user, "id") else 1
 
-    feedback = customer_feedback.resolve(
+    feedback = customer_feedback_service.resolve(
         db,
         feedback_id=feedback_id,
         resolution_text=resolution.resolution_text,
@@ -334,7 +334,7 @@ def escalate_feedback(
     - Updates priority
     - Sends escalation notification
     """
-    feedback = customer_feedback.get(db, id=feedback_id)
+    feedback = customer_feedback_service.get(db, id=feedback_id)
     if not feedback or feedback.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
 
@@ -343,7 +343,7 @@ def escalate_feedback(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Feedback already escalated"
         )
 
-    feedback = customer_feedback.escalate(
+    feedback = customer_feedback_service.escalate(
         db,
         feedback_id=feedback_id,
         escalated_to_id=escalation.escalated_to_id,
@@ -352,7 +352,7 @@ def escalate_feedback(
 
     # Update priority
     feedback_update = CustomerFeedbackUpdate(priority=escalation.priority)
-    feedback = customer_feedback.update(db, db_obj=feedback, obj_in=feedback_update)
+    feedback = customer_feedback_service.update(db, db_obj=feedback, obj_in=feedback_update)
 
     # TODO: Send escalation notification
 
@@ -373,7 +373,7 @@ def close_feedback(
     - Final state - cannot be reopened
     - Archives feedback for reporting
     """
-    feedback = customer_feedback.get(db, id=feedback_id)
+    feedback = customer_feedback_service.get(db, id=feedback_id)
     if not feedback or feedback.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
 
@@ -382,7 +382,7 @@ def close_feedback(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Feedback already closed"
         )
 
-    feedback = customer_feedback.close(db, feedback_id=feedback_id)
+    feedback = customer_feedback_service.close(db, feedback_id=feedback_id)
     return feedback
 
 
@@ -402,11 +402,11 @@ def schedule_followup(
     - Records follow-up notes
     - Creates reminder
     """
-    feedback = customer_feedback.get(db, id=feedback_id)
+    feedback = customer_feedback_service.get(db, id=feedback_id)
     if not feedback or feedback.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
 
-    feedback = customer_feedback.schedule_followup(
+    feedback = customer_feedback_service.schedule_followup(
         db,
         feedback_id=feedback_id,
         followup_date=followup.followup_date,
@@ -424,7 +424,7 @@ def complete_followup(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Complete follow-up for feedback"""
-    feedback = customer_feedback.get(db, id=feedback_id)
+    feedback = customer_feedback_service.get(db, id=feedback_id)
     if not feedback or feedback.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Feedback not found")
 
@@ -433,7 +433,7 @@ def complete_followup(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Feedback does not require follow-up"
         )
 
-    feedback = customer_feedback.complete_followup(db, feedback_id=feedback_id, notes=notes)
+    feedback = customer_feedback_service.complete_followup(db, feedback_id=feedback_id, notes=notes)
     return feedback
 
 
@@ -453,15 +453,15 @@ def get_courier_feedback_summary(
     - Complaints count
     - Recent feedbacks
     """
-    feedbacks = customer_feedback.get_by_courier(
+    feedbacks = customer_feedback_service.get_by_courier(
         db, courier_id=courier_id, skip=0, limit=10, organization_id=current_org.id
     )
-    all_feedbacks = customer_feedback.get_by_courier(
+    all_feedbacks = customer_feedback_service.get_by_courier(
         db, courier_id=courier_id, skip=0, limit=1000, organization_id=current_org.id
     )
 
     total = len(all_feedbacks)
-    avg_rating = customer_feedback.get_avg_rating_by_courier(
+    avg_rating = customer_feedback_service.get_avg_rating_by_courier(
         db, courier_id=courier_id, organization_id=current_org.id
     )
 
@@ -535,15 +535,15 @@ def list_feedback_templates(
 ):
     """List all feedback response templates"""
     if feedback_type:
-        templates = feedback_template.get_by_type(
+        templates = feedback_template_service.get_by_type(
             db, template_type=feedback_type, organization_id=current_org.id
         )
     elif sentiment:
-        templates = feedback_template.get_by_sentiment(
+        templates = feedback_template_service.get_by_sentiment(
             db, sentiment_type=sentiment, organization_id=current_org.id
         )
     else:
-        templates = feedback_template.get_active_templates(db, organization_id=current_org.id)
+        templates = feedback_template_service.get_active_templates(db, organization_id=current_org.id)
     return templates
 
 
@@ -557,7 +557,7 @@ def create_feedback_template(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Create a new feedback response template"""
-    existing = feedback_template.get_by_code(
+    existing = feedback_template_service.get_by_code(
         db, template_code=template_in.template_code, organization_id=current_org.id
     )
     if existing:
@@ -566,7 +566,7 @@ def create_feedback_template(
             detail=f"Template with code '{template_in.template_code}' already exists",
         )
 
-    template = feedback_template.create(db, obj_in=template_in, organization_id=current_org.id)
+    template = feedback_template_service.create(db, obj_in=template_in, organization_id=current_org.id)
     return template
 
 
@@ -579,10 +579,10 @@ def update_feedback_template(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a feedback template"""
-    template = feedback_template.get(db, id=template_id)
+    template = feedback_template_service.get(db, id=template_id)
     if not template or template.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
-    template = feedback_template.update(db, db_obj=template, obj_in=template_in)
+    template = feedback_template_service.update(db, db_obj=template, obj_in=template_in)
     return template
 
 
@@ -594,8 +594,8 @@ def delete_feedback_template(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a feedback template"""
-    template = feedback_template.get(db, id=template_id)
+    template = feedback_template_service.get(db, id=template_id)
     if not template or template.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
-    feedback_template.remove(db, id=template_id)
+    feedback_template_service.remove(db, id=template_id)
     return None

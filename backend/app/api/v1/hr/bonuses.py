@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.crud.hr.bonus import bonus as crud_bonus
 from app.schemas.hr.bonus import BonusCreate, BonusResponse, BonusUpdate
+from app.services.hr.bonus_service import bonus_service
 
 router = APIRouter()
 
@@ -19,14 +19,14 @@ def list_bonuses(
     current_user=Depends(get_current_user),
 ):
     """List all bonuses"""
-    bonuses = crud_bonus.get_multi(db, skip=skip, limit=limit)
+    bonuses = bonus_service.get_multi(db, skip=skip, limit=limit)
     return bonuses
 
 
 @router.get("/{bonus_id}", response_model=BonusResponse)
 def get_bonus(bonus_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     """Get a specific bonus by ID"""
-    bonus = crud_bonus.get(db, id=bonus_id)
+    bonus = bonus_service.get(db, bonus_id)
     if not bonus:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bonus not found")
     return bonus
@@ -37,7 +37,7 @@ def create_bonus(
     bonus_in: BonusCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Create a new bonus"""
-    bonus = crud_bonus.create(db, obj_in=bonus_in)
+    bonus = bonus_service.create(db, obj_in=bonus_in)
     return bonus
 
 
@@ -49,10 +49,10 @@ def update_bonus(
     current_user=Depends(get_current_user),
 ):
     """Update a bonus"""
-    bonus = crud_bonus.get(db, id=bonus_id)
+    bonus = bonus_service.get(db, bonus_id)
     if not bonus:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bonus not found")
-    bonus = crud_bonus.update(db, db_obj=bonus, obj_in=bonus_in)
+    bonus = bonus_service.update(db, db_obj=bonus, obj_in=bonus_in)
     return bonus
 
 
@@ -61,8 +61,8 @@ def delete_bonus(
     bonus_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)
 ):
     """Delete a bonus"""
-    bonus = crud_bonus.get(db, id=bonus_id)
+    bonus = bonus_service.get(db, bonus_id)
     if not bonus:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bonus not found")
-    crud_bonus.remove(db, id=bonus_id)
+    bonus_service.delete(db, id=bonus_id)
     return None

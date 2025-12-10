@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.operations import route as crud_route
+from app.services.operations import route_service
 from app.models.tenant.organization import Organization
 from app.schemas.operations.route import (
     RouteAssign,
@@ -30,7 +30,7 @@ def list_routes(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List all routes with optional filters"""
-    routes = crud_route.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
+    routes = route_service.get_multi(db, skip=skip, limit=limit, filters={"organization_id": current_org.id})
     return routes
 
 
@@ -42,7 +42,7 @@ def get_route(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific route by ID"""
-    route = crud_route.get(db, id=route_id)
+    route = route_service.get(db, id=route_id)
     if not route or route.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
     return route
@@ -67,7 +67,7 @@ def create_route(
     # TODO: Calculate distance and duration from waypoints
     # TODO: Link delivery_ids to route
 
-    route = crud_route.create(db, obj_in=route_in, organization_id=current_org.id)
+    route = route_service.create(db, obj_in=route_in, organization_id=current_org.id)
     return route
 
 
@@ -80,10 +80,10 @@ def update_route(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a route"""
-    route = crud_route.get(db, id=route_id)
+    route = route_service.get(db, id=route_id)
     if not route or route.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
-    route = crud_route.update(db, db_obj=route, obj_in=route_in)
+    route = route_service.update(db, db_obj=route, obj_in=route_in)
     return route
 
 
@@ -95,10 +95,10 @@ def delete_route(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a route"""
-    route = crud_route.get(db, id=route_id)
+    route = route_service.get(db, id=route_id)
     if not route or route.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
-    crud_route.remove(db, id=route_id)
+    route_service.delete(db, id=route_id)
     return None
 
 
@@ -145,7 +145,7 @@ def assign_route(
     - Updates route status to ASSIGNED
     - Schedules start time
     """
-    route = crud_route.get(db, id=route_id)
+    route = route_service.get(db, id=route_id)
     if not route or route.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
 
@@ -153,7 +153,7 @@ def assign_route(
     # TODO: Check courier capacity
 
     route_update = RouteUpdate(courier_id=assign_in.courier_id, status="assigned")
-    route = crud_route.update(db, db_obj=route, obj_in=route_update)
+    route = route_service.update(db, db_obj=route, obj_in=route_update)
     return route
 
 
@@ -173,7 +173,7 @@ def get_route_metrics(
     - Completion rate
     - Average time per delivery
     """
-    route = crud_route.get(db, id=route_id)
+    route = route_service.get(db, id=route_id)
     if not route or route.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route not found")
 

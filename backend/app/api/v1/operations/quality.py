@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.operations import quality_inspection, quality_metric
 from app.models.tenant.organization import Organization
+from app.services.operations import quality_inspection_service, quality_metric_service
 from app.schemas.operations.quality import (
     QualityInspectionComplete,
     QualityInspectionCreate,
@@ -36,13 +36,13 @@ def list_quality_metrics(
 ):
     """List all quality metrics"""
     if metric_type:
-        metrics = quality_metric.get_by_type(
+        metrics = quality_metric_service.get_by_type(
             db, metric_type=metric_type, organization_id=current_org.id
         )
     elif active_only:
-        metrics = quality_metric.get_active_metrics(db, organization_id=current_org.id)
+        metrics = quality_metric_service.get_active_metrics(db, organization_id=current_org.id)
     else:
-        metrics = quality_metric.get_multi(
+        metrics = quality_metric_service.get_multi(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     return metrics
@@ -55,7 +55,7 @@ def list_critical_metrics(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List critical quality metrics"""
-    metrics = quality_metric.get_critical_metrics(db, organization_id=current_org.id)
+    metrics = quality_metric_service.get_critical_metrics(db, organization_id=current_org.id)
     return metrics
 
 
@@ -67,7 +67,7 @@ def get_quality_metric(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific quality metric by ID"""
-    metric = quality_metric.get(db, id=metric_id)
+    metric = quality_metric_service.get(db, id=metric_id)
     if not metric or metric.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Quality metric not found"
@@ -90,7 +90,7 @@ def create_quality_metric(
     - Defines weight for overall quality score
     - Marks as critical if applicable
     """
-    existing = quality_metric.get_by_code(
+    existing = quality_metric_service.get_by_code(
         db, metric_code=metric_in.metric_code, organization_id=current_org.id
     )
     if existing:
@@ -99,7 +99,7 @@ def create_quality_metric(
             detail=f"Metric with code '{metric_in.metric_code}' already exists",
         )
 
-    metric = quality_metric.create(db, obj_in=metric_in, organization_id=current_org.id)
+    metric = quality_metric_service.create(db, obj_in=metric_in, organization_id=current_org.id)
     return metric
 
 
@@ -112,12 +112,12 @@ def update_quality_metric(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a quality metric"""
-    metric = quality_metric.get(db, id=metric_id)
+    metric = quality_metric_service.get(db, id=metric_id)
     if not metric or metric.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Quality metric not found"
         )
-    metric = quality_metric.update(db, db_obj=metric, obj_in=metric_in)
+    metric = quality_metric_service.update(db, db_obj=metric, obj_in=metric_in)
     return metric
 
 
@@ -129,12 +129,12 @@ def delete_quality_metric(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a quality metric"""
-    metric = quality_metric.get(db, id=metric_id)
+    metric = quality_metric_service.get(db, id=metric_id)
     if not metric or metric.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Quality metric not found"
         )
-    quality_metric.remove(db, id=metric_id)
+    quality_metric_service.remove(db, id=metric_id)
     return None
 
 
@@ -152,15 +152,15 @@ def list_inspections(
 ):
     """List all quality inspections"""
     if courier_id:
-        inspections = quality_inspection.get_by_courier(
+        inspections = quality_inspection_service.get_by_courier(
             db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif vehicle_id:
-        inspections = quality_inspection.get_by_vehicle(
+        inspections = quality_inspection_service.get_by_vehicle(
             db, vehicle_id=vehicle_id, skip=skip, limit=limit, organization_id=current_org.id
         )
     else:
-        inspections = quality_inspection.get_multi(
+        inspections = quality_inspection_service.get_multi(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     return inspections
@@ -181,7 +181,7 @@ def list_failed_inspections(
     - Used for corrective action tracking
     - Sorted by inspection date (most recent first)
     """
-    inspections = quality_inspection.get_failed_inspections(
+    inspections = quality_inspection_service.get_failed_inspections(
         db, skip=skip, limit=limit, organization_id=current_org.id
     )
     return inspections
@@ -200,7 +200,7 @@ def list_followup_required(
     - Excludes already completed follow-ups
     - Requires action from quality team
     """
-    inspections = quality_inspection.get_requiring_followup(db, organization_id=current_org.id)
+    inspections = quality_inspection_service.get_requiring_followup(db, organization_id=current_org.id)
     return inspections
 
 
@@ -212,7 +212,7 @@ def list_scheduled_inspections(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List inspections scheduled for a specific date"""
-    inspections = quality_inspection.get_scheduled_for_date(
+    inspections = quality_inspection_service.get_scheduled_for_date(
         db, target_date=target_date, organization_id=current_org.id
     )
     return inspections
@@ -226,7 +226,7 @@ def get_inspection(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific inspection by ID"""
-    inspection = quality_inspection.get(db, id=inspection_id)
+    inspection = quality_inspection_service.get(db, id=inspection_id)
     if not inspection or inspection.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspection not found")
     return inspection
@@ -253,7 +253,7 @@ def create_inspection(
     # TODO: Validate courier/vehicle/delivery exists
     # TODO: Validate inspector exists
 
-    inspection = quality_inspection.create_with_number(
+    inspection = quality_inspection_service.create_with_number(
         db, obj_in=inspection_in, organization_id=current_org.id
     )
     return inspection
@@ -268,10 +268,10 @@ def update_inspection(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update an inspection"""
-    inspection = quality_inspection.get(db, id=inspection_id)
+    inspection = quality_inspection_service.get(db, id=inspection_id)
     if not inspection or inspection.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspection not found")
-    inspection = quality_inspection.update(db, db_obj=inspection, obj_in=inspection_in)
+    inspection = quality_inspection_service.update(db, db_obj=inspection, obj_in=inspection_in)
     return inspection
 
 
@@ -283,10 +283,10 @@ def delete_inspection(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete an inspection"""
-    inspection = quality_inspection.get(db, id=inspection_id)
+    inspection = quality_inspection_service.get(db, id=inspection_id)
     if not inspection or inspection.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspection not found")
-    quality_inspection.remove(db, id=inspection_id)
+    quality_inspection_service.remove(db, id=inspection_id)
     return None
 
 
@@ -308,7 +308,7 @@ def complete_inspection(
     - Schedules follow-up if required
     - Updates status to COMPLETED/PASSED/FAILED
     """
-    inspection = quality_inspection.get(db, id=inspection_id)
+    inspection = quality_inspection_service.get(db, id=inspection_id)
     if not inspection or inspection.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspection not found")
 
@@ -332,10 +332,10 @@ def complete_inspection(
         attachments=completion.attachments,
         inspector_notes=completion.inspector_notes,
     )
-    inspection = quality_inspection.update(db, db_obj=inspection, obj_in=inspection_update)
+    inspection = quality_inspection_service.update(db, db_obj=inspection, obj_in=inspection_update)
 
     # Mark as completed
-    inspection = quality_inspection.complete_inspection(
+    inspection = quality_inspection_service.complete_inspection(
         db,
         inspection_id=inspection_id,
         score=float(completion.overall_score),

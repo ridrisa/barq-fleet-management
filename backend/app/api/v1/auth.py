@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from app.config.settings import settings
 from app.core.dependencies import get_current_active_user, get_db
 from app.core.security import create_access_token
-from app.crud.user import crud_user
 from app.models.tenant.organization import Organization
 from app.models.tenant.organization_user import OrganizationRole, OrganizationUser
 from app.models.user import User
@@ -22,6 +21,7 @@ from app.schemas.user import User as UserSchema
 from app.schemas.user import UserCreate
 from app.services.tenant.organization_service import organization_service
 from app.services.tenant.organization_user_service import organization_user_service
+from app.services.user_service import user_service
 
 router = APIRouter()
 
@@ -29,7 +29,7 @@ router = APIRouter()
 @router.post("/login", response_model=TokenWithOrganization)
 def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()):
     """OAuth2 compatible token login (email/password) with organization context."""
-    user = crud_user.authenticate(db, email=form_data.username, password=form_data.password)
+    user = user_service.authenticate(db, email=form_data.username, password=form_data.password)
     if not user:
         sentry_sdk.add_breadcrumb(
             category="auth",
@@ -42,7 +42,7 @@ def login(db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = 
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if not crud_user.is_active(user):
+    if not user_service.is_active(user):
         sentry_sdk.add_breadcrumb(
             category="auth",
             message="Login failed - inactive user",
@@ -137,10 +137,10 @@ def google_auth(*, db: Session = Depends(get_db), token_data: Dict[str, str] = B
             detail="Invalid Google token",
         )
 
-    user = crud_user.get_by_google_id(db, google_id=google_id)
+    user = user_service.get_by_google_id(db, google_id=google_id)
 
     if not user:
-        user = crud_user.get_by_email(db, email=email)
+        user = user_service.get_by_email(db, email=email)
         if user:
             user.google_id = google_id
             user.picture = picture
@@ -148,7 +148,7 @@ def google_auth(*, db: Session = Depends(get_db), token_data: Dict[str, str] = B
             db.refresh(user)
 
     if not user:
-        user = crud_user.create_google_user(
+        user = user_service.create_google_user(
             db,
             email=email,
             google_id=google_id,
@@ -156,7 +156,7 @@ def google_auth(*, db: Session = Depends(get_db), token_data: Dict[str, str] = B
             picture=picture,
         )
 
-    if not crud_user.is_active(user):
+    if not user_service.is_active(user):
         raise HTTPException(status_code=400, detail="Inactive user")
 
     # Get user's primary organization (first active membership)
@@ -248,14 +248,14 @@ def register(*, db: Session = Depends(get_db), user_data: Dict[str, str] = Body(
             detail="Email and password are required",
         )
 
-    existing_user = crud_user.get_by_email(db, email=email)
+    existing_user = user_service.get_by_email(db, email=email)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
         )
 
-    user_count = db.query(crud_user.model).count()
+    user_count = db.query(User).count()
     is_first_user = user_count == 0
 
     user_in = UserCreate(
@@ -266,7 +266,7 @@ def register(*, db: Session = Depends(get_db), user_data: Dict[str, str] = Body(
         is_superuser=is_first_user,
         role="admin" if is_first_user else "user",
     )
-    user = crud_user.create(db, obj_in=user_in)
+    user = user_service.create(db, obj_in=user_in)
 
     # ALWAYS create organization for user (use provided name or generate from email/name)
     from app.schemas.tenant.organization import OrganizationCreate

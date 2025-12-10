@@ -4,14 +4,16 @@ Handles workflow instance execution, state transitions, and step progression
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Union
 
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppException
-from app.crud.workflow import workflow_instance, workflow_template
 from app.models.workflow.instance import WorkflowInstance, WorkflowStatus
 from app.models.workflow.template import WorkflowTemplate
+from app.schemas.workflow.instance import WorkflowInstanceCreate, WorkflowInstanceUpdate
+from app.schemas.workflow.template import WorkflowTemplateCreate, WorkflowTemplateUpdate
 from app.services.workflow.state_machine import WorkflowExecutionEngine
 
 
@@ -21,6 +23,120 @@ class WorkflowExecutionService:
     def __init__(self, db: Session):
         self.db = db
         self.engine = WorkflowExecutionEngine()
+
+    # ==================== WorkflowTemplate CRUD ====================
+
+    def get_template(self, id: Any) -> Optional[WorkflowTemplate]:
+        """Get a workflow template by ID"""
+        return self.db.get(WorkflowTemplate, id)
+
+    def get_templates(
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[WorkflowTemplate]:
+        """Get multiple workflow templates with optional filters"""
+        query = self.db.query(WorkflowTemplate)
+        if filters:
+            for key, value in filters.items():
+                if hasattr(WorkflowTemplate, key):
+                    query = query.filter(getattr(WorkflowTemplate, key) == value)
+        return query.offset(skip).limit(limit).all()
+
+    def create_template(
+        self, *, obj_in: Union[WorkflowTemplateCreate, Dict[str, Any]]
+    ) -> WorkflowTemplate:
+        """Create a new workflow template"""
+        obj_in_data = jsonable_encoder(obj_in)
+        db_obj = WorkflowTemplate(**obj_in_data)
+        self.db.add(db_obj)
+        self.db.commit()
+        self.db.refresh(db_obj)
+        return db_obj
+
+    def update_template(
+        self,
+        *,
+        db_obj: WorkflowTemplate,
+        obj_in: Union[WorkflowTemplateUpdate, Dict[str, Any]],
+    ) -> WorkflowTemplate:
+        """Update a workflow template"""
+        update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_obj, field, value)
+        self.db.add(db_obj)
+        self.db.commit()
+        self.db.refresh(db_obj)
+        return db_obj
+
+    def delete_template(self, *, id: int) -> Optional[WorkflowTemplate]:
+        """Delete a workflow template"""
+        obj = self.db.get(WorkflowTemplate, id)
+        if not obj:
+            return None
+        self.db.delete(obj)
+        self.db.commit()
+        return obj
+
+    # ==================== WorkflowInstance CRUD ====================
+
+    def get_instance(self, id: Any) -> Optional[WorkflowInstance]:
+        """Get a workflow instance by ID"""
+        return self.db.get(WorkflowInstance, id)
+
+    def get_instances(
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[WorkflowInstance]:
+        """Get multiple workflow instances with optional filters"""
+        query = self.db.query(WorkflowInstance)
+        if filters:
+            for key, value in filters.items():
+                if hasattr(WorkflowInstance, key):
+                    query = query.filter(getattr(WorkflowInstance, key) == value)
+        return query.offset(skip).limit(limit).all()
+
+    def create_instance(
+        self, *, obj_in: Union[WorkflowInstanceCreate, Dict[str, Any]]
+    ) -> WorkflowInstance:
+        """Create a new workflow instance"""
+        obj_in_data = jsonable_encoder(obj_in)
+        db_obj = WorkflowInstance(**obj_in_data)
+        self.db.add(db_obj)
+        self.db.commit()
+        self.db.refresh(db_obj)
+        return db_obj
+
+    def update_instance(
+        self,
+        *,
+        db_obj: WorkflowInstance,
+        obj_in: Union[WorkflowInstanceUpdate, Dict[str, Any]],
+    ) -> WorkflowInstance:
+        """Update a workflow instance"""
+        update_data = obj_in if isinstance(obj_in, dict) else obj_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(db_obj, field, value)
+        self.db.add(db_obj)
+        self.db.commit()
+        self.db.refresh(db_obj)
+        return db_obj
+
+    def delete_instance(self, *, id: int) -> Optional[WorkflowInstance]:
+        """Delete a workflow instance"""
+        obj = self.db.get(WorkflowInstance, id)
+        if not obj:
+            return None
+        self.db.delete(obj)
+        self.db.commit()
+        return obj
+
+    # ==================== Business Logic Methods ====================
 
     def create_and_start_workflow(
         self,
@@ -40,7 +156,7 @@ class WorkflowExecutionService:
             WorkflowInstance
         """
         # Get template
-        template = workflow_template.get(self.db, id=template_id)
+        template = self.get_template(template_id)
         if not template:
             raise AppException(
                 status_code=404,
@@ -67,8 +183,7 @@ class WorkflowExecutionService:
             workflow_data.update(initial_data)
 
         # Create instance
-        instance = workflow_instance.create(
-            self.db,
+        instance = self.create_instance(
             obj_in={
                 "template_id": template_id,
                 "initiated_by": initiated_by,
@@ -97,7 +212,7 @@ class WorkflowExecutionService:
             Updated WorkflowInstance
         """
         # Get instance with template
-        instance = workflow_instance.get(self.db, id=instance_id)
+        instance = self.get_instance(instance_id)
         if not instance:
             raise AppException(
                 status_code=404,
@@ -162,8 +277,7 @@ class WorkflowExecutionService:
             completed_at = datetime.utcnow()
 
         # Update instance
-        instance = workflow_instance.update(
-            self.db,
+        instance = self.update_instance(
             db_obj=instance,
             obj_in={
                 "current_step": next_step,
@@ -192,7 +306,7 @@ class WorkflowExecutionService:
         Returns:
             Updated WorkflowInstance
         """
-        instance = workflow_instance.get(self.db, id=instance_id)
+        instance = self.get_instance(instance_id)
         if not instance:
             raise AppException(
                 status_code=404,
@@ -219,8 +333,7 @@ class WorkflowExecutionService:
         if new_status == WorkflowStatus.COMPLETED:
             update_data["completed_at"] = datetime.utcnow()
 
-        instance = workflow_instance.update(
-            self.db,
+        instance = self.update_instance(
             db_obj=instance,
             obj_in=update_data,
         )
@@ -254,7 +367,7 @@ class WorkflowExecutionService:
         Returns:
             Dictionary with workflow status details
         """
-        instance = workflow_instance.get(self.db, id=instance_id)
+        instance = self.get_instance(instance_id)
         if not instance:
             raise AppException(
                 status_code=404,

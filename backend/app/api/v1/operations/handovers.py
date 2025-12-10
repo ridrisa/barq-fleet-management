@@ -7,9 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_organization, get_current_user
-from app.crud.fleet import courier as crud_courier
-from app.crud.fleet import vehicle as crud_vehicle
-from app.crud.operations import handover as crud_handover
 from app.models.fleet.assignment import AssignmentStatus, CourierVehicleAssignment
 from app.models.fleet.courier import Courier
 from app.models.fleet.vehicle import Vehicle
@@ -23,6 +20,8 @@ from app.schemas.operations.handover import (
     HandoverResponse,
     HandoverUpdate,
 )
+from app.services.fleet import courier_service, vehicle_service
+from app.services.operations import handover_service
 
 logger = logging.getLogger(__name__)
 
@@ -42,15 +41,15 @@ def list_handovers(
 ):
     """List all handovers with optional filters"""
     if courier_id:
-        handovers = crud_handover.get_by_courier(
+        handovers = handover_service.get_by_courier(
             db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
         )
     elif vehicle_id:
-        handovers = crud_handover.get_by_vehicle(
+        handovers = handover_service.get_by_vehicle(
             db, vehicle_id=vehicle_id, skip=skip, limit=limit, organization_id=current_org.id
         )
     else:
-        handovers = crud_handover.get_multi(
+        handovers = handover_service.get_multi(
             db, skip=skip, limit=limit, organization_id=current_org.id
         )
     return handovers
@@ -65,7 +64,7 @@ def list_pending_handovers(
     current_org: Organization = Depends(get_current_organization),
 ):
     """List all pending handovers"""
-    handovers = crud_handover.get_pending(
+    handovers = handover_service.get_pending(
         db, skip=skip, limit=limit, organization_id=current_org.id
     )
     return handovers
@@ -79,7 +78,7 @@ def get_handover(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get a specific handover by ID"""
-    handover = crud_handover.get(db, id=handover_id)
+    handover = handover_service.get(db, id=handover_id)
     if not handover or handover.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover not found")
     return handover
@@ -109,7 +108,7 @@ def create_handover(
         )
 
     # Validate from_courier exists and belongs to organization
-    from_courier = crud_courier.get(db, id=handover_in.from_courier_id)
+    from_courier = courier_service.get(db, id=handover_in.from_courier_id)
     if not from_courier or from_courier.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -117,7 +116,7 @@ def create_handover(
         )
 
     # Validate to_courier exists and belongs to organization
-    to_courier = crud_courier.get(db, id=handover_in.to_courier_id)
+    to_courier = courier_service.get(db, id=handover_in.to_courier_id)
     if not to_courier or to_courier.organization_id != current_org.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -126,7 +125,7 @@ def create_handover(
 
     # Validate vehicle exists (if vehicle handover)
     if handover_in.vehicle_id:
-        vehicle = crud_vehicle.get(db, id=handover_in.vehicle_id)
+        vehicle = vehicle_service.get(db, id=handover_in.vehicle_id)
         if not vehicle or vehicle.organization_id != current_org.id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -140,7 +139,7 @@ def create_handover(
                 detail=f"Vehicle {handover_in.vehicle_id} is not currently assigned to courier {handover_in.from_courier_id}",
             )
 
-    handover = crud_handover.create_with_number(
+    handover = handover_service.create_with_number(
         db, obj_in=handover_in, organization_id=current_org.id
     )
     return handover
@@ -155,10 +154,10 @@ def update_handover(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Update a handover"""
-    handover = crud_handover.get(db, id=handover_id)
+    handover = handover_service.get(db, id=handover_id)
     if not handover or handover.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover not found")
-    handover = crud_handover.update(db, db_obj=handover, obj_in=handover_in)
+    handover = handover_service.update(db, db_obj=handover, obj_in=handover_in)
     return handover
 
 
@@ -170,10 +169,10 @@ def delete_handover(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Delete a handover"""
-    handover = crud_handover.get(db, id=handover_id)
+    handover = handover_service.get(db, id=handover_id)
     if not handover or handover.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover not found")
-    crud_handover.remove(db, id=handover_id)
+    handover_service.remove(db, id=handover_id)
     return None
 
 
@@ -193,7 +192,7 @@ def approve_handover(
     - If rejected: sets status to REJECTED, records reason
     - Notifies both couriers
     """
-    handover = crud_handover.get(db, id=handover_id)
+    handover = handover_service.get(db, id=handover_id)
     if not handover or handover.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover not found")
 
@@ -205,13 +204,13 @@ def approve_handover(
 
     if approval.approved:
         approved_by_id = current_user.id
-        handover = crud_handover.approve(db, handover_id=handover_id, approved_by_id=approved_by_id)
+        handover = handover_service.approve(db, handover_id=handover_id, approved_by_id=approved_by_id)
     else:
         if not approval.rejection_reason:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Rejection reason is required"
             )
-        handover = crud_handover.reject(
+        handover = handover_service.reject(
             db, handover_id=handover_id, rejection_reason=approval.rejection_reason
         )
 
@@ -237,7 +236,7 @@ def complete_handover(
     - Transfers pending deliveries
     - Sets status to COMPLETED
     """
-    handover = crud_handover.get(db, id=handover_id)
+    handover = handover_service.get(db, id=handover_id)
     if not handover or handover.organization_id != current_org.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Handover not found")
 
@@ -258,10 +257,10 @@ def complete_handover(
         photos=completion.photos,
         notes=completion.notes,
     )
-    handover = crud_handover.update(db, db_obj=handover, obj_in=handover_update)
+    handover = handover_service.update(db, db_obj=handover, obj_in=handover_update)
 
     # Mark as completed
-    handover = crud_handover.complete(db, handover_id=handover_id)
+    handover = handover_service.complete(db, handover_id=handover_id)
 
     # Update vehicle assignment if vehicle is part of handover
     if handover.vehicle_id:
@@ -311,7 +310,7 @@ def get_courier_handover_history(
     - Pending count
     - Completed count
     """
-    handovers = crud_handover.get_by_courier(
+    handovers = handover_service.get_by_courier(
         db, courier_id=courier_id, skip=skip, limit=limit, organization_id=current_org.id
     )
 
@@ -338,7 +337,7 @@ def get_vehicle_handover_history(
     current_org: Organization = Depends(get_current_organization),
 ):
     """Get handover history for a vehicle"""
-    handovers = crud_handover.get_by_vehicle(
+    handovers = handover_service.get_by_vehicle(
         db, vehicle_id=vehicle_id, skip=skip, limit=limit, organization_id=current_org.id
     )
     return handovers
