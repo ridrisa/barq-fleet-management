@@ -4,11 +4,12 @@ This file contains additional user management endpoints that were requested.
 These can be merged into users.py or kept separate.
 """
 
+import os
 import secrets
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
@@ -17,6 +18,8 @@ from app.core.security import get_password_hash
 from app.models.role import Role
 from app.models.user import User
 from app.schemas.user import User as UserSchema
+from app.services.password_reset_service import password_reset_service
+from app.services.email_notification_service import email_notification_service, EmailRecipient
 
 router = APIRouter()
 
@@ -207,6 +210,7 @@ def bulk_assign_roles(
 @router.post("/password-reset/request", response_model=PasswordResetResponse)
 def request_password_reset(
     data: PasswordResetRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     """
@@ -235,21 +239,46 @@ def request_password_reset(
             message="If an account exists with this email, a password reset link has been sent."
         )
 
-    # Generate reset token
-    reset_token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(hours=24)
+    # Get client info for audit trail
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
 
-    # TODO: Store token hash in database (not the raw token)
-    # Example: store SHA-256 hash of the token
-    # token_hash = hashlib.sha256(reset_token.encode()).hexdigest()
-    # PasswordResetToken.create(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
+    # Create secure reset token using the password reset service
+    # This stores the token hash (not raw token) in database
+    raw_token, token_record = password_reset_service.create_reset_token(
+        db=db,
+        user=user,
+        ip_address=client_ip,
+        user_agent=user_agent,
+        expire_hours=24,
+    )
 
-    # TODO: Send email with reset link containing the raw token
-    # Example: send_email(
-    #     to=user.email,
-    #     subject="Password Reset",
-    #     body=f"Reset your password: {FRONTEND_URL}/reset-password?token={reset_token}"
-    # )
+    # Send email with reset link containing the raw token
+    frontend_url = os.getenv("FRONTEND_URL", "https://barq-web-staging-frydalfroq-ww.a.run.app")
+    reset_link = f"{frontend_url}/reset-password?token={raw_token}"
+
+    email_html = f"""
+    <html>
+    <body>
+        <h2>Password Reset Request</h2>
+        <p>Dear {user.full_name or user.email},</p>
+        <p>We received a request to reset your password. Click the link below to reset it:</p>
+        <p><a href="{reset_link}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a></p>
+        <p>Or copy and paste this link into your browser:</p>
+        <p>{reset_link}</p>
+        <p>This link will expire in 24 hours.</p>
+        <p>If you didn't request this, please ignore this email or contact support if you have concerns.</p>
+        <p>Best regards,<br>BARQ Fleet Management</p>
+    </body>
+    </html>
+    """
+
+    email_notification_service.send_email(
+        to=EmailRecipient(email=user.email, name=user.full_name),
+        subject="Password Reset Request - BARQ Fleet Management",
+        html_content=email_html,
+        plain_content=f"Reset your password by visiting: {reset_link}. This link expires in 24 hours.",
+    )
 
     # Return generic success message - NEVER return the token in response
     return PasswordResetResponse(
@@ -290,17 +319,33 @@ def admin_reset_user_password(
     temp_password = secrets.token_urlsafe(12)
     user.hashed_password = get_password_hash(temp_password)
 
-    # TODO: Send temp_password via email to user.email
-    # Example: send_email(
-    #     to=user.email,
-    #     subject="Password Reset by Administrator",
-    #     body=f"Your temporary password is: {temp_password}\nPlease change it upon next login."
-    # )
-
-    # TODO: Set flag to force password change on next login
-    # user.force_password_change = True
+    # Set flag to force password change on next login (if column exists)
+    if hasattr(user, 'force_password_change'):
+        user.force_password_change = True
 
     db.commit()
+
+    # Send temp_password via email to user.email
+    email_html = f"""
+    <html>
+    <body>
+        <h2>Password Reset by Administrator</h2>
+        <p>Dear {user.full_name or user.email},</p>
+        <p>Your password has been reset by an administrator.</p>
+        <p>Your temporary password is: <strong>{temp_password}</strong></p>
+        <p><strong>Important:</strong> Please change this password upon your next login for security.</p>
+        <p>If you did not expect this reset, please contact support immediately.</p>
+        <p>Best regards,<br>BARQ Fleet Management</p>
+    </body>
+    </html>
+    """
+
+    email_notification_service.send_email(
+        to=EmailRecipient(email=user.email, name=user.full_name),
+        subject="Password Reset by Administrator - BARQ Fleet Management",
+        html_content=email_html,
+        plain_content=f"Your password has been reset. Temporary password: {temp_password}. Please change it upon your next login.",
+    )
 
     # SECURITY: Don't return the password - it should be sent via email
     return {
