@@ -216,6 +216,25 @@ def create_app() -> FastAPI:
                 "method": request.method,
             },
         )
+
+        # Get the origin from request to add CORS headers even on error
+        origin = request.headers.get("origin", "")
+        headers = {}
+        if origin:
+            # Check if origin is allowed
+            allowed = False
+            if cors_origins == ["*"]:
+                allowed = True
+                headers["Access-Control-Allow-Origin"] = "*"
+            elif origin in cors_origins:
+                allowed = True
+                headers["Access-Control-Allow-Origin"] = origin
+                headers["Access-Control-Allow-Credentials"] = "true"
+
+            if allowed:
+                headers["Access-Control-Allow-Methods"] = "*"
+                headers["Access-Control-Allow-Headers"] = "*"
+
         return JSONResponse(
             status_code=500,
             content={
@@ -225,6 +244,7 @@ def create_app() -> FastAPI:
                     "status": 500,
                 }
             },
+            headers=headers if headers else None,
         )
 
     # Include API routes
