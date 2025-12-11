@@ -85,6 +85,12 @@ class Settings:
         server = os.getenv("POSTGRES_SERVER", "localhost")
         port = os.getenv("POSTGRES_PORT", "5432")
         db = os.getenv("POSTGRES_DB", "barq_fleet")
+
+        # Handle Cloud SQL Unix socket path (starts with /cloudsql/)
+        if server.startswith("/cloudsql/"):
+            # Cloud SQL format: postgresql://user:password@/dbname?host=/cloudsql/instance
+            return f"postgresql://{user}:{password}@/{db}?host={server}"
+
         return f"postgresql://{user}:{password}@{server}:{port}/{db}"
 
 
