@@ -35,7 +35,7 @@ export const assignmentSchema = z.object({
   end_date: z.string().optional(),
   shift: shiftTypeSchema.optional(),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
-  status: assignmentStatusSchema.default('active'),
+  status: assignmentStatusSchema,
 }).refine(
   (data) => {
     if (data.end_date && data.start_date) {
@@ -77,7 +77,7 @@ export const fuelTypeSchema = z.enum(['petrol', 'diesel', 'electric'])
 export const fuelLogSchema = z.object({
   vehicle_id: z.string().min(1, 'Vehicle is required'),
   date: z.string().min(1, 'Date is required'),
-  fuel_type: fuelTypeSchema.default('petrol'),
+  fuel_type: fuelTypeSchema,
   liters: z.number().positive('Liters must be greater than 0'),
   cost: z.number().positive('Cost must be greater than 0'),
   odometer: z.number().positive('Odometer reading must be greater than 0'),
@@ -112,8 +112,8 @@ export const routeSchema = z.object({
   waypoints: z.string().max(500, 'Waypoints must be less than 500 characters').optional(),
   distance: z.number().positive('Distance must be greater than zero'),
   estimated_duration: z.number().positive('Estimated duration must be greater than zero'),
-  status: routeStatusSchema.default('active'),
-  route_type: routeTypeSchema.default('delivery'),
+  status: routeStatusSchema,
+  route_type: routeTypeSchema,
   assigned_courier: z.string().optional(),
   service_days: z.string().max(50, 'Service days must be less than 50 characters').optional(),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
@@ -147,14 +147,14 @@ export const codSchema = z.object({
   delivery_id: z.string().min(1, 'Delivery ID is required'),
   courier_id: z.string().min(1, 'Courier is required'),
   amount: z.number().positive('Amount must be greater than zero'),
-  currency: currencySchema.default('SAR'),
-  collected: z.boolean().default(false),
+  currency: currencySchema,
+  collected: z.boolean(),
   collection_date: z.string().optional(),
-  reconciled: z.boolean().default(false),
+  reconciled: z.boolean(),
   reconciliation_date: z.string().optional(),
-  payment_method: paymentMethodSchema.default('cash'),
+  payment_method: paymentMethodSchema,
   reference_number: z.string().max(50, 'Reference number must be less than 50 characters').optional(),
-  status: codStatusSchema.default('pending'),
+  status: codStatusSchema,
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 }).refine(
   (data) => {
@@ -199,9 +199,9 @@ export const zoneSchema = z.object({
   zone_code: z.string().min(1, 'Zone code is required').max(20, 'Zone code must be less than 20 characters'),
   areas: z.string().max(500, 'Areas must be less than 500 characters').optional(),
   coverage_radius: z.number().nonnegative('Coverage radius cannot be negative').optional(),
-  assigned_couriers: z.number().int().nonnegative('Assigned couriers cannot be negative').optional().default(0),
-  max_capacity: z.number().int().positive('Max capacity must be greater than 0').optional().default(100),
-  status: zoneStatusSchema.default('active'),
+  assigned_couriers: z.number().int().nonnegative('Assigned couriers cannot be negative'),
+  max_capacity: z.number().int().positive('Max capacity must be greater than 0'),
+  status: zoneStatusSchema,
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 })
 
@@ -221,7 +221,7 @@ export const priorityLevelSchema = z.enum(['express', 'same_day', 'standard', 'd
  */
 export const priorityQueueSchema = z.object({
   delivery_id: z.string().min(1, 'Delivery ID is required'),
-  priority: priorityLevelSchema.default('standard'),
+  priority: priorityLevelSchema,
   sla_deadline: z.string().optional(),
   courier_id: z.string().optional(),
   reason: z.string().max(200, 'Reason must be less than 200 characters').optional(),
@@ -294,8 +294,8 @@ export const deliveryPrioritySchema = z.enum(['low', 'normal', 'high', 'urgent']
 export const deliveryFormSchema = z.object({
   courier_id: z.string().optional(),
   tracking_number: z.string().min(1, 'Tracking number is required').max(50, 'Tracking number must be less than 50 characters'),
-  status: deliveryStatusSchema.default('pending'),
-  priority: deliveryPrioritySchema.default('normal'),
+  status: deliveryStatusSchema,
+  priority: deliveryPrioritySchema,
   pickup_address: z.string().min(1, 'Pickup address is required').max(300, 'Pickup address must be less than 300 characters'),
   delivery_address: z.string().min(1, 'Delivery address is required').max(300, 'Delivery address must be less than 300 characters'),
   recipient_name: z.string().min(1, 'Recipient name is required').max(100, 'Recipient name must be less than 100 characters'),
@@ -387,10 +387,10 @@ export const maintenanceTypeSchema = z.enum([
  */
 export const maintenanceFormSchema = z.object({
   vehicle_id: z.string().min(1, 'Vehicle is required'),
-  maintenance_type: maintenanceTypeSchema.default('oil_change'),
+  maintenance_type: maintenanceTypeSchema,
   scheduled_date: z.string().min(1, 'Scheduled date is required'),
   completed_date: z.string().optional(),
-  status: maintenanceStatusSchema.default('scheduled'),
+  status: maintenanceStatusSchema,
   cost: z.number().nonnegative('Cost cannot be negative').optional(),
   service_provider: z.string().max(100, 'Service provider must be less than 100 characters').optional(),
   description: z.string().max(1000, 'Description must be less than 1000 characters').optional(),

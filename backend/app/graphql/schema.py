@@ -1081,7 +1081,28 @@ class Mutation:
             if not courier:
                 return LocationUpdateResponse(success=False, message="Courier not found")
 
-            # TODO: Implement location history table
+            # Store location history using FMS integration or audit log
+            # Since location tracking is handled by FMS (machinestalk GPS), we log the update
+            from app.models.admin import AuditLog
+            import json
+
+            audit_entry = AuditLog(
+                tenant_id=courier.tenant_id,
+                user_id=None,  # System update from mobile app
+                action="courier_location_update",
+                resource_type="courier",
+                resource_id=str(courier_id),
+                details=json.dumps({
+                    "latitude": location.latitude,
+                    "longitude": location.longitude,
+                    "accuracy": getattr(location, 'accuracy', None),
+                    "timestamp": getattr(location, 'timestamp', None),
+                    "barq_id": barq_id,
+                }),
+            )
+            db.add(audit_entry)
+            db.commit()
+
             return LocationUpdateResponse(success=True, message="Location updated successfully")
         except Exception as e:
             return LocationUpdateResponse(success=False, message=f"Failed to update location: {str(e)}")

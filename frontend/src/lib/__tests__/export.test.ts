@@ -50,7 +50,6 @@ const mockElement = document.createElement('div')
 mockElement.id = 'test-element'
 
 const mockBlobUrl = 'blob:mock-url'
-const mockBlob = new Blob(['test content'], { type: 'text/csv' })
 
 describe('Export Utilities', () => {
   beforeEach(() => {

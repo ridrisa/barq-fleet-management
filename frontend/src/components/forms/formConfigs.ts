@@ -545,7 +545,9 @@ export const handoverFormSchema = z.object({
   signature: z.string().optional().default(''),
 })
 
-export type HandoverFormData = z.infer<typeof handoverFormSchema>
+// HandoverFormData is already exported from fleet.schema.ts via HandoverForm.tsx
+// Using a distinct name here to avoid conflict
+export type HandoverConfigFormData = z.infer<typeof handoverFormSchema>
 
 export const defaultHandoverChecklist: ChecklistItem[] = [
   { id: '1', label: 'Vehicle keys handed over', checked: false },
@@ -578,7 +580,7 @@ export const handoverFormConfig: FormConfig = {
   ],
 }
 
-export const handoverInitialData: HandoverFormData = {
+export const handoverInitialData: HandoverConfigFormData = {
   from_courier: '',
   to_courier: '',
   vehicle_id: '',

@@ -434,7 +434,18 @@ def check_sla_compliance_task(self):
         for delivery in overdue_deliveries:
             logger.warning(f"Delivery {delivery.id} is overdue")
 
-            # TODO: Send notification
+            # Send delivery SLA breach notification
+            if delivery.courier and delivery.courier.email:
+                send_email_task.delay(
+                    recipient=delivery.courier.email,
+                    subject=f"Delivery Overdue: Order {delivery.tracking_number}",
+                    body=(
+                        f"Delivery {delivery.tracking_number} is overdue.\n"
+                        f"Expected delivery: {delivery.expected_delivery_at}\n"
+                        f"Current status: {delivery.status}\n"
+                        f"Please complete the delivery as soon as possible."
+                    ),
+                )
 
         self.db_session.commit()
 

@@ -47,7 +47,7 @@ const mockMemberships = [
     organization: mockOrganization,
     role: 'ADMIN' as const,
     is_active: true,
-    permissions: { can_manage_users: true },
+    permissions: { can_manage_users: true, can_view_reports: true } as Record<string, boolean>,
   },
   {
     organization: {
@@ -58,7 +58,7 @@ const mockMemberships = [
     },
     role: 'VIEWER' as const,
     is_active: true,
-    permissions: { can_view_reports: true },
+    permissions: { can_manage_users: false, can_view_reports: true } as Record<string, boolean>,
   },
 ]
 

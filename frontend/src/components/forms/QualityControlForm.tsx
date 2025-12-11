@@ -1,4 +1,6 @@
-import { useState, FormEvent } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -6,7 +8,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Form, FormField, FormSection, FormActions } from './Form'
 import { QualityChecklistField, type ChecklistItem } from './ChecklistField'
 import { Checkbox } from './Checkbox'
-import { type QualityControlFormData } from './formConfigs'
+import { qualityControlSchema, type QualityControlFormData } from '@/schemas'
 
 export interface QualityControlFormProps {
   initialData?: Partial<QualityControlFormData & { checklist?: ChecklistItem[] }> & { id?: string }
@@ -34,44 +36,30 @@ export const QualityControlForm = ({
   isLoading = false,
   inspectors = []
 }: QualityControlFormProps) => {
-  const [formData, setFormData] = useState({
-    delivery_id: initialData?.delivery_id || '',
-    inspector: initialData?.inspector || '',
-    check_date: initialData?.check_date || new Date().toISOString().split('T')[0],
-    passed: initialData?.passed ?? false,
-    issues: initialData?.issues || '',
-    corrective_action: initialData?.corrective_action || '',
-    status: initialData?.status || 'pending' as const,
-  })
   const [checklist, setChecklist] = useState<ChecklistItem[]>(
     initialData?.checklist || defaultChecklist
   )
-  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
-    }
-  }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    setValue,
+  } = useForm<QualityControlFormData>({
+    resolver: zodResolver(qualityControlSchema),
+    defaultValues: {
+      delivery_id: initialData?.delivery_id || '',
+      inspector: initialData?.inspector || '',
+      check_date: initialData?.check_date || new Date().toISOString().split('T')[0],
+      passed: initialData?.passed ?? false,
+      issues: initialData?.issues || '',
+      corrective_action: initialData?.corrective_action || '',
+      status: initialData?.status || 'pending',
+    },
+  })
 
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {}
-    if (!formData.delivery_id) newErrors.delivery_id = 'Delivery ID is required'
-    if (!formData.inspector) newErrors.inspector = 'Inspector is required'
-    if (!formData.check_date) newErrors.check_date = 'Date is required'
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!validate()) return
-    await onSubmit({
-      ...formData,
-      checklist,
-    })
-  }
+  const passed = watch('passed')
 
   const inspectorOptions = [
     { value: '', label: 'Select inspector...' },
@@ -88,44 +76,47 @@ export const QualityControlForm = ({
   const totalCount = checklist.length
   const passRate = totalCount > 0 ? Math.round((passedCount / totalCount) * 100) : 0
 
+  const onFormSubmit = async (data: QualityControlFormData) => {
+    await onSubmit({
+      ...data,
+      checklist,
+    })
+  }
+
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit(onFormSubmit)}>
       <FormSection
         title="Inspection Details"
         description="Enter the delivery information for quality check"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField label="Delivery ID" error={errors.delivery_id} required>
+          <FormField label="Delivery ID" error={errors.delivery_id?.message} required>
             <Input
-              value={formData.delivery_id}
-              onChange={(e) => handleChange('delivery_id', e.target.value)}
+              {...register('delivery_id')}
               placeholder="Enter delivery ID..."
               disabled={isLoading}
             />
           </FormField>
 
-          <FormField label="Inspector" error={errors.inspector} required>
+          <FormField label="Inspector" error={errors.inspector?.message} required>
             <Select
-              value={formData.inspector}
-              onChange={(e) => handleChange('inspector', e.target.value)}
+              {...register('inspector')}
               options={inspectorOptions}
               disabled={isLoading}
             />
           </FormField>
 
-          <FormField label="Inspection Date" error={errors.check_date} required>
+          <FormField label="Inspection Date" error={errors.check_date?.message} required>
             <Input
               type="date"
-              value={formData.check_date}
-              onChange={(e) => handleChange('check_date', e.target.value)}
+              {...register('check_date')}
               disabled={isLoading}
             />
           </FormField>
 
-          <FormField label="Status">
+          <FormField label="Status" error={errors.status?.message}>
             <Select
-              value={formData.status}
-              onChange={(e) => handleChange('status', e.target.value)}
+              {...register('status')}
               options={statusOptions}
               disabled={isLoading}
             />
@@ -163,28 +154,26 @@ export const QualityControlForm = ({
         description="Final inspection result and findings"
       >
         <div className="space-y-4">
-          <FormField label="Passed Inspection">
+          <FormField label="Passed Inspection" error={errors.passed?.message}>
             <Checkbox
-              checked={formData.passed}
-              onChange={(e) => handleChange('passed', e.target.checked)}
+              checked={passed}
+              onChange={(e) => setValue('passed', e.target.checked)}
               label="Delivery passed all quality requirements"
             />
           </FormField>
 
-          <FormField label="Issues Found" error={errors.issues}>
+          <FormField label="Issues Found" error={errors.issues?.message}>
             <Textarea
-              value={formData.issues}
-              onChange={(e) => handleChange('issues', e.target.value)}
+              {...register('issues')}
               placeholder="Describe any issues found during inspection..."
               rows={3}
               disabled={isLoading}
             />
           </FormField>
 
-          <FormField label="Corrective Action" error={errors.corrective_action}>
+          <FormField label="Corrective Action" error={errors.corrective_action?.message}>
             <Textarea
-              value={formData.corrective_action}
-              onChange={(e) => handleChange('corrective_action', e.target.value)}
+              {...register('corrective_action')}
               placeholder="Describe corrective actions to be taken..."
               rows={3}
               disabled={isLoading}
@@ -208,3 +197,6 @@ export const QualityControlForm = ({
 }
 
 export default QualityControlForm
+
+// Re-export the type for backward compatibility
+export type { QualityControlFormData as QualityControlFormDataType }
