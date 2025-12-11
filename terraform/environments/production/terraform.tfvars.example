@@ -1,0 +1,199 @@
+# Production Environment Configuration Example
+# BARQ Fleet Management - Production Terraform Variables
+#
+# IMPORTANT: This is an EXAMPLE file. DO NOT commit actual secrets to version control!
+#
+# Usage:
+#   1. Copy this file: cp terraform.tfvars.example terraform.tfvars
+#   2. Update terraform.tfvars with your actual production values
+#   3. Ensure terraform.tfvars is in .gitignore
+#
+# OR use environment variables:
+#   export TF_VAR_project_id="your-project-id"
+#   export TF_VAR_db_password="your-secure-password"
+#   etc.
+
+# =============================================================================
+# Project Configuration
+# =============================================================================
+project_id = "barq-fleet"  # Your GCP project ID
+region     = "me-central1" # Middle East (Doha) - closest to Saudi Arabia
+
+# =============================================================================
+# Artifact Registry
+# =============================================================================
+artifact_registry = "me-central1-docker.pkg.dev"
+repository_name   = "barq-artifacts"
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+vpc_network_id             = "projects/barq-fleet/global/networks/default"
+private_service_cidr_range = "10.20.0.0/16" # Different from staging (10.10.0.0/16)
+
+# =============================================================================
+# Database Configuration
+# =============================================================================
+# Cloud SQL instance tier: db-custom-{vCPUs}-{RAM_in_MB}
+# Production recommended: db-custom-4-15360 (4 vCPU, 15GB RAM)
+db_tier      = "db-custom-4-15360"
+db_disk_size = 50 # Initial disk size in GB (auto-resizes up to 500GB)
+
+# Database credentials
+# SECURITY: Store these in Secret Manager or use environment variables!
+# Generate a strong password: openssl rand -base64 32
+db_user     = "barq_app_user"
+db_password = "REPLACE_WITH_SECURE_PASSWORD" # Use Secret Manager in production!
+
+# Full database connection URL for Secret Manager
+# Format: postgresql://{user}:{password}@/{database}?host=/cloudsql/{connection_name}
+# This will be constructed after Cloud SQL instance is created
+database_url = "postgresql://barq_app_user:SECURE_PASSWORD@/barq_production?host=/cloudsql/barq-fleet:me-central1:barq-production-db"
+
+# =============================================================================
+# Application Secrets
+# =============================================================================
+# Generate with: openssl rand -hex 32
+secret_key = "REPLACE_WITH_GENERATED_SECRET_KEY"
+
+# Google OAuth Configuration
+# Get from: https://console.cloud.google.com/apis/credentials
+google_client_id     = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+google_client_secret = "REPLACE_WITH_GOOGLE_CLIENT_SECRET"
+
+# Sentry Error Tracking
+# Get from: https://sentry.io/settings/{organization}/projects/{project}/keys/
+sentry_dsn = "https://REPLACE_WITH_SENTRY_DSN@sentry.io/PROJECT_ID"
+
+# Redis AUTH string (if using Memorystore with AUTH enabled)
+redis_auth_string = ""
+
+# =============================================================================
+# CORS Configuration
+# =============================================================================
+# Comma-separated list of allowed origins
+cors_origins = "https://barq-fleet.com,https://www.barq-fleet.com,https://app.barq-fleet.com"
+
+# =============================================================================
+# URLs
+# =============================================================================
+# Production API URL (will point to Cloud Run service or custom domain)
+api_url = "https://api.barq-fleet.com"
+
+# Staging API URL for monitoring comparison
+staging_api_url = "https://barq-api-staging-frydalfroq-ww.a.run.app"
+
+# =============================================================================
+# Monitoring & Alerting
+# =============================================================================
+# Email for critical alerts
+alert_email = "alerts@barq-fleet.com"
+
+# Slack webhook for notifications (optional)
+# Get from: https://api.slack.com/messaging/webhooks
+slack_webhook_url  = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+slack_channel_name = "#production-alerts"
+
+# =============================================================================
+# Feature Flags
+# =============================================================================
+# Enable Cloud Armor DDoS protection (requires Load Balancer setup)
+enable_cloud_armor = true
+
+# Enable Cloud CDN for frontend (requires Load Balancer setup)
+enable_cdn = false
+
+# =============================================================================
+# DEPLOYMENT CHECKLIST
+# =============================================================================
+# Before running terraform apply:
+#
+# 1. SECRET MANAGEMENT:
+#    - [ ] Store all secrets in Google Secret Manager
+#    - [ ] Never commit terraform.tfvars to Git
+#    - [ ] Use strong, randomly generated passwords (32+ characters)
+#    - [ ] Rotate secrets regularly (every 90 days)
+#
+# 2. NETWORK SETUP:
+#    - [ ] Verify VPC network exists
+#    - [ ] Ensure CIDR range doesn't conflict with other environments
+#    - [ ] Configure firewall rules if needed
+#
+# 3. DATABASE PREPARATION:
+#    - [ ] Plan for database migration from staging
+#    - [ ] Test backup and restore procedures
+#    - [ ] Configure automated backups (enabled by default)
+#    - [ ] Set up point-in-time recovery testing schedule
+#
+# 4. MONITORING:
+#    - [ ] Set up Sentry project for production
+#    - [ ] Configure Slack channel for alerts
+#    - [ ] Test alert notifications
+#    - [ ] Review Cloud Monitoring dashboards
+#
+# 5. DOMAIN SETUP (if using custom domains):
+#    - [ ] Register domains (barq-fleet.com, api.barq-fleet.com)
+#    - [ ] Configure DNS records
+#    - [ ] Set up SSL certificates (Cloud Load Balancer managed certs)
+#
+# 6. SECURITY:
+#    - [ ] Review IAM permissions
+#    - [ ] Enable Cloud Armor if using Load Balancer
+#    - [ ] Configure VPC Service Controls (optional)
+#    - [ ] Set up Cloud KMS for encryption at rest (optional)
+#
+# 7. COST OPTIMIZATION:
+#    - [ ] Review Cloud SQL instance sizing
+#    - [ ] Set up budget alerts
+#    - [ ] Configure auto-scaling limits appropriately
+#    - [ ] Consider committed use discounts for predictable workloads
+#
+# 8. COMPLIANCE (Saudi Arabia specific):
+#    - [ ] Verify data residency requirements (Middle East region)
+#    - [ ] Configure audit logging
+#    - [ ] Set up data retention policies
+#    - [ ] Review ZATCA compliance requirements
+#
+# =============================================================================
+
+# =============================================================================
+# QUICK COMMANDS
+# =============================================================================
+# Initialize Terraform:
+#   terraform init
+#
+# Validate configuration:
+#   terraform validate
+#
+# Plan changes:
+#   terraform plan
+#
+# Apply changes:
+#   terraform apply
+#
+# View outputs:
+#   terraform output
+#
+# Destroy infrastructure (CAREFUL!):
+#   terraform destroy
+#
+# =============================================================================
+
+# =============================================================================
+# EXAMPLE: Using Secret Manager for Secrets
+# =============================================================================
+# Instead of storing secrets in terraform.tfvars, use Secret Manager:
+#
+# 1. Create secrets in Secret Manager:
+#    gcloud secrets create barq-db-password-prod --replication-policy="automatic"
+#    echo -n "YOUR_SECURE_PASSWORD" | gcloud secrets versions add barq-db-password-prod --data-file=-
+#
+# 2. Reference in Terraform using data sources:
+#    data "google_secret_manager_secret_version" "db_password" {
+#      secret = "barq-db-password-prod"
+#    }
+#
+# 3. Use in variables:
+#    db_password = data.google_secret_manager_secret_version.db_password.secret_data
+#
+# =============================================================================
