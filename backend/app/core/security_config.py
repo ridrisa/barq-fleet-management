@@ -280,8 +280,9 @@ class SecurityConfig:
             if os.getenv("SECRET_KEY", "").startswith("dev-"):
                 errors.append("SECRET_KEY must be changed in production")
 
-            if not os.getenv("REDIS_URL"):
-                errors.append("REDIS_URL must be set in production for session/rate limiting")
+            # Accept either traditional Redis URL or Upstash REST API
+            if not os.getenv("REDIS_URL") and not os.getenv("UPSTASH_REDIS_REST_URL"):
+                errors.append("REDIS_URL or UPSTASH_REDIS_REST_URL must be set in production for session/rate limiting")
 
             if self.token.access_token_expire_minutes > 60:
                 errors.append("ACCESS_TOKEN_EXPIRE_MINUTES should be <= 60 in production")

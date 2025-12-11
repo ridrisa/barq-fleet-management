@@ -111,13 +111,18 @@ def create_app() -> FastAPI:
 
     # In staging/production, always include the Cloud Run URLs
     if settings.ENVIRONMENT.lower() in ["staging", "production"]:
-        staging_origins = [
+        production_origins = [
+            # Production (sync-*)
+            "https://sync-web-frydalfroq-ww.a.run.app",
+            "https://sync-web-869422381378.me-central1.run.app",
+            # Staging (barq-*) - legacy
             "https://barq-web-staging-frydalfroq-ww.a.run.app",
             "https://barq-web-staging-869422381378.me-central1.run.app",
+            # Development
             "http://localhost:3000",
             "http://localhost:5173",
         ]
-        cors_origins = list(set(cors_origins + staging_origins))
+        cors_origins = list(set(cors_origins + production_origins))
 
     app.add_middleware(
         CORSMiddleware,

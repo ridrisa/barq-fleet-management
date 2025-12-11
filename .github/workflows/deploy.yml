@@ -42,5 +42,6 @@ jobs:
 
       - name: Get deployment URLs
         run: |
-          echo "Backend API: https://barq-api-staging-frydalfroq-ww.a.run.app"
-          echo "Frontend Web: https://barq-web-staging-frydalfroq-ww.a.run.app"
+          echo "Backend API: https://sync-api-869422381378.me-central1.run.app"
+          echo "Frontend Web: https://sync-web-869422381378.me-central1.run.app"
+          echo "Swagger Docs: https://sync-api-869422381378.me-central1.run.app/api/v1/docs"

@@ -1,12 +1,14 @@
-# Google Cloud Build Configuration for BARQ Fleet Management
+# Google Cloud Build Configuration for SYNC Fleet Management
 # OPTIMIZED for faster builds - parallel execution maximized
+# Auto-deploys on push to main branch
 
 substitutions:
   _REGION: me-central1
   _REPOSITORY: barq-fleet
-  _SERVICE_BACKEND: barq-api
-  _SERVICE_FRONTEND: barq-web
+  _SERVICE_BACKEND: sync-api
+  _SERVICE_FRONTEND: sync-web
   _TAG: latest
+  _CLOUD_SQL_INSTANCE: barqdps:me-central1:barq-postgres-staging
 
 options:
   machineType: 'E2_HIGHCPU_8'
@@ -14,7 +16,7 @@ options:
   dynamic_substitutions: true
   substitution_option: 'ALLOW_LOOSE'
 
-timeout: 1800s  # 30 minutes (reduced from 60)
+timeout: 1800s  # 30 minutes
 
 steps:
   # ==============================================================================
@@ -28,7 +30,6 @@ steps:
 
   # ==============================================================================
   # PHASE 2: Lint + Type Check + Build Frontend (PARALLEL with backend)
-  # Run lint/typecheck while building - don't wait for tests
   # ==============================================================================
   - name: 'gcr.io/cloud-builders/npm'
     id: 'frontend-checks-and-build'
@@ -42,112 +43,115 @@ steps:
         wait
         npm run build
     env:
-      - 'VITE_API_URL=https://${_SERVICE_BACKEND}-staging-${PROJECT_NUMBER}.${_REGION}.run.app/api/v1'
+      - 'VITE_API_URL=https://${_SERVICE_BACKEND}-${PROJECT_NUMBER}.${_REGION}.run.app/api/v1'
       - 'NODE_ENV=production'
     waitFor: ['install-frontend-deps']
 
   # ==============================================================================
   # PHASE 2: Build Docker Images (PARALLEL - start early)
-  # Backend image can start building immediately - only needs source code
   # ==============================================================================
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-backend-image'
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${_TAG}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-api:${_TAG}'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:latest'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-api:latest'
       - '-f'
       - './backend/Dockerfile.prod'
       - '--cache-from'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:latest'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-api:latest'
       - '--build-arg'
       - 'BUILDKIT_INLINE_CACHE=1'
       - './backend'
-    waitFor: ['-']  # Start immediately!
+    waitFor: ['-']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-frontend-image'
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${_TAG}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:${_TAG}'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:latest'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:latest'
       - '-f'
       - './frontend/Dockerfile.prod'
       - '--cache-from'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:latest'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:latest'
       - '--build-arg'
       - 'BUILDKIT_INLINE_CACHE=1'
       - './frontend'
     waitFor: ['frontend-checks-and-build']
 
   # ==============================================================================
-  # PHASE 3: Push Images (PARALLEL - as soon as each image is ready)
+  # PHASE 3: Push Images (PARALLEL)
   # ==============================================================================
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-backend-image'
-    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}']
+    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-api']
     waitFor: ['build-backend-image']
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-frontend-image'
-    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}']
+    args: ['push', '--all-tags', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web']
     waitFor: ['build-frontend-image']
 
   # ==============================================================================
-  # PHASE 4: Deploy (PARALLEL - as soon as each image is pushed)
+  # PHASE 4: Deploy to Production (with Cloud SQL)
   # ==============================================================================
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'deploy-backend-staging'
+    id: 'deploy-backend'
     entrypoint: 'gcloud'
     args:
       - 'run'
       - 'deploy'
-      - '${_SERVICE_BACKEND}-staging'
+      - '${_SERVICE_BACKEND}'
       - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${_TAG}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-api:${_TAG}'
       - '--region'
       - '${_REGION}'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--add-cloudsql-instances'
+      - '${_CLOUD_SQL_INSTANCE}'
       - '--set-env-vars'
-      - 'ENVIRONMENT=staging,POSTGRES_USER=postgres,POSTGRES_DB=barq_fleet,UPSTASH_REDIS_REST_URL=https://fine-lobster-35915.upstash.io'
+      - 'ENVIRONMENT=production,POSTGRES_USER=postgres,POSTGRES_DB=barq_fleet,POSTGRES_SERVER=/cloudsql/${_CLOUD_SQL_INSTANCE},UPSTASH_REDIS_REST_URL=https://fine-lobster-35915.upstash.io'
       - '--set-secrets'
       - 'SECRET_KEY=barq-secret-key:latest,POSTGRES_PASSWORD=barq-postgres-password:latest,UPSTASH_REDIS_REST_TOKEN=upstash-redis-token:latest'
       - '--min-instances'
-      - '0'
+      - '1'
       - '--max-instances'
-      - '10'
+      - '50'
       - '--cpu'
       - '2'
       - '--memory'
       - '2Gi'
       - '--timeout'
       - '300s'
+      - '--concurrency'
+      - '100'
     waitFor: ['push-backend-image']
 
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'deploy-frontend-staging'
+    id: 'deploy-frontend'
     entrypoint: 'gcloud'
     args:
       - 'run'
       - 'deploy'
-      - '${_SERVICE_FRONTEND}-staging'
+      - '${_SERVICE_FRONTEND}'
       - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${_TAG}'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:${_TAG}'
       - '--region'
       - '${_REGION}'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
       - '--min-instances'
-      - '0'
+      - '1'
       - '--max-instances'
-      - '5'
+      - '20'
       - '--cpu'
       - '1'
       - '--memory'
@@ -155,7 +159,7 @@ steps:
     waitFor: ['push-frontend-image']
 
   # ==============================================================================
-  # PHASE 5: Verification (PARALLEL smoke tests)
+  # PHASE 5: Verification (smoke tests)
   # ==============================================================================
   - name: 'curlimages/curl:latest'
     id: 'smoke-test'
@@ -164,16 +168,16 @@ steps:
       - '-c'
       - |
         echo "Waiting for services to be ready..."
-        sleep 10
-        curl -sf --retry 3 --retry-delay 5 "https://${_SERVICE_BACKEND}-staging-${PROJECT_NUMBER}.${_REGION}.run.app/api/v1/health" && echo "Backend OK" || echo "Backend check failed"
-        curl -sf --retry 3 --retry-delay 5 "https://${_SERVICE_FRONTEND}-staging-${PROJECT_NUMBER}.${_REGION}.run.app/" && echo "Frontend OK" || echo "Frontend check failed"
+        sleep 15
+        curl -sf --retry 5 --retry-delay 5 "https://${_SERVICE_BACKEND}-${PROJECT_NUMBER}.${_REGION}.run.app/health" && echo "Backend OK" || echo "Backend check failed"
+        curl -sf --retry 5 --retry-delay 5 "https://${_SERVICE_FRONTEND}-${PROJECT_NUMBER}.${_REGION}.run.app/" && echo "Frontend OK" || echo "Frontend check failed"
         echo "Deployment complete!"
-    waitFor: ['deploy-backend-staging', 'deploy-frontend-staging']
+    waitFor: ['deploy-backend', 'deploy-frontend']
     allowFailure: true
 
 # Images to be pushed to Artifact Registry
 images:
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:${_TAG}'
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_BACKEND}:latest'
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:${_TAG}'
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_FRONTEND}:latest'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-api:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-api:latest'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:${_TAG}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:latest'
