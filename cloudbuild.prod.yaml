@@ -116,7 +116,7 @@ steps:
       - '--add-cloudsql-instances'
       - '${_CLOUD_SQL_INSTANCE}'
       - '--set-env-vars'
-      - 'ENVIRONMENT=production,POSTGRES_USER=postgres,POSTGRES_DB=barq_fleet,POSTGRES_SERVER=/cloudsql/${_CLOUD_SQL_INSTANCE},UPSTASH_REDIS_REST_URL=https://fine-lobster-35915.upstash.io'
+      - 'ENVIRONMENT=production,POSTGRES_USER=postgres,POSTGRES_DB=barq_fleet,POSTGRES_SERVER=/cloudsql/${_CLOUD_SQL_INSTANCE},UPSTASH_REDIS_REST_URL=https://fine-lobster-35915.upstash.io,GOOGLE_CLIENT_ID=869422381378-9sonvj1dnjoh465826dcjrn4jo9r0hon.apps.googleusercontent.com'
       - '--set-secrets'
       - 'SECRET_KEY=barq-secret-key:latest,POSTGRES_PASSWORD=barq-postgres-password:latest,UPSTASH_REDIS_REST_TOKEN=upstash-redis-token:latest'
       - '--min-instances'
