@@ -109,6 +109,21 @@ def create_app() -> FastAPI:
     # Use environment-specific origins from settings, fallback to all for dev
     cors_origins = settings.BACKEND_CORS_ORIGINS if settings.BACKEND_CORS_ORIGINS else ["*"]
 
+    # In development, allow all localhost ports
+    if settings.ENVIRONMENT.lower() == "development":
+        # Allow common development ports
+        dev_origins = [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3002",
+            "http://localhost:3003",
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173",
+        ]
+        cors_origins = list(set(cors_origins + dev_origins)) if cors_origins != ["*"] else ["*"]
+
     # In staging/production, always include the Cloud Run URLs
     if settings.ENVIRONMENT.lower() in ["staging", "production"]:
         production_origins = [

@@ -134,14 +134,24 @@ class CourierResponse(CourierBase):
     id: int
     last_working_day: Optional[date] = None
     performance_score: Optional[Decimal] = Field(default=Decimal("0"))
-    total_deliveries: int = Field(default=0, ge=0)
+    total_deliveries: Optional[int] = Field(default=0, ge=0)  # Made Optional to handle NULL values
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+    # Override base fields to make them optional for legacy data with NULL values
+    sponsorship_status: Optional[SponsorshipStatus] = None
+    project_type: Optional[ProjectType] = None
+    position: Optional[str] = Field(None, max_length=100)
 
     # Computed properties
     is_active: bool = Field(default=False, description="Whether courier is actively working")
     has_vehicle: bool = Field(default=False, description="Whether courier has assigned vehicle")
     is_document_expired: bool = Field(default=False, description="Whether any document is expired")
+
+    @field_validator("total_deliveries", mode="before")
+    @classmethod
+    def default_total_deliveries(cls, v):
+        return v if v is not None else 0
 
     class Config:
         from_attributes = True
