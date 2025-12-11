@@ -1,0 +1,71 @@
+# Cloud Build configuration for running direct SQL commands
+# Run with: gcloud builds submit --config=cloudbuild.sql.yaml --project=barqdps .
+#
+# This runs specific SQL commands to fix the database schema.
+
+substitutions:
+  _CLOUD_SQL_INSTANCE: barqdps:me-central1:barq-postgres-staging
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 300s  # 5 minutes
+
+steps:
+  # Run SQL commands using Cloud SQL Proxy
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'run-sql'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "=== Starting Cloud SQL Proxy ==="
+
+        # Install cloud-sql-proxy
+        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
+        chmod +x cloud-sql-proxy
+
+        # Start proxy in background
+        mkdir -p /cloudsql
+        ./cloud-sql-proxy --unix-socket /cloudsql ${_CLOUD_SQL_INSTANCE} &
+        PROXY_PID=$$!
+
+        # Wait for proxy to be ready
+        sleep 5
+        echo "Cloud SQL Proxy started with PID $$PROXY_PID"
+
+        # Get password from Secret Manager
+        export PGPASSWORD=$(gcloud secrets versions access latest --secret=barq-postgres-password)
+
+        echo "=== Installing psql ==="
+        apt-get update -qq && apt-get install -y -qq postgresql-client > /dev/null 2>&1
+
+        echo "=== Checking current users table schema ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "\d users" | head -30
+
+        echo "=== Adding google_id column if not exists ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet << 'EOF'
+        -- Add google_id column if it doesn't exist
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR;
+
+        -- Add picture column if it doesn't exist
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS picture VARCHAR;
+
+        -- Make hashed_password nullable if not already
+        ALTER TABLE users ALTER COLUMN hashed_password DROP NOT NULL;
+
+        -- Create unique index on google_id if not exists
+        CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_id ON users (google_id) WHERE google_id IS NOT NULL;
+
+        -- Verify the changes
+        SELECT column_name, data_type, is_nullable
+        FROM information_schema.columns
+        WHERE table_name = 'users'
+        AND column_name IN ('google_id', 'picture', 'hashed_password');
+        EOF
+
+        echo "=== Done! ==="
+
+        # Cleanup
+        kill $$PROXY_PID 2>/dev/null || true

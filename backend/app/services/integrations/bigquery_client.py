@@ -512,6 +512,40 @@ class BigQueryClient:
             logger.warning(f"Failed to get targets from BigQuery: {e}")
             return []
 
+    def get_leaderboard(
+        self,
+        limit: int = 10,
+        status: str = "Active"
+    ) -> List[Dict]:
+        """
+        Get leaderboard data - simple query on ultimate table.
+
+        Groups by BARQ_ID, sums Total_Orders, orders by sum descending.
+        This is the simplest approach: just rank drivers by total orders.
+        """
+        sql = f"""
+        SELECT
+            BARQ_ID as barq_id,
+            Name as name,
+            SUM(Total_Orders) as total_orders,
+            SUM(Total_Revenue) as total_revenue
+        FROM `{self.table_ref}`
+        WHERE Status = @status
+        GROUP BY BARQ_ID, Name
+        ORDER BY total_orders DESC
+        LIMIT @limit
+        """
+
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("status", "STRING", status),
+                bigquery.ScalarQueryParameter("limit", "INT64", limit),
+            ]
+        )
+        query_job = self.client.query(sql, job_config=job_config)
+
+        return [dict(row) for row in query_job.result()]
+
     def health_check(self) -> Dict[str, Any]:
         """Check BigQuery connection health"""
         try:

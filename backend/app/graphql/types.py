@@ -550,7 +550,7 @@ class LeaderboardEntry:
     rank: int
     driver_id: str
     name: str
-    points: int
+    orders: int
     avatar: Optional[str] = None
 
 

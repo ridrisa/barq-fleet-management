@@ -648,40 +648,33 @@ class Query:
         """
         Get driver leaderboard.
 
-        Uses BigQuery ultimate table for accurate rankings based on:
-        - Total_Orders: Primary ranking metric
-        - Total_Revenue: Secondary ranking metric
+        Simple query: SELECT from ultimate table, GROUP BY BARQ_ID,
+        SUM(Total_Orders), ORDER BY sum DESC.
+
+        Points = total_orders (1 point per order for simplicity)
         """
         db = get_db_session(info)
         from app.models.fleet.courier import Courier, CourierStatus
 
         entries = []
 
-        # Try BigQuery first for accurate rankings
+        # Try BigQuery first - simple leaderboard query
         if use_bigquery:
             try:
                 from app.services.integrations.bigquery_client import bigquery_client
-                # Get top performers from BigQuery
-                bq_couriers = bigquery_client.get_performance_metrics(
-                    skip=0,
-                    limit=limit,
-                    status="Active"
-                )
+                # Simple leaderboard: group by ID, sum orders, sort descending
+                bq_data = bigquery_client.get_leaderboard(limit=limit, status="Active")
 
-                for idx, c in enumerate(bq_couriers, 1):
-                    barq_id = c.get("barq_id") or c.get("BARQ_ID", "")
-                    name = c.get("name") or c.get("Name", "Unknown")
-                    total_orders = int(c.get("total_orders") or c.get("Total_Orders", 0) or 0)
-                    total_revenue = float(c.get("total_revenue") or c.get("Total_Revenue", 0) or 0)
-
-                    # Calculate points: 10 per order + revenue bonus
-                    points = int(total_orders * 10 + total_revenue * 0.1)
+                for idx, c in enumerate(bq_data, 1):
+                    barq_id = c.get("barq_id") or ""
+                    name = c.get("name") or "Unknown"
+                    total_orders = int(c.get("total_orders") or 0)
 
                     entries.append(LeaderboardEntry(
                         rank=idx,
                         driver_id=str(barq_id),
                         name=name,
-                        points=points,
+                        orders=total_orders,
                         avatar=None
                     ))
 
@@ -706,7 +699,7 @@ class Query:
                 rank=idx,
                 driver_id=c.barq_id or str(c.id),
                 name=c.full_name,
-                points=(c.total_deliveries or 0) * 10,
+                orders=c.total_deliveries or 0,
                 avatar=None
             ))
 
