@@ -34,3 +34,11 @@ global.IntersectionObserver = class IntersectionObserver {
   }
   unobserve() {}
 } as any
+
+// Mock ResizeObserver (required for recharts)
+global.ResizeObserver = class ResizeObserver {
+  constructor(callback: ResizeObserverCallback) {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+} as any
