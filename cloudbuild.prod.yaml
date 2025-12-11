@@ -4,8 +4,8 @@
 substitutions:
   _REGION: me-central1
   _REPOSITORY: barq-fleet
-  _SERVICE_BACKEND: barq-api
-  _SERVICE_FRONTEND: barq-web
+  _SERVICE_BACKEND: sync-api
+  _SERVICE_FRONTEND: sync-web
   _TAG: latest
   _CLOUD_SQL_INSTANCE: barqdps:me-central1:barq-postgres-staging
 
