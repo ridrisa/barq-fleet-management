@@ -6,11 +6,12 @@ This module provides comprehensive rate limiting including:
 - Per-IP rate limits
 - Per-endpoint rate limits
 - Configurable limits for different routes
-- Redis-based distributed rate limiting
+- Upstash Redis-based distributed rate limiting
+- In-memory fallback for development
 - Rate limit headers in responses
 
 Author: BARQ Security Team
-Last Updated: 2025-12-02
+Last Updated: 2025-12-11
 """
 
 import time
@@ -25,9 +26,10 @@ from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.security_config import security_config
+from app.core.upstash_redis import upstash_redis_sync
 
 
-# In-memory storage for development (use Redis in production)
+# In-memory storage for development (fallback when Upstash not configured)
 class InMemoryStorage:
     """Simple in-memory rate limit storage (for development only)"""
 
@@ -70,7 +72,7 @@ class InMemoryStorage:
             del self._storage[key]
 
 
-# Global storage instance
+# Global storage instance (fallback)
 _storage = InMemoryStorage()
 
 
@@ -163,16 +165,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         limit_string = self._get_limit_for_path(request.url.path)
         limit, window = self._parse_limit_string(limit_string)
 
-        # Check rate limit
-        key = f"ratelimit:{identifier}:{request.url.path}"
-        current_count = _storage.incr(key)
+        # Check rate limit using Upstash Redis (with fallback)
+        key = f"{identifier}:{request.url.path}"
 
-        if current_count == 1:
-            # First request, set expiration
-            _storage.set(key, 1, window)
+        try:
+            # Use Upstash Redis for distributed rate limiting
+            allowed, current_count, remaining = upstash_redis_sync.check_rate_limit(
+                key, limit, window
+            )
+        except Exception:
+            # Fallback to in-memory storage
+            full_key = f"ratelimit:{key}"
+            current_count = _storage.incr(full_key)
+            if current_count == 1:
+                _storage.set(full_key, 1, window)
+            allowed = current_count <= limit
+            remaining = max(0, limit - current_count)
 
         # Check if limit exceeded
-        if current_count > limit:
+        if not allowed:
             retry_after = window  # Simplified, could calculate exact time
 
             return JSONResponse(
@@ -193,7 +204,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Add rate limit headers
-        remaining = max(0, limit - current_count)
         response.headers["X-RateLimit-Limit"] = str(limit)
         response.headers["X-RateLimit-Remaining"] = str(remaining)
         response.headers["X-RateLimit-Reset"] = str(int(time.time()) + window)

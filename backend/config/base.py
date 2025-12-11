@@ -74,6 +74,12 @@ class BaseConfig(BaseSettings):
     REDIS_MAX_CONNECTIONS: int = Field(default=10)
 
     # -------------------------------------------------------------------------
+    # Upstash Redis Settings (REST API - Serverless)
+    # -------------------------------------------------------------------------
+    UPSTASH_REDIS_REST_URL: Optional[str] = Field(default=None)
+    UPSTASH_REDIS_REST_TOKEN: Optional[str] = Field(default=None)
+
+    # -------------------------------------------------------------------------
     # CORS Settings
     # -------------------------------------------------------------------------
     BACKEND_CORS_ORIGINS: Union[str, List[str]] = Field(

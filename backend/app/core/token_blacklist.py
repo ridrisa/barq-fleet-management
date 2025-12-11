@@ -6,12 +6,15 @@ This module provides token revocation and blacklisting using Redis:
 - Refresh token rotation tracking
 - Token family invalidation (invalidate all tokens for a user)
 - Automatic cleanup of expired tokens
+- Upstash Redis support for serverless deployments
 
 Author: BARQ Security Team
-Last Updated: 2025-12-02
+Last Updated: 2025-12-11
 """
 
+import asyncio
 import json
+import os
 from datetime import datetime, timedelta
 from typing import List, Optional, Set
 
@@ -20,6 +23,7 @@ from jose import jwt
 
 from app.config.settings import settings
 from app.core.security_config import security_config
+from app.core.upstash_redis import upstash_redis
 
 
 class TokenBlacklist:
@@ -31,6 +35,7 @@ class TokenBlacklist:
     - Blacklist all tokens for a user
     - Automatic expiration (TTL matches token expiration)
     - Token family tracking for refresh token rotation
+    - Upstash Redis support (serverless)
     """
 
     def __init__(self, redis_client: Optional[redis.Redis] = None):
@@ -40,7 +45,14 @@ class TokenBlacklist:
         Args:
             redis_client: Optional Redis client (creates new if not provided)
         """
-        if redis_client:
+        # Check if Upstash is configured (preferred for serverless)
+        self.use_upstash = upstash_redis.is_enabled
+        self._memory_storage: Set[str] = set()
+
+        if self.use_upstash:
+            # Use Upstash Redis (serverless)
+            self.redis = None
+        elif redis_client:
             self.redis = redis_client
         else:
             # Create Redis client from configuration
@@ -48,11 +60,27 @@ class TokenBlacklist:
             if not redis_url:
                 # Fall back to in-memory storage (development only)
                 self.redis = None
-                self._memory_storage: Set[str] = set()
             else:
-                self.redis = redis.from_url(
-                    redis_url, decode_responses=True, socket_connect_timeout=5, socket_timeout=5
-                )
+                try:
+                    self.redis = redis.from_url(
+                        redis_url, decode_responses=True, socket_connect_timeout=5, socket_timeout=5
+                    )
+                except Exception:
+                    self.redis = None
+
+    def _run_async(self, coro):
+        """Run async code in sync context"""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, coro)
+                    return future.result(timeout=10)
+            else:
+                return loop.run_until_complete(coro)
+        except RuntimeError:
+            return asyncio.run(coro)
 
     def blacklist_token(self, token: str, reason: Optional[str] = None) -> bool:
         """
@@ -86,13 +114,16 @@ class TokenBlacklist:
 
             # Store in Redis with expiration
             key = f"blacklist:token:{jti}"
+            data = {
+                "jti": jti,
+                "reason": reason or "manual_revocation",
+                "blacklisted_at": datetime.utcnow().isoformat(),
+            }
 
-            if self.redis:
-                data = {
-                    "jti": jti,
-                    "reason": reason or "manual_revocation",
-                    "blacklisted_at": datetime.utcnow().isoformat(),
-                }
+            if self.use_upstash:
+                # Use Upstash Redis
+                self._run_async(upstash_redis.set(key, json.dumps(data), ex=ttl))
+            elif self.redis:
                 self.redis.setex(key, ttl, json.dumps(data))
             else:
                 # In-memory storage (development)
@@ -127,7 +158,9 @@ class TokenBlacklist:
 
             key = f"blacklist:token:{jti}"
 
-            if self.redis:
+            if self.use_upstash:
+                return self._run_async(upstash_redis.exists(key))
+            elif self.redis:
                 return self.redis.exists(key) > 0
             else:
                 return jti in self._memory_storage
@@ -159,12 +192,15 @@ class TokenBlacklist:
             # TTL = longest possible token lifetime (refresh token)
             ttl = security_config.token.refresh_token_expire_days * 24 * 60 * 60
 
-            if self.redis:
-                data = {
-                    "user_id": user_id,
-                    "reason": reason or "user_logout_all",
-                    "blacklisted_at": datetime.utcnow().isoformat(),
-                }
+            data = {
+                "user_id": user_id,
+                "reason": reason or "user_logout_all",
+                "blacklisted_at": datetime.utcnow().isoformat(),
+            }
+
+            if self.use_upstash:
+                self._run_async(upstash_redis.set(key, json.dumps(data), ex=ttl))
+            elif self.redis:
                 self.redis.setex(key, ttl, json.dumps(data))
             else:
                 self._memory_storage.add(f"user:{user_id}")
@@ -188,7 +224,9 @@ class TokenBlacklist:
         try:
             key = f"blacklist:user:{user_id}"
 
-            if self.redis:
+            if self.use_upstash:
+                return self._run_async(upstash_redis.exists(key))
+            elif self.redis:
                 return self.redis.exists(key) > 0
             else:
                 return f"user:{user_id}" in self._memory_storage
@@ -209,7 +247,9 @@ class TokenBlacklist:
         try:
             key = f"blacklist:user:{user_id}"
 
-            if self.redis:
+            if self.use_upstash:
+                self._run_async(upstash_redis.delete(key))
+            elif self.redis:
                 self.redis.delete(key)
             else:
                 self._memory_storage.discard(f"user:{user_id}")
@@ -241,13 +281,16 @@ class TokenBlacklist:
             key = f"token_family:{token_id}"
             ttl = security_config.token.refresh_token_expire_days * 24 * 60 * 60
 
-            if self.redis:
-                data = {
-                    "token_id": token_id,
-                    "user_id": user_id,
-                    "parent_token_id": parent_token_id,
-                    "created_at": datetime.utcnow().isoformat(),
-                }
+            data = {
+                "token_id": token_id,
+                "user_id": user_id,
+                "parent_token_id": parent_token_id,
+                "created_at": datetime.utcnow().isoformat(),
+            }
+
+            if self.use_upstash:
+                self._run_async(upstash_redis.set(key, json.dumps(data), ex=ttl))
+            elif self.redis:
                 self.redis.setex(key, ttl, json.dumps(data))
 
             return True
@@ -269,7 +312,15 @@ class TokenBlacklist:
             # Get token family
             key = f"token_family:{token_id}"
 
-            if self.redis:
+            if self.use_upstash:
+                data_str = self._run_async(upstash_redis.get(key))
+                if data_str:
+                    data = json.loads(data_str)
+                    user_id = data.get("user_id")
+                    return self.blacklist_user_tokens(
+                        user_id, reason="refresh_token_replay_detected"
+                    )
+            elif self.redis:
                 data_str = self.redis.get(key)
                 if data_str:
                     data = json.loads(data_str)
@@ -293,7 +344,16 @@ class TokenBlacklist:
             Dictionary with statistics
         """
         try:
-            if self.redis:
+            if self.use_upstash:
+                # Upstash doesn't support KEYS command in free tier
+                # Return basic stats
+                return {
+                    "blacklisted_tokens": "N/A",
+                    "blacklisted_users": "N/A",
+                    "storage": "upstash",
+                    "status": "active",
+                }
+            elif self.redis:
                 # Count blacklisted tokens
                 token_keys = self.redis.keys("blacklist:token:*")
                 user_keys = self.redis.keys("blacklist:user:*")
