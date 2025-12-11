@@ -20,6 +20,13 @@ const metrics: PerformanceMetrics = {
  * Send metric to analytics endpoint
  */
 function sendToAnalytics(metric: Metric): void {
+  // Only send analytics in production if endpoint is configured
+  const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
+  if (!analyticsEndpoint) {
+    // Skip sending if no endpoint configured - just log locally
+    return;
+  }
+
   const body = JSON.stringify({
     name: metric.name,
     value: metric.value,
@@ -34,17 +41,16 @@ function sendToAnalytics(metric: Metric): void {
 
   // Use beacon API if available for reliability
   if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/analytics/web-vitals', body);
+    navigator.sendBeacon(analyticsEndpoint, body);
   } else {
     // Fallback to fetch with keepalive
-    fetch('/api/analytics/web-vitals', {
+    fetch(analyticsEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body,
       keepalive: true,
     }).catch(() => {
       // Silently fail analytics
-      console.debug('Failed to send web vitals metric');
     });
   }
 }
