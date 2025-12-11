@@ -415,7 +415,7 @@ def check_sla_compliance_task(self):
             ticket.sla_breached = True
             logger.warning(f"Ticket {ticket.id} breached SLA")
 
-            # TODO: Send notification
+            # Send SLA breach notification
             send_email_task.delay(
                 recipient=ticket.assigned_to_email,
                 subject=f"SLA Breach: Ticket {ticket.number}",
