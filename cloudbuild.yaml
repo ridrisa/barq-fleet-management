@@ -138,7 +138,7 @@ steps:
       - '--set-env-vars'
       - 'ENVIRONMENT=production,POSTGRES_USER=${_POSTGRES_USER},POSTGRES_DB=${_POSTGRES_DB},POSTGRES_SERVER=/cloudsql/${_CLOUD_SQL_INSTANCE},UPSTASH_REDIS_REST_URL=${_UPSTASH_REDIS_URL},SYARAH_API_URL=${_SYARAH_API_URL},SYARAH_BRANCH_IDS=${_SYARAH_BRANCH_IDS},SYARAH_SYNC_INTERVAL_MINUTES=${_SYARAH_SYNC_INTERVAL_MINUTES},FMS_BASE_URL=${_FMS_BASE_URL},FMS_TIMEOUT=${_FMS_TIMEOUT},BACKEND_CORS_ORIGINS=https://${_SERVICE_FRONTEND}-${PROJECT_NUMBER}.${_REGION}.run.app'
       - '--set-secrets'
-      - 'SECRET_KEY=secret-key:latest,POSTGRES_PASSWORD=postgres-password:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,UPSTASH_REDIS_REST_TOKEN=upstash-redis-token:latest,SYARAH_USERNAME=syarah-username:latest,SYARAH_PASSWORD=syarah-password:latest,FMS_USERNAME=fms-username:latest,FMS_PASSWORD=fms-password:latest,SENTRY_DSN=sentry-dsn-backend:latest'
+      - 'SECRET_KEY=barq-secret-key:latest,POSTGRES_PASSWORD=barq-postgres-password:latest,GOOGLE_CLIENT_ID=barq-google-client-id:latest,GOOGLE_CLIENT_SECRET=barq-google-client-secret:latest,UPSTASH_REDIS_REST_TOKEN=upstash-redis-token:latest,SYARAH_USERNAME=syarah-username:latest,SYARAH_PASSWORD=syarah-password:latest,FMS_USERNAME=fms-username:latest,FMS_PASSWORD=fms-password:latest,SENTRY_DSN=sentry-dsn-backend:latest'
       - '--min-instances'
       - '1'
       - '--max-instances'
@@ -204,7 +204,7 @@ images:
 # Secrets from Google Secret Manager (for build-time use)
 availableSecrets:
   secretManager:
-    - versionName: projects/${PROJECT_ID}/secrets/google-client-id/versions/latest
+    - versionName: projects/${PROJECT_ID}/secrets/barq-google-client-id/versions/latest
       env: 'VITE_GOOGLE_CLIENT_ID'
     - versionName: projects/${PROJECT_ID}/secrets/sentry-dsn-frontend/versions/latest
       env: 'VITE_SENTRY_DSN'
