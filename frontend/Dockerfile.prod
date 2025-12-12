@@ -5,6 +5,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Build arguments for Vite environment variables
+ARG VITE_API_URL
+ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_SENTRY_DSN
+
+# Set environment variables for build
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+ENV VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
+ENV NODE_ENV=production
+
 # Copy package files
 COPY package*.json ./
 
@@ -15,7 +26,6 @@ RUN npm ci
 COPY . .
 
 # Build production bundle
-ENV NODE_ENV=production
 RUN npm run build
 
 # Stage 2: Production with nginx

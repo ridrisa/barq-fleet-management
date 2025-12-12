@@ -105,6 +105,12 @@ steps:
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:latest'
       - '--build-arg'
       - 'BUILDKIT_INLINE_CACHE=1'
+      - '--build-arg'
+      - 'VITE_API_URL=https://${_SERVICE_BACKEND}-${PROJECT_NUMBER}.${_REGION}.run.app/api/v1'
+      - '--build-arg'
+      - 'VITE_GOOGLE_CLIENT_ID=${_VITE_GOOGLE_CLIENT_ID}'
+      - '--build-arg'
+      - 'VITE_SENTRY_DSN=${_VITE_SENTRY_DSN}'
       - './frontend'
     waitFor: ['frontend-checks-and-build']
 
