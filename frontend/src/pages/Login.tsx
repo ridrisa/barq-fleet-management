@@ -71,7 +71,6 @@ export default function Login() {
                 setGoogleLoading(false)
               }
             },
-            ux_mode: 'popup',
           })
 
           const buttonContainer = document.getElementById('google-signin-button')

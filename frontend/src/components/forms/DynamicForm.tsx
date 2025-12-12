@@ -54,7 +54,7 @@ export const DynamicForm = <T extends FieldValues>({
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<T>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     resolver: zodResolver(zodSchema as any),
     defaultValues: initialData as DefaultValues<T>,
     mode: 'onBlur',

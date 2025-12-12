@@ -208,7 +208,7 @@ describe('API Module', () => {
 
     describe('delete', () => {
       it('should delete a courier', async () => {
-        ;(api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} })
+        (api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} })
 
         await couriersAPI.delete(1)
 
@@ -270,7 +270,7 @@ describe('API Module', () => {
 
     describe('delete', () => {
       it('should delete a vehicle', async () => {
-        ;(api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} })
+        (api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} })
 
         await vehiclesAPI.delete(1)
 
@@ -359,7 +359,7 @@ describe('API Module', () => {
 
     describe('delete', () => {
       it('should delete a leave request', async () => {
-        ;(api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} })
+        (api.delete as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} })
 
         await leavesAPI.delete(1)
 

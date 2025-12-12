@@ -28,7 +28,7 @@ export const VehicleForm = ({
     watch,
     setValue,
   } = useForm<VehicleFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     resolver: zodResolver(vehicleSchema as any),
     defaultValues: {
       plate_number: initialData?.plate_number || '',

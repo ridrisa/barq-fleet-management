@@ -1,0 +1,74 @@
+# ============================================================================
+# Cloud Build configuration for seeding initial data
+# ============================================================================
+# Run with:
+#   gcloud builds submit --config=cloudbuild.seed-data.yaml --project=barqdps .
+#
+# Seeds an organization so couriers can be created
+# ============================================================================
+
+substitutions:
+  _CLOUD_SQL_INSTANCE: barqdps:me-central1:barq-postgres-staging
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 300s
+
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'seed-data'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "=============================================="
+        echo "BARQ Fleet - Seed Initial Data"
+        echo "=============================================="
+
+        echo "=== Step 1: Installing Cloud SQL Proxy ==="
+        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
+        chmod +x cloud-sql-proxy
+
+        echo "=== Step 2: Starting Cloud SQL Proxy ==="
+        mkdir -p /cloudsql
+        ./cloud-sql-proxy --unix-socket /cloudsql ${_CLOUD_SQL_INSTANCE} &
+        PROXY_PID=$$!
+        sleep 5
+
+        echo "=== Step 3: Installing PostgreSQL client ==="
+        apt-get update -qq && apt-get install -y -qq postgresql-client > /dev/null 2>&1
+
+        echo "=== Step 4: Getting barq_user password ==="
+        export BARQ_USER_PASSWORD=$(gcloud secrets versions access latest --secret=barq-db-password-staging)
+
+        echo "=== Step 5: Checking current organizations ==="
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "SELECT id, name, slug FROM organizations;"
+
+        echo "=== Step 6: Creating default organization if not exists ==="
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "
+          INSERT INTO organizations (id, name, slug, is_active, subscription_plan, subscription_status, max_users, max_couriers, max_vehicles, created_at, updated_at)
+          VALUES (1, 'BARQ', 'barq', true, 'ENTERPRISE', 'ACTIVE', 1000, 1000, 500, NOW(), NOW())
+          ON CONFLICT (id) DO UPDATE SET name = 'BARQ', subscription_plan = 'ENTERPRISE', subscription_status = 'ACTIVE', updated_at = NOW();
+        "
+
+        echo "=== Step 7: Verify organization created ==="
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "SELECT id, name, slug, is_active FROM organizations WHERE id = 1;"
+
+        echo "=== Step 8: Test inserting a courier ==="
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "
+          INSERT INTO couriers (barq_id, full_name, mobile_number, status, organization_id, created_at)
+          VALUES ('TEST001', 'Test Courier', '0551234567', 'ACTIVE', 1, NOW())
+          ON CONFLICT (barq_id) DO UPDATE SET updated_at = NOW()
+          RETURNING id, barq_id, full_name;
+        "
+
+        echo "=== Step 9: Verify couriers ==="
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "SELECT id, barq_id, full_name, status FROM couriers LIMIT 5;"
+
+        echo "=============================================="
+        echo "Seed data complete!"
+        echo "=============================================="
+
+        kill $$PROXY_PID 2>/dev/null || true

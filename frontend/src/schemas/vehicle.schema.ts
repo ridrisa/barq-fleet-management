@@ -30,7 +30,7 @@ export const vehicleStatusSchema = z.enum(VEHICLE_STATUSES)
  * Plate number validation (Saudi/UAE format)
  * Examples: ABC 1234, 1234 ABC, ABC-1234
  */
-const plateNumberRegex = /^[A-Za-z0-9\s\-]{3,15}$/
+const plateNumberRegex = /^[A-Za-z0-9\s-]{3,15}$/
 
 /**
  * VIN (Vehicle Identification Number) validation

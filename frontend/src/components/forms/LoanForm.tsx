@@ -30,7 +30,7 @@ export const LoanForm = ({
     watch,
     setValue,
   } = useForm<LoanRequestFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     resolver: zodResolver(loanRequestSchema as any),
     defaultValues: {
       loan_type: initialData?.loan_type || 'salary_advance',

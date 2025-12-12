@@ -1,0 +1,88 @@
+# ============================================================================
+# Cloud Build configuration for fixing database permissions - Version 3
+# ============================================================================
+# Run with:
+#   gcloud builds submit --config=cloudbuild.fix-permissions-v3.yaml --project=barqdps .
+#
+# Uses barq_user (the table owner) to grant permissions to postgres
+# ============================================================================
+
+substitutions:
+  _CLOUD_SQL_INSTANCE: barqdps:me-central1:barq-postgres-staging
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 300s
+
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'fix-permissions'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "=============================================="
+        echo "BARQ Fleet - Database Permission Fix v3"
+        echo "Using barq_user (table owner) to grant permissions"
+        echo "=============================================="
+
+        echo "=== Step 1: Installing Cloud SQL Proxy ==="
+        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
+        chmod +x cloud-sql-proxy
+
+        echo "=== Step 2: Starting Cloud SQL Proxy ==="
+        mkdir -p /cloudsql
+        ./cloud-sql-proxy --unix-socket /cloudsql ${_CLOUD_SQL_INSTANCE} &
+        PROXY_PID=$$!
+        sleep 5
+
+        echo "=== Step 3: Installing PostgreSQL client ==="
+        apt-get update -qq && apt-get install -y -qq postgresql-client > /dev/null 2>&1
+
+        echo "=== Step 4: Getting barq_user password ==="
+        export BARQ_USER_PASSWORD=$(gcloud secrets versions access latest --secret=barq-db-password-staging)
+
+        echo "=== Step 5: Connecting as barq_user to grant permissions ==="
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "SELECT current_user;"
+
+        echo "=== Step 6: Granting ALL permissions to postgres user ==="
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;"
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;"
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "GRANT USAGE ON SCHEMA public TO postgres;"
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO postgres;"
+        PGPASSWORD="$$BARQ_USER_PASSWORD" psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U barq_user -d barq_fleet -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO postgres;"
+
+        echo "=== Step 7: Verify postgres can now access tables ==="
+        export PGPASSWORD=$(gcloud secrets versions access latest --secret=barq-postgres-password)
+
+        echo "Testing SELECT on couriers as postgres:"
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "SELECT COUNT(*) as courier_count FROM couriers;" \
+          && echo "SUCCESS: postgres can access couriers!" \
+          || echo "FAILED: postgres still cannot access couriers"
+
+        echo "Testing SELECT on organizations as postgres:"
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "SELECT COUNT(*) as org_count FROM organizations;" \
+          && echo "SUCCESS: postgres can access organizations!" \
+          || echo "FAILED: postgres still cannot access organizations"
+
+        echo "Testing SELECT on users as postgres:"
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "SELECT COUNT(*) as user_count FROM users;" \
+          && echo "SUCCESS: postgres can access users!" \
+          || echo "FAILED: postgres still cannot access users"
+
+        echo "=== Step 8: Final permissions check ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT grantee, table_name, privilege_type
+          FROM information_schema.role_table_grants
+          WHERE grantee = 'postgres'
+            AND table_name IN ('couriers', 'organizations', 'users', 'vehicles')
+          ORDER BY table_name, privilege_type;
+        "
+
+        echo "=============================================="
+        echo "Permission fix complete!"
+        echo "=============================================="
+
+        kill $$PROXY_PID 2>/dev/null || true
