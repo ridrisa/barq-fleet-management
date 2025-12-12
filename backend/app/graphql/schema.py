@@ -685,21 +685,30 @@ class Query:
                 import logging
                 logging.getLogger(__name__).warning(f"BigQuery leaderboard fetch failed: {e}")
 
-        # Fallback to local database
-        couriers = (
-            db.query(Courier)
+        # Fallback to local database - calculate actual deliveries from Delivery table
+        from sqlalchemy import func
+        from app.models.operations.delivery import Delivery, DeliveryStatus
+
+        # Query couriers with actual delivery count (only completed deliveries)
+        courier_deliveries = (
+            db.query(
+                Courier,
+                func.count(Delivery.id).label('delivery_count')
+            )
+            .outerjoin(Delivery, (Delivery.courier_id == Courier.id) & (Delivery.status == DeliveryStatus.DELIVERED))
             .filter(Courier.status == CourierStatus.ACTIVE)
-            .order_by(Courier.total_deliveries.desc())
+            .group_by(Courier.id)
+            .order_by(func.count(Delivery.id).desc())
             .limit(limit)
             .all()
         )
 
-        for idx, c in enumerate(couriers, 1):
+        for idx, (courier, delivery_count) in enumerate(courier_deliveries, 1):
             entries.append(LeaderboardEntry(
                 rank=idx,
-                driver_id=c.barq_id or str(c.id),
-                name=c.full_name,
-                orders=c.total_deliveries or 0,
+                driver_id=courier.barq_id or str(courier.id),
+                name=courier.full_name,
+                orders=delivery_count or 0,
                 avatar=None
             ))
 

@@ -1,8 +1,12 @@
 
-export const VEHICLE_TYPES = ['sedan', 'van', 'truck', 'motorcycle', 'bicycle'] as const
-export const VEHICLE_FUEL_TYPES = ['gasoline', 'diesel', 'electric', 'hybrid'] as const
-export const VEHICLE_OWNERSHIP = ['owned', 'leased', 'rented'] as const
-export const VEHICLE_STATUSES = ['available', 'in_use', 'maintenance', 'retired'] as const
+// Values must match backend VehicleType enum (uppercase)
+export const VEHICLE_TYPES = ['MOTORCYCLE', 'CAR', 'VAN', 'TRUCK', 'BICYCLE'] as const
+// Values must match backend FuelType enum (uppercase)
+export const VEHICLE_FUEL_TYPES = ['GASOLINE', 'DIESEL', 'ELECTRIC', 'HYBRID'] as const
+// Values must match backend OwnershipType enum (uppercase)
+export const VEHICLE_OWNERSHIP = ['OWNED', 'LEASED', 'RENTED'] as const
+// Values must match backend VehicleStatus enum (uppercase)
+export const VEHICLE_STATUSES = ['ACTIVE', 'MAINTENANCE', 'INACTIVE', 'RETIRED', 'REPAIR'] as const
 
 export type VehicleType = (typeof VEHICLE_TYPES)[number]
 export type VehicleFuelType = (typeof VEHICLE_FUEL_TYPES)[number]

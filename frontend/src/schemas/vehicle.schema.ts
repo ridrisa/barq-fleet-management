@@ -74,7 +74,7 @@ export const vehicleSchema = z.object({
 
   ownership: ownershipSchema,
 
-  status: vehicleStatusSchema.optional().default('available'),
+  status: vehicleStatusSchema.optional().default('ACTIVE'),
 
   mileage: z
     .number()

@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.core.cache import cache_manager, cached
 from app.models.fleet.assignment import CourierVehicleAssignment
 from app.models.fleet.courier import Courier, CourierStatus, ProjectType, SponsorshipStatus
-from app.models.fleet.vehicle import Vehicle
+from app.models.fleet.vehicle import Vehicle, VehicleStatus
 
 # Try importing optional models
 try:
@@ -124,13 +124,13 @@ class DashboardPerformanceService:
         )
 
         # Vehicle stats - single query with aggregations
+        # Using VehicleStatus enum: ACTIVE, MAINTENANCE, INACTIVE, RETIRED, REPAIR
         vehicle_stats = (
             db.query(
                 func.count(Vehicle.id).label("total"),
-                func.sum(case((Vehicle.status == "available", 1), else_=0)).label("available"),
-                func.sum(case((Vehicle.status == "assigned", 1), else_=0)).label("assigned"),
-                func.sum(case((Vehicle.status == "maintenance", 1), else_=0)).label("maintenance"),
-                func.sum(case((Vehicle.status == "out_of_service", 1), else_=0)).label(
+                func.sum(case((Vehicle.status == VehicleStatus.ACTIVE, 1), else_=0)).label("active"),
+                func.sum(case((Vehicle.status == VehicleStatus.MAINTENANCE, 1), else_=0)).label("maintenance"),
+                func.sum(case((Vehicle.status.in_([VehicleStatus.INACTIVE, VehicleStatus.RETIRED, VehicleStatus.REPAIR]), 1), else_=0)).label(
                     "out_of_service"
                 ),
             )
@@ -174,7 +174,21 @@ class DashboardPerformanceService:
         total_couriers = courier_stats.total or 0
         active_couriers = courier_stats.active or 0
         total_vehicles = vehicle_stats.total or 0
-        vehicles_assigned = vehicle_stats.assigned or 0
+        # Active vehicles count (we don't have a separate "assigned" status in the enum)
+        vehicles_active = vehicle_stats.active or 0
+        # Available = active vehicles that aren't assigned to any courier
+        # For simplicity, we'll need to query assigned vehicles separately
+        vehicles_with_assigned_couriers = (
+            db.query(func.count(Vehicle.id))
+            .filter(
+                Vehicle.organization_id == org_id,
+                Vehicle.status == VehicleStatus.ACTIVE,
+                Vehicle.assigned_couriers.any()
+            )
+            .scalar() or 0
+        )
+        vehicles_available = vehicles_active - vehicles_with_assigned_couriers
+        vehicles_assigned = vehicles_with_assigned_couriers
 
         courier_utilization = (
             round((active_couriers / total_couriers * 100), 1) if total_couriers > 0 else 0
@@ -214,7 +228,7 @@ class DashboardPerformanceService:
             "onboarding_couriers": courier_stats.onboarding or 0,
             "suspended_couriers": courier_stats.suspended or 0,
             # Vehicle status
-            "vehicles_available": vehicle_stats.available or 0,
+            "vehicles_available": vehicles_available,
             "vehicles_assigned": vehicles_assigned,
             "vehicles_maintenance": vehicle_stats.maintenance or 0,
             "vehicles_out_of_service": vehicle_stats.out_of_service or 0,

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user, get_current_organization, get_db
 from app.models.fleet.assignment import CourierVehicleAssignment
 from app.models.fleet.courier import Courier, CourierStatus, ProjectType, SponsorshipStatus
-from app.models.fleet.vehicle import Vehicle
+from app.models.fleet.vehicle import Vehicle, VehicleStatus
 from app.models.tenant.organization import Organization
 from app.models.user import User
 from app.schemas.analytics import (
@@ -113,25 +113,36 @@ def get_dashboard_stats(
         .count()
     )
 
-    # Vehicle status breakdown
-    vehicles_available = (
+    # Vehicle status breakdown - using correct VehicleStatus enum
+    # ACTIVE vehicles that are not assigned to any courier are "available"
+    vehicles_active = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "available")
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == VehicleStatus.ACTIVE)
         .count()
     )
+    # Count vehicles that have assigned couriers
     vehicles_assigned = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "assigned")
+        .filter(
+            Vehicle.organization_id == org_id,
+            Vehicle.status == VehicleStatus.ACTIVE,
+            Vehicle.assigned_couriers.any()
+        )
         .count()
     )
+    vehicles_available = vehicles_active - vehicles_assigned
     vehicles_maintenance = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "maintenance")
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == VehicleStatus.MAINTENANCE)
         .count()
     )
+    # "Out of service" maps to INACTIVE, RETIRED, or REPAIR
     vehicles_out_of_service = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "out_of_service")
+        .filter(
+            Vehicle.organization_id == org_id,
+            Vehicle.status.in_([VehicleStatus.INACTIVE, VehicleStatus.RETIRED, VehicleStatus.REPAIR])
+        )
         .count()
     )
 
@@ -393,24 +404,35 @@ def get_fleet_status(
     """
     org_id = current_org.id
 
-    vehicles_available = (
+    # ACTIVE vehicles that are not assigned to any courier are "available"
+    vehicles_active = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "available")
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == VehicleStatus.ACTIVE)
         .count()
     )
+    # Count vehicles that have assigned couriers
     vehicles_assigned = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "assigned")
+        .filter(
+            Vehicle.organization_id == org_id,
+            Vehicle.status == VehicleStatus.ACTIVE,
+            Vehicle.assigned_couriers.any()
+        )
         .count()
     )
+    vehicles_available = vehicles_active - vehicles_assigned
     vehicles_maintenance = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "maintenance")
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == VehicleStatus.MAINTENANCE)
         .count()
     )
+    # "Out of service" maps to INACTIVE, RETIRED, or REPAIR
     vehicles_out_of_service = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "out_of_service")
+        .filter(
+            Vehicle.organization_id == org_id,
+            Vehicle.status.in_([VehicleStatus.INACTIVE, VehicleStatus.RETIRED, VehicleStatus.REPAIR])
+        )
         .count()
     )
 
@@ -711,7 +733,7 @@ def get_dashboard_alerts(
     # Vehicles in maintenance
     vehicles_in_maintenance = (
         db.query(Vehicle)
-        .filter(Vehicle.organization_id == org_id, Vehicle.status == "maintenance")
+        .filter(Vehicle.organization_id == org_id, Vehicle.status == VehicleStatus.MAINTENANCE)
         .count()
     )
 
@@ -1053,7 +1075,7 @@ def calculate_fleet_health_score(db: Session, org_id: int) -> dict:
     vehicles_active = (
         db.query(Vehicle)
         .filter(
-            Vehicle.organization_id == org_id, Vehicle.status.in_(["available", "assigned"])
+            Vehicle.organization_id == org_id, Vehicle.status == VehicleStatus.ACTIVE
         )
         .count()
     )

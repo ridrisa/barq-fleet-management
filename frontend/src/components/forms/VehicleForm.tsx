@@ -32,14 +32,14 @@ export const VehicleForm = ({
     resolver: zodResolver(vehicleSchema as any),
     defaultValues: {
       plate_number: initialData?.plate_number || '',
-      type: initialData?.type || 'sedan',
+      type: initialData?.type || 'CAR',
       make: initialData?.make || '',
       model: initialData?.model || '',
       year: initialData?.year || new Date().getFullYear(),
       color: initialData?.color || '',
-      fuel_type: initialData?.fuel_type || 'gasoline',
-      ownership: initialData?.ownership || 'owned',
-      status: initialData?.status || 'available',
+      fuel_type: initialData?.fuel_type || 'GASOLINE',
+      ownership: initialData?.ownership || 'OWNED',
+      status: initialData?.status || 'ACTIVE',
       purchase_date: initialData?.purchase_date || '',
       registration_expiry: initialData?.registration_expiry || '',
       insurance_expiry: initialData?.insurance_expiry || '',
@@ -77,11 +77,11 @@ export const VehicleForm = ({
               value={watch('type')}
               onChange={(e) => setValue('type', e.target.value as VehicleFormData['type'], { shouldValidate: true })}
               options={[
-                { value: 'sedan', label: 'Sedan' },
-                { value: 'van', label: 'Van' },
-                { value: 'truck', label: 'Truck' },
-                { value: 'motorcycle', label: 'Motorcycle' },
-                { value: 'bicycle', label: 'Bicycle' },
+                { value: 'CAR', label: 'Car' },
+                { value: 'VAN', label: 'Van' },
+                { value: 'TRUCK', label: 'Truck' },
+                { value: 'MOTORCYCLE', label: 'Motorcycle' },
+                { value: 'BICYCLE', label: 'Bicycle' },
               ]}
             />
           </FormField>
@@ -142,10 +142,10 @@ export const VehicleForm = ({
               value={watch('fuel_type')}
               onChange={(e) => setValue('fuel_type', e.target.value as VehicleFormData['fuel_type'], { shouldValidate: true })}
               options={[
-                { value: 'gasoline', label: 'Gasoline' },
-                { value: 'diesel', label: 'Diesel' },
-                { value: 'electric', label: 'Electric' },
-                { value: 'hybrid', label: 'Hybrid' },
+                { value: 'GASOLINE', label: 'Gasoline' },
+                { value: 'DIESEL', label: 'Diesel' },
+                { value: 'ELECTRIC', label: 'Electric' },
+                { value: 'HYBRID', label: 'Hybrid' },
               ]}
             />
           </FormField>
@@ -155,22 +155,23 @@ export const VehicleForm = ({
               value={watch('ownership')}
               onChange={(e) => setValue('ownership', e.target.value as VehicleFormData['ownership'], { shouldValidate: true })}
               options={[
-                { value: 'owned', label: 'Owned' },
-                { value: 'leased', label: 'Leased' },
-                { value: 'rented', label: 'Rented' },
+                { value: 'OWNED', label: 'Owned' },
+                { value: 'LEASED', label: 'Leased' },
+                { value: 'RENTED', label: 'Rented' },
               ]}
             />
           </FormField>
 
           <FormField label="Status" required error={errors.status?.message}>
             <Select
-              value={watch('status') || 'available'}
+              value={watch('status') || 'ACTIVE'}
               onChange={(e) => setValue('status', e.target.value as VehicleFormData['status'], { shouldValidate: true })}
               options={[
-                { value: 'available', label: 'Available' },
-                { value: 'in_use', label: 'In Use' },
-                { value: 'maintenance', label: 'Maintenance' },
-                { value: 'retired', label: 'Retired' },
+                { value: 'ACTIVE', label: 'Active' },
+                { value: 'MAINTENANCE', label: 'Maintenance' },
+                { value: 'INACTIVE', label: 'Inactive' },
+                { value: 'RETIRED', label: 'Retired' },
+                { value: 'REPAIR', label: 'In Repair' },
               ]}
             />
           </FormField>
