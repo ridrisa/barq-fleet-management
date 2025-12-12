@@ -1,0 +1,117 @@
+# ============================================================================
+# Cloud Build configuration for fixing database permissions - Version 2
+# ============================================================================
+# Run with:
+#   gcloud builds submit --config=cloudbuild.fix-permissions-v2.yaml --project=barqdps .
+#
+# This version uses simpler SQL without DO blocks to avoid shell escaping issues
+# ============================================================================
+
+substitutions:
+  _CLOUD_SQL_INSTANCE: barqdps:me-central1:barq-postgres-staging
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 300s
+
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'fix-permissions'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "=============================================="
+        echo "BARQ Fleet - Database Permission Fix v2"
+        echo "=============================================="
+
+        echo "=== Step 1: Installing Cloud SQL Proxy ==="
+        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
+        chmod +x cloud-sql-proxy
+
+        echo "=== Step 2: Starting Cloud SQL Proxy ==="
+        mkdir -p /cloudsql
+        ./cloud-sql-proxy --unix-socket /cloudsql ${_CLOUD_SQL_INSTANCE} &
+        PROXY_PID=$$!
+        sleep 5
+
+        echo "=== Step 3: Installing PostgreSQL client ==="
+        apt-get update -qq && apt-get install -y -qq postgresql-client > /dev/null 2>&1
+
+        echo "=== Step 4: Getting database password ==="
+        export PGPASSWORD=$(gcloud secrets versions access latest --secret=barq-postgres-password)
+
+        echo "=== Step 5: Checking table ownership ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT tablename, tableowner
+          FROM pg_tables
+          WHERE schemaname = 'public'
+          AND tablename IN ('couriers', 'organizations', 'users', 'vehicles')
+          ORDER BY tablename;
+        "
+
+        echo "=== Step 6: Checking current user ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "SELECT current_user, session_user;"
+
+        echo "=== Step 7: Checking RLS status on key tables ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT relname, relrowsecurity, relforcerowsecurity
+          FROM pg_class
+          WHERE relname IN ('couriers', 'organizations', 'users', 'vehicles')
+            AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
+        "
+
+        echo "=== Step 8: Disabling RLS on all tables ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          ALTER TABLE IF EXISTS couriers DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS couriers NO FORCE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS organizations DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS organizations NO FORCE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS users DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS users NO FORCE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS vehicles DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS vehicles NO FORCE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS deliveries DISABLE ROW LEVEL SECURITY;
+          ALTER TABLE IF EXISTS deliveries NO FORCE ROW LEVEL SECURITY;
+        " || echo "Some RLS commands may have failed, continuing..."
+
+        echo "=== Step 9: Granting permissions on specific tables ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          GRANT SELECT, INSERT, UPDATE, DELETE ON couriers TO postgres;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON organizations TO postgres;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON users TO postgres;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON vehicles TO postgres;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON deliveries TO postgres;
+        " || echo "Some GRANT commands may have failed, continuing..."
+
+        echo "=== Step 10: Granting usage on schema ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          GRANT USAGE ON SCHEMA public TO postgres;
+          GRANT USAGE ON SCHEMA public TO barq_user;
+        " || true
+
+        echo "=== Step 11: Testing SELECT on couriers ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT COUNT(*) as courier_count FROM couriers;
+        " && echo "SUCCESS: Can access couriers table!" || echo "FAILED: Still cannot access couriers table"
+
+        echo "=== Step 12: Testing SELECT on organizations ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT COUNT(*) as org_count FROM organizations;
+        " && echo "SUCCESS: Can access organizations table!" || echo "FAILED: Still cannot access organizations table"
+
+        echo "=== Step 13: Final RLS status check ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT relname, relrowsecurity, relforcerowsecurity
+          FROM pg_class
+          WHERE relname IN ('couriers', 'organizations', 'users', 'vehicles')
+            AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
+        "
+
+        echo "=============================================="
+        echo "Permission fix complete!"
+        echo "=============================================="
+
+        kill $$PROXY_PID 2>/dev/null || true

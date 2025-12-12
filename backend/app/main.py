@@ -151,6 +151,17 @@ def create_app() -> FastAPI:
     # Setup performance middleware (compression, caching, monitoring)
     setup_performance_middleware(app)
 
+    # Add Cross-Origin-Opener-Policy header for Google OAuth popup communication
+    @app.middleware("http")
+    async def add_coop_header(
+        request: Request, call_next: Callable[[Request], Coroutine[Any, Any, Response]]
+    ) -> Response:
+        """Add COOP header to allow Google OAuth popup to communicate with opener."""
+        response = await call_next(request)
+        # Allow popups to communicate back to the opener window
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
+        return response
+
     # Sentry user context middleware - set user info for error tracking
     @app.middleware("http")
     async def sentry_user_context(

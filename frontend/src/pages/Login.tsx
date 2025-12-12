@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,10 +8,23 @@ import { loginSchema, LoginFormData } from '@/schemas'
 // Google OAuth Client ID from environment
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
+// Debug logging in development
+if (import.meta.env.DEV) {
+  console.log('Google Client ID configured:', !!GOOGLE_CLIENT_ID)
+}
+
 export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [googleError, setGoogleError] = useState<string | null>(null)
   const { login, loginWithGoogle, isAuthenticated, isLoading, error, clearError } = useAuthStore()
   const navigate = useNavigate()
+  const googleInitialized = useRef(false)
+  const loginWithGoogleRef = useRef(loginWithGoogle)
+
+  // Keep ref updated
+  useEffect(() => {
+    loginWithGoogleRef.current = loginWithGoogle
+  }, [loginWithGoogle])
 
   // React Hook Form with Zod validation
   const {
@@ -27,45 +40,81 @@ export default function Login() {
     mode: 'onBlur',
   })
 
-  // Handle Google Sign-In callback
-  const handleGoogleCallback = useCallback(async (response: { credential: string }) => {
-    setGoogleLoading(true)
-    try {
-      await loginWithGoogle(response.credential)
-    } catch (err) {
-      // Error is handled by the store
-    } finally {
-      setGoogleLoading(false)
-    }
-  }, [loginWithGoogle])
-
   // Initialize Google Sign-In
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return
+    if (!GOOGLE_CLIENT_ID) {
+      console.warn('Google OAuth: VITE_GOOGLE_CLIENT_ID not configured')
+      return
+    }
 
-    // Load Google Identity Services script
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.defer = true
-    script.onload = () => {
-      if (window.google) {
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleGoogleCallback,
-        })
-        window.google.accounts.id.renderButton(
-          document.getElementById('google-signin-button'),
-          { theme: 'outline', size: 'large', width: 320, text: 'signin_with' }
-        )
+    // Prevent multiple initializations
+    if (googleInitialized.current) return
+
+    // Check if script already loaded
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]')
+
+    const initializeGoogle = () => {
+      if (window.google && !googleInitialized.current) {
+        googleInitialized.current = true
+        try {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: async (response: { credential: string }) => {
+              setGoogleLoading(true)
+              setGoogleError(null)
+              try {
+                await loginWithGoogleRef.current(response.credential)
+              } catch (err: any) {
+                console.error('Google login error:', err)
+                setGoogleError(err.response?.data?.detail || 'Google login failed')
+              } finally {
+                setGoogleLoading(false)
+              }
+            },
+            ux_mode: 'popup',
+          })
+
+          const buttonContainer = document.getElementById('google-signin-button')
+          if (buttonContainer) {
+            window.google.accounts.id.renderButton(
+              buttonContainer,
+              {
+                theme: 'outline',
+                size: 'large',
+                width: 320,
+                text: 'signin_with',
+                shape: 'rectangular',
+              }
+            )
+            console.log('Google Sign-In button rendered successfully')
+          } else {
+            console.error('Google Sign-In button container not found')
+          }
+        } catch (err) {
+          console.error('Failed to initialize Google Sign-In:', err)
+          setGoogleError('Failed to load Google Sign-In')
+        }
       }
     }
-    document.body.appendChild(script)
 
-    return () => {
-      document.body.removeChild(script)
+    if (existingScript && window.google) {
+      initializeGoogle()
+    } else if (!existingScript) {
+      // Load Google Identity Services script
+      const script = document.createElement('script')
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true
+      script.defer = true
+      script.onload = initializeGoogle
+      script.onerror = () => {
+        console.error('Failed to load Google Identity Services script')
+        setGoogleError('Failed to load Google Sign-In')
+      }
+      document.head.appendChild(script)
     }
-  }, [handleGoogleCallback])
+
+    // No cleanup - let the script persist
+  }, [])
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -183,6 +232,11 @@ export default function Login() {
                 {googleLoading && (
                   <div className="mt-2 text-center text-sm text-gray-500">
                     Signing in with Google...
+                  </div>
+                )}
+                {googleError && (
+                  <div className="mt-2 text-center text-sm text-red-500">
+                    {googleError}
                   </div>
                 )}
               </div>

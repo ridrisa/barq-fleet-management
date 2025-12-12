@@ -1,11 +1,13 @@
 import os
+from pathlib import Path
 from typing import List, Optional
 from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
+# Load .env from project root (single source of truth)
+root_env = Path(__file__).parent.parent.parent.parent / ".env"
+load_dotenv(root_env)
 
 
 class Settings:

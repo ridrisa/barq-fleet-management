@@ -1,14 +1,32 @@
 # Google Cloud Build Configuration for SYNC Fleet Management
-# OPTIMIZED for faster builds - parallel execution maximized
-# Auto-deploys on push to main branch
+# ============================================================================
+# SINGLE SOURCE OF TRUTH - ALL CONFIGURATION AND SECRETS
+# ============================================================================
 
 substitutions:
+  # ==========================================================================
+  # CONFIGURATION (secrets stored in Google Secret Manager)
+  # ==========================================================================
+
+  # Infrastructure
   _REGION: me-central1
   _REPOSITORY: barq-fleet
   _SERVICE_BACKEND: sync-api
   _SERVICE_FRONTEND: sync-web
   _TAG: latest
   _CLOUD_SQL_INSTANCE: barqdps:me-central1:barq-postgres-staging
+
+  # Database
+  _POSTGRES_USER: postgres
+  _POSTGRES_DB: barq_fleet
+
+  # URLs (non-sensitive)
+  _UPSTASH_REDIS_URL: 'https://fine-lobster-35915.upstash.io'
+  _SYARAH_API_URL: 'https://sydashboard.syarahapp.sa'
+  _SYARAH_BRANCH_IDS: '1071'
+  _SYARAH_SYNC_INTERVAL_MINUTES: '5'
+  _FMS_BASE_URL: 'https://fms-api.machinestalk.com/fmsv2'
+  _FMS_TIMEOUT: '30'
 
 options:
   machineType: 'E2_HIGHCPU_8'
@@ -45,6 +63,7 @@ steps:
     env:
       - 'VITE_API_URL=https://${_SERVICE_BACKEND}-${PROJECT_NUMBER}.${_REGION}.run.app/api/v1'
       - 'NODE_ENV=production'
+    secretEnv: ['VITE_GOOGLE_CLIENT_ID', 'VITE_SENTRY_DSN']
     waitFor: ['install-frontend-deps']
 
   # ==============================================================================
@@ -117,9 +136,9 @@ steps:
       - '--add-cloudsql-instances'
       - '${_CLOUD_SQL_INSTANCE}'
       - '--set-env-vars'
-      - 'ENVIRONMENT=production,POSTGRES_USER=postgres,POSTGRES_DB=barq_fleet,POSTGRES_SERVER=/cloudsql/${_CLOUD_SQL_INSTANCE},UPSTASH_REDIS_REST_URL=https://fine-lobster-35915.upstash.io,GOOGLE_CLIENT_ID=869422381378-9sonvj1dnjoh465826dcjrn4jo9r0hon.apps.googleusercontent.com'
+      - 'ENVIRONMENT=production,POSTGRES_USER=${_POSTGRES_USER},POSTGRES_DB=${_POSTGRES_DB},POSTGRES_SERVER=/cloudsql/${_CLOUD_SQL_INSTANCE},UPSTASH_REDIS_REST_URL=${_UPSTASH_REDIS_URL},SYARAH_API_URL=${_SYARAH_API_URL},SYARAH_BRANCH_IDS=${_SYARAH_BRANCH_IDS},SYARAH_SYNC_INTERVAL_MINUTES=${_SYARAH_SYNC_INTERVAL_MINUTES},FMS_BASE_URL=${_FMS_BASE_URL},FMS_TIMEOUT=${_FMS_TIMEOUT},BACKEND_CORS_ORIGINS=https://${_SERVICE_FRONTEND}-${PROJECT_NUMBER}.${_REGION}.run.app'
       - '--set-secrets'
-      - 'SECRET_KEY=barq-secret-key:latest,POSTGRES_PASSWORD=barq-postgres-password:latest,UPSTASH_REDIS_REST_TOKEN=upstash-redis-token:latest'
+      - 'SECRET_KEY=secret-key:latest,POSTGRES_PASSWORD=postgres-password:latest,GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,UPSTASH_REDIS_REST_TOKEN=upstash-redis-token:latest,SYARAH_USERNAME=syarah-username:latest,SYARAH_PASSWORD=syarah-password:latest,FMS_USERNAME=fms-username:latest,FMS_PASSWORD=fms-password:latest,SENTRY_DSN=sentry-dsn-backend:latest'
       - '--min-instances'
       - '1'
       - '--max-instances'
@@ -181,3 +200,11 @@ images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-api:latest'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:${_TAG}'
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/barq-web:latest'
+
+# Secrets from Google Secret Manager (for build-time use)
+availableSecrets:
+  secretManager:
+    - versionName: projects/${PROJECT_ID}/secrets/google-client-id/versions/latest
+      env: 'VITE_GOOGLE_CLIENT_ID'
+    - versionName: projects/${PROJECT_ID}/secrets/sentry-dsn-frontend/versions/latest
+      env: 'VITE_SENTRY_DSN'

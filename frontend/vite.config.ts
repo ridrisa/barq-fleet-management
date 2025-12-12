@@ -59,6 +59,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
       },
+      // Required headers for Google OAuth popup to work properly
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+        'Cross-Origin-Embedder-Policy': 'unsafe-none',
+      },
     },
 
     build: {

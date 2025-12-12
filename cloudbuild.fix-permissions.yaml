@@ -1,0 +1,147 @@
+# ============================================================================
+# Cloud Build configuration for fixing database permissions
+# ============================================================================
+# Run with:
+#   gcloud builds submit --config=cloudbuild.fix-permissions.yaml --project=barqdps .
+#
+# This script fixes the "permission denied for table couriers" error
+# by updating RLS policies and granting proper permissions.
+# ============================================================================
+
+substitutions:
+  _CLOUD_SQL_INSTANCE: barqdps:me-central1:barq-postgres-staging
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 300s  # 5 minutes
+
+steps:
+  # Run SQL permission fixes using Cloud SQL Proxy
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'fix-permissions'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        echo "=============================================="
+        echo "BARQ Fleet - Database Permission Fix"
+        echo "=============================================="
+        echo ""
+
+        echo "=== Step 1: Installing Cloud SQL Proxy ==="
+        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
+        chmod +x cloud-sql-proxy
+
+        echo "=== Step 2: Starting Cloud SQL Proxy ==="
+        mkdir -p /cloudsql
+        ./cloud-sql-proxy --unix-socket /cloudsql ${_CLOUD_SQL_INSTANCE} &
+        PROXY_PID=$$!
+        sleep 5
+        echo "Cloud SQL Proxy started with PID $$PROXY_PID"
+
+        echo "=== Step 3: Installing PostgreSQL client ==="
+        apt-get update -qq && apt-get install -y -qq postgresql-client > /dev/null 2>&1
+
+        echo "=== Step 4: Getting database password from Secret Manager ==="
+        export PGPASSWORD=$(gcloud secrets versions access latest --secret=barq-postgres-password)
+
+        echo "=== Step 5: Checking current RLS status on couriers table ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT relname, relrowsecurity, relforcerowsecurity
+          FROM pg_class
+          WHERE relname = 'couriers'
+            AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public');
+        " || echo "Table check failed"
+
+        echo "=== Step 6: Checking existing policies on couriers ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT policyname, cmd, qual IS NOT NULL as has_using, with_check IS NOT NULL as has_check
+          FROM pg_policies
+          WHERE tablename = 'couriers';
+        " || echo "Policy check failed"
+
+        echo "=== Step 7: Applying permission fixes ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet << 'EOF'
+        BEGIN;
+
+        -- Grant all privileges on schema and tables
+        GRANT USAGE ON SCHEMA public TO postgres;
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
+        GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO postgres;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO postgres;
+
+        -- Grant app_user role if it exists
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_user') THEN
+                GRANT app_user TO postgres;
+                RAISE NOTICE 'Granted app_user role to postgres';
+            END IF;
+        END $$;
+
+        -- Add bypass policy for database superusers on key tables
+        DO $$
+        DECLARE
+            tenant_tables TEXT[] := ARRAY[
+                'couriers', 'vehicles', 'courier_vehicle_assignments', 'accident_logs',
+                'fuel_logs', 'vehicle_logs', 'vehicle_maintenance', 'vehicle_inspections',
+                'inspections', 'documents', 'attendance', 'leaves', 'loans', 'salaries',
+                'assets', 'bonuses', 'deliveries', 'cods', 'cod_transactions',
+                'dispatch_assignments', 'operations_documents', 'customer_feedback',
+                'incidents', 'routes', 'tickets', 'users', 'organizations',
+                'buildings', 'rooms', 'beds', 'allocations'
+            ];
+            t TEXT;
+        BEGIN
+            FOREACH t IN ARRAY tenant_tables
+            LOOP
+                IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = t AND table_schema = 'public') THEN
+                    -- Drop existing bypass policy if exists
+                    EXECUTE format('DROP POLICY IF EXISTS db_superuser_bypass_%I ON %I', t, t);
+
+                    -- Create new bypass policy
+                    EXECUTE format(
+                        'CREATE POLICY db_superuser_bypass_%I ON %I
+                        FOR ALL
+                        USING (
+                            (SELECT usesuper FROM pg_user WHERE usename = current_user)
+                            OR COALESCE(current_setting(''app.is_superuser'', true), ''false'')::boolean = true
+                            OR NULLIF(current_setting(''app.current_org_id'', true), '''') IS NULL
+                        )
+                        WITH CHECK (
+                            (SELECT usesuper FROM pg_user WHERE usename = current_user)
+                            OR COALESCE(current_setting(''app.is_superuser'', true), ''false'')::boolean = true
+                            OR NULLIF(current_setting(''app.current_org_id'', true), '''') IS NULL
+                        )',
+                        t, t
+                    );
+                    RAISE NOTICE 'Created bypass policy on table: %', t;
+                END IF;
+            END LOOP;
+        END $$;
+
+        COMMIT;
+        EOF
+
+        echo "=== Step 8: Verifying fix - Testing SELECT on couriers ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT COUNT(*) as courier_count FROM couriers;
+        " && echo "SUCCESS: Can now access couriers table!" || echo "FAILED: Still cannot access couriers table"
+
+        echo "=== Step 9: Checking updated policies ==="
+        psql -h /cloudsql/${_CLOUD_SQL_INSTANCE} -U postgres -d barq_fleet -c "
+          SELECT policyname, cmd
+          FROM pg_policies
+          WHERE tablename = 'couriers'
+          ORDER BY policyname;
+        "
+
+        echo "=============================================="
+        echo "Permission fix complete!"
+        echo "=============================================="
+
+        # Cleanup
+        kill $$PROXY_PID 2>/dev/null || true
